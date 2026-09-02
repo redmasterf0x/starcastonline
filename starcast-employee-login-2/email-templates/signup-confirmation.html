@@ -1,0 +1,54 @@
+<!-- Supabase Signup Confirmation Email Template -->
+<!-- Paste this into Supabase Dashboard > Authentication > Email Templates > Confirm signup -->
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0A1828; padding: 40px 20px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background-color: #132238; border-radius: 12px; border: 1px solid #1e3a5f;">
+        <!-- Header -->
+        <tr>
+          <td align="center" style="padding: 40px 40px 20px 40px;">
+            <img src="https://starcast.online/images/spacemanlogo.png" alt="Starcast Media" width="80" height="80" style="display: block;" />
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 0 40px 20px 40px;">
+            <h1 style="color: #F5F1E6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; margin: 0;">Welcome to Starcast Media</h1>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 0 40px 10px 40px;">
+            <p style="color: #E8A660; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-style: italic; margin: 0;">To media and beyond</p>
+          </td>
+        </tr>
+        
+        <!-- Body -->
+        <tr>
+          <td style="padding: 20px 40px;">
+            <p style="color: #BFA98E; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Thanks for signing up! Please confirm your email address to get started with Starcast Media.
+            </p>
+          </td>
+        </tr>
+        
+        <!-- Button -->
+        <tr>
+          <td align="center" style="padding: 10px 40px 30px 40px;">
+            <a href="{{ .ConfirmationURL }}" style="display: inline-block; background: linear-gradient(to right, #D4722B, #C45F1F); color: #F5F1E6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
+              Confirm Email
+            </a>
+          </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #1e3a5f;">
+            <p style="color: #6b7c8f; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 1.5; margin: 0; text-align: center;">
+              If you didn't create an account with Starcast Media, you can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
