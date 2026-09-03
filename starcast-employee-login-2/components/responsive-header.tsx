@@ -85,7 +85,7 @@ export function ResponsiveHeader({
   ]
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#6477b8]/35 bg-[#171947]/88 shadow-[0_8px_30px_rgba(5,5,45,0.2)] backdrop-blur-xl supports-[backdrop-filter]:bg-[#171947]/78">
+    <header className="sticky top-0 z-50 border-b border-[#b35a1f]/35 bg-[#D4722B] shadow-[0_8px_30px_rgba(80,30,0,0.3)] backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-85">
