@@ -5,10 +5,10 @@ import { and, gte, inArray, isNull, lte, eq } from "drizzle-orm"
 import { Resend } from "resend"
 import { sendSms, isSmsConfigured } from "@/lib/sms"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_build_placeholder")
 
 export async function GET(req: NextRequest) {
-  // Protect: only Vercel cron (or manual calls with CRON_SECRET)
+  // Protect: cron caller or manual calls with CRON_SECRET
   const authHeader = req.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {

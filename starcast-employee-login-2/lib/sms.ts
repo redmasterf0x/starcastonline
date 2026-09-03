@@ -23,7 +23,7 @@ export async function sendSms(to: string, body: string): Promise<SendSmsResult> 
   const from = process.env.TWILIO_FROM_NUMBER!
 
   // Build the status-callback URL from the public app URL if available.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.URL || process.env.VERCEL_URL
   const statusCallback = appUrl
     ? `https://${appUrl.replace(/^https?:\/\//, "")}/api/webhooks/twilio-status`
     : undefined

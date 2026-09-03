@@ -19,6 +19,7 @@
     "@libsql/client-wasm": "latest",
     "@lynx-js/react": "latest",
     "@neondatabase/serverless": "latest",
+    "@netlify/blobs": "^11.0.3",
     "@op-engineering/op-sqlite": "latest",
     "@opentelemetry/api": "latest",
     "@planetscale/database": "latest",
@@ -59,9 +60,6 @@
     "@types/better-sqlite3": "latest",
     "@types/sql.js": "latest",
     "@upstash/redis": "latest",
-    "@vercel/analytics": "latest",
-    "@vercel/blob": "latest",
-    "@vercel/postgres": "latest",
     "@xata.io/client": "latest",
     "autoprefixer": "^10.4.20",
     "better-auth": "latest",
@@ -86,7 +84,6 @@
     "next": "16.2.0",
     "next-themes": "^0.4.6",
     "pg": "latest",
-    "pg-native": "latest",
     "postgres": "3.4.9",
     "prisma": "latest",
     "react": "^19",
@@ -124,8 +121,5 @@
     "overrides": {
       "hono": "4.12.25"
     }
-  },
-  "trustedDependencies": [
-    "pg-native"
-  ]
+  }
 }

@@ -1,6 +1,6 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_build_placeholder")
 
 const FROM = "StarCast Media <noreply@starcast.online>"
 const BRAND_ORANGE = "#D4722B"

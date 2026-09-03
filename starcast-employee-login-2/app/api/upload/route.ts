@@ -1,8 +1,8 @@
-import { put } from "@vercel/blob"
+import { getStore } from "@netlify/blobs"
 import { type NextRequest, NextResponse } from "next/server"
 
-// Uploads a file to Vercel Blob (public store) and returns its public URL.
-// Used for profile avatars and sponsor logos so images are served by Vercel's CDN.
+// Uploads a file to Netlify Blobs and returns its public URL.
+// Used for profile avatars and sponsor logos.
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -13,18 +13,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    // Namespaced, collision-resistant pathname. addRandomSuffix guards against
-    // overwrites when two files share a name.
-    const pathname = `${folder}/${Date.now()}-${file.name}`
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+    const pathname = `${folder}/${Date.now()}-${sanitizedName}`
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-    const blob = await put(pathname, file, {
-      access: "public",
-      addRandomSuffix: true,
-    })
-
-    return NextResponse.json({ url: blob.url })
+    try {
+      const store = getStore("uploads")
+      await store.set(pathname, buffer, {
+        metadata: { contentType: file.type || "application/octet-stream" },
+      })
+      return NextResponse.json({ url: `/api/blobs/${pathname}` })
+    } catch (blobErr) {
+      console.warn("Netlify Blobs environment not active, using base64 data URL fallback:", blobErr)
+      const base64 = buffer.toString("base64")
+      const dataUrl = `data:${file.type || "application/octet-stream"};base64,${base64}`
+      return NextResponse.json({ url: dataUrl })
+    }
   } catch (error) {
-    console.error("[v0] Blob upload error:", error)
+    console.error("Upload error:", error)
     return NextResponse.json({ error: "Upload failed" }, { status: 500 })
   }
 }

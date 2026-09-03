@@ -10,6 +10,8 @@ export const auth = betterAuth({
   database: pool,
   baseURL:
     process.env.BETTER_AUTH_URL ??
+    process.env.URL ??
+    process.env.DEPLOY_PRIME_URL ??
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : process.env.VERCEL_URL
@@ -95,9 +97,11 @@ export const auth = betterAuth({
     // regardless of which Vercel env var is present at runtime.
     "https://starcast.online",
     "https://www.starcast.online",
-    // v0 / Vercel preview + sandbox domains (wildcards). Without these the
-    // preview origin (e.g. https://sb-xxxx.vercel.run) is rejected with a 403
-    // "Invalid origin" and sign-in/sign-up fail.
+    // Netlify domains & preview deploys
+    "https://*.netlify.app",
+    ...(process.env.URL ? [process.env.URL] : []),
+    ...(process.env.DEPLOY_PRIME_URL ? [process.env.DEPLOY_PRIME_URL] : []),
+    // v0 / Vercel preview + sandbox domains (wildcards)
     "https://*.vercel.run",
     "https://*.v0.build",
     "https://*.vercel.app",

@@ -1,0 +1,8 @@
+[build]
+  base = "starcast-employee-login-2"
+  command = "npm run build"
+  publish = "starcast-employee-login-2/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
