@@ -12,7 +12,7 @@ import {
   friendships,
   messages,
 } from "@/lib/db/schema"
-import { and, asc, desc, eq, inArray, or, count } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, or, count, gte } from "drizzle-orm"
 import { headers } from "next/headers"
 import { SOCIAL_BAN_MESSAGE } from "@/lib/permissions"
 
@@ -707,25 +707,36 @@ export async function listDeckPosts() {
 
   const decorated = await Promise.all(posts.map((p) => decoratePost(p, viewer?.id ?? null, profileById)))
 
-  const viewerPostId = viewer ? decorated.find((p) => p.employee_id === viewer.id)?.id ?? null : null
+  // Check if viewer has already posted within the last 24 hours (daily limit)
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const viewerRecentPost = viewer
+    ? posts.find((p) => p.authorId === viewer.id && p.createdAt && new Date(p.createdAt) >= oneDayAgo)
+    : null
 
-  return { posts: decorated, viewerHasPosted: !!viewerPostId, viewerPostId }
+  return { posts: decorated, viewerHasPosted: !!viewerRecentPost, viewerPostId: viewerRecentPost?.id ?? null }
 }
 
 /**
- * Create the viewer's single DECK post. Throws if they already have one so the
- * one-post rule holds even if the client UI is bypassed.
+ * Create the viewer's daily DECK post. Throws if they have already posted in the
+ * past 24 hours so the 1-post-per-day rule holds even if the client UI is bypassed.
  */
 export async function createDeckPost(content: string) {
   const viewer = await requireSocialViewer()
 
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const existing = await db
     .select({ id: communityPosts.id })
     .from(communityPosts)
-    .where(and(eq(communityPosts.category, DECK_SLUG), eq(communityPosts.authorId, viewer.id)))
+    .where(
+      and(
+        eq(communityPosts.category, DECK_SLUG),
+        eq(communityPosts.authorId, viewer.id),
+        gte(communityPosts.createdAt, oneDayAgo)
+      )
+    )
     .limit(1)
   if (existing.length > 0) {
-    throw new Error("You already have a post on the DECK. You can still reply as many times as you like.")
+    throw new Error("You already have a post on the DECK today. You can post again tomorrow, and reply to others as much as you like in the meantime!")
   }
 
   const trimmed = content.trim()

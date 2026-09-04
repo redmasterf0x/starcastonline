@@ -151,12 +151,12 @@ export function TheDeck({ currentUserId, currentProfileId }: TheDeckProps) {
           </div>
         ) : viewerHasPosted ? (
           <p className="text-sm text-[#9a9fc4]">
-            {"You've claimed your spot on the DECK. Everyone gets one post \u2014 but you can reply to anyone as much as you like."}
+            {"You've claimed your spot on the DECK today! Everyone gets one post per day \u2014 but you can reply to anyone as much as you like."}
           </p>
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-[#9a9fc4]">
-              {"You get one post on the wall, so make it count. You can reply to others without limit."}
+              {"You get one post per day on the wall, so make it count. You can reply to others without limit."}
             </p>
             <Textarea
               value={draft}

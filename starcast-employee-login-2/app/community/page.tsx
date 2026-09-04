@@ -913,7 +913,7 @@ export default function CommunityPage() {
           )}
         </div>
 
-        {/* The DECK - main community wall (one post per member, unlimited replies) */}
+        {/* The DECK - main community wall (one post per day per member, unlimited replies) */}
         {activeTab === "deck" && (
           <TheDeck currentUserId={currentUserId} currentProfileId={currentUserDbId} />
         )}
