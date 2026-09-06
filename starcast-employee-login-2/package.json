@@ -119,9 +119,5 @@
     "tailwindcss": "^4.1.9",
     "typescript": "^5"
   },
-  "pnpm": {
-    "overrides": {
-      "hono": "4.12.25"
-    }
-  }
+  "packageManager": "npm@10.8.2"
 }
