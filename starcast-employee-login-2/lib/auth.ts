@@ -19,8 +19,8 @@ export const auth = betterAuth({
         : process.env.V0_RUNTIME_URL ?? "https://www.starcast.online"),
   emailAndPassword: {
     enabled: true,
-    // New users must confirm their email before they can sign in.
-    requireEmailVerification: true,
+    // TEMP: email not yet required to sign in (Resend not configured).
+    requireEmailVerification: false,
     autoSignIn: true,
   },
   emailVerification: {
