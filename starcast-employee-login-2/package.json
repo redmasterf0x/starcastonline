@@ -20,6 +20,7 @@
     "@lynx-js/react": "latest",
     "@neondatabase/serverless": "latest",
     "@netlify/blobs": "^11.0.3",
+    "@netlify/database": "^2.0.1",
     "@op-engineering/op-sqlite": "latest",
     "@opentelemetry/api": "latest",
     "@planetscale/database": "latest",
