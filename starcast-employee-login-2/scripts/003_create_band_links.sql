@@ -1,0 +1,12 @@
+-- Migration: create band_links table
+CREATE TABLE IF NOT EXISTS band_links (
+  id SERIAL PRIMARY KEY,
+  band_id UUID NOT NULL REFERENCES bands(id) ON DELETE CASCADE,
+  label VARCHAR(255) NOT NULL,
+  url VARCHAR(1024) NOT NULL,
+  icon VARCHAR(255),
+  position INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
