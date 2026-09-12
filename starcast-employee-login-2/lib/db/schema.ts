@@ -350,6 +350,18 @@ export const bands = pgTable("bands", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
+export const bandLinks = pgTable('band_links', {
+  id: serial('id').primaryKey(),
+  bandId: uuid('band_id')
+    .references(() => bands.id, { onDelete: 'cascade' })
+    .notNull(),
+  label: varchar('label', { length: 255 }).notNull(),
+  url: varchar('url', { length: 1024 }).notNull(),
+  icon: varchar('icon', { length: 255 }).default(null), // optional icon name
+  position: integer('position').default(0), // ordering
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),
+});
 
 export const bandPosts = pgTable("band_posts", {
   id: uuid("id").primaryKey().defaultRandom(),
