@@ -13,6 +13,8 @@ import {
 import { getBookingsForBand, createBooking } from "@/app/actions/bookings"
 import { getPaymentsForBand } from "@/app/actions/payments"
 import { ResponsiveHeader } from "@/components/responsive-header"
+import { BandPostsPanel } from "@/components/portal/band-posts-panel"
+import { BandLinksPanel } from "@/components/portal/band-links-panel"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,7 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Music, Plus, Calendar, CheckCircle2, ShieldCheck, FileText, Clock, DollarSign, ExternalLink, Share2, Check } from "lucide-react"
+import { Music, Plus, Calendar, CheckCircle2, ShieldCheck, FileText, Clock, DollarSign, ExternalLink, Share2, Check, Newspaper, CreditCard } from "lucide-react"
 
 interface Band {
   id: string
@@ -76,7 +78,7 @@ const PAYMENT_STATUS_STYLES: Record<string, string> = {
   void: "bg-[#20205a]/50 text-[#9a9fc4] border-[#20205a]",
 }
 
-  const emptyBandForm: BandInput = { name: "", type: "band", genre: "", bio: "", contactEmail: "", contactPhone: "" }
+  const emptyBandForm: BandInput = { name: "", type: "band", genre: "", bio: "", contactEmail: "", contactPhone: "", links: [] }
 
 export default function PortalPage() {
   const [loading, setLoading] = useState(true)
@@ -103,6 +105,7 @@ export default function PortalPage() {
   }
 
   const selectedBand = bands.find((b) => b.id === selectedBandId) || null
+const [portalTab, setPortalTab] = useState<"posts" | "links" | "studio" | "payments">("posts")
 
   useEffect(() => {
     init()
@@ -365,6 +368,48 @@ export default function PortalPage() {
                   </CardContent>
                 </Card>
 
+                {/* Portal tabs */}
+                <div className="flex flex-wrap gap-2 mb-2 border-b border-[#20205a]/50 pb-px">
+                  <button
+                    onClick={() => setPortalTab("posts")}
+                    className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-sm font-semibold transition-all ${portalTab === "posts"
+                      ? "bg-[#0c0c3f]/70 text-[#ea6f2a] border border-b-0 border-[#20205a]/60 -mb-px shadow-inner"
+                      : "text-[#9a9fc4] hover:text-[#f5f7ff] border border-transparent"}`}
+                  >
+                    <Newspaper className="w-4 h-4" /> Posts
+                  </button>
+                  <button
+                    onClick={() => setPortalTab("studio")}
+                    className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-sm font-semibold transition-all ${portalTab === "studio"
+                      ? "bg-[#0c0c3f]/70 text-[#ea6f2a] border border-b-0 border-[#20205a]/60 -mb-px shadow-inner"
+                      : "text-[#9a9fc4] hover:text-[#f5f7ff] border border-transparent"}`}
+                  >
+                    <Calendar className="w-4 h-4" /> Studio Sessions
+                  </button>
+                  <button
+                    onClick={() => setPortalTab("payments")}
+                    className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-t-xl text-sm font-semibold transition-all ${portalTab === "payments"
+                      ? "bg-[#0c0c3f]/70 text-[#ea6f2a] border border-b-0 border-[#20205a]/60 -mb-px shadow-inner"
+                      : "text-[#9a9fc4] hover:text-[#f5f7ff] border border-transparent"}`}
+                  >
+                    <CreditCard className="w-4 h-4" /> Payments
+                  </button>
+                </div>
+
+                {/* Posts tab content (default) */}
+                {portalTab === "posts" && (
+                  <div className="pt-2">
+                    <BandPostsPanel bandId={selectedBand.id} bandName={selectedBand.name} />
+                  </div>
+                )}
+                {portalTab === "links" && (
+                  <div className="pt-2">
+                    <BandLinksPanel band={selectedBand} onUpdated={() => refreshBands()} />
+                  </div>
+                )}
+
+
+{portalTab === "studio" && (
                 {/* Bookings */}
                 <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
                   <CardHeader className="flex flex-row items-center justify-between">
@@ -412,6 +457,8 @@ export default function PortalPage() {
                   </CardContent>
                 </Card>
 
+                )}
+{portalTab === "payments" && (
                 {/* Payment history */}
                 <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
                   <CardHeader>
@@ -440,6 +487,7 @@ export default function PortalPage() {
                     )}
                   </CardContent>
                 </Card>
+                )}
               </>
             )}
           </div>

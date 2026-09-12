@@ -14,6 +14,7 @@ export type BandInput = {
   contactEmail?: string
   contactPhone?: string
   logoUrl?: string
+  links?: any[]
 }
 
 function serialize(b: typeof bands.$inferSelect) {
@@ -29,6 +30,7 @@ function serialize(b: typeof bands.$inferSelect) {
     contact_email: b.contactEmail ?? "",
     contact_phone: b.contactPhone ?? "",
     logo_url: b.logoUrl ?? "",
+    links: b.links ?? [],
     has_active_pass: b.hasActivePass,
     pass_expires_at: b.passExpiresAt ? b.passExpiresAt.toISOString() : null,
     youtube_agreement_signed: b.youtubeAgreementSigned,
@@ -107,18 +109,20 @@ export async function createBand(input: BandInput) {
   if (existing.length > 0) throw new Error("You can only create one band page per account.")
 
   const slug = await uniqueSlug(slugify(input.name))
+  const allowedTypes = ["band", "artist", "producer", "dj", "podcast"]
   const [row] = await db
     .insert(bands)
     .values({
       ownerUserId: viewer.userId,
       name: input.name.trim(),
-      type: input.type === "artist" ? "artist" : "band",
+      type: input.type && allowedTypes.includes(input.type) ? input.type : "band",
       slug,
       genre: input.genre?.trim() || null,
       bio: input.bio?.trim() || null,
       contactEmail: input.contactEmail?.trim() || null,
       contactPhone: input.contactPhone?.trim() || null,
       logoUrl: input.logoUrl?.trim() || null,
+      links: input.links ?? [],
     })
     .returning()
   revalidatePath("/portal")
@@ -146,16 +150,18 @@ export async function updateBand(id: string, input: BandInput) {
   const b = rows[0]
   if (!b) throw new Error("Band not found")
   if (b.ownerUserId !== viewer.userId && !viewer.isStaff) throw new Error("Forbidden")
+  const allowedTypes = ["band", "artist", "producer", "dj", "podcast"]
   await db
     .update(bands)
     .set({
       name: input.name?.trim() || b.name,
-      type: input.type === "artist" || input.type === "band" ? input.type : b.type,
+      type: input.type && allowedTypes.includes(input.type) ? input.type : b.type,
       genre: input.genre?.trim() || null,
       bio: input.bio?.trim() || null,
       contactEmail: input.contactEmail?.trim() || null,
       contactPhone: input.contactPhone?.trim() || null,
       logoUrl: input.logoUrl?.trim() || null,
+      links: input.links ?? b.links,
       updatedAt: new Date(),
     })
     .where(eq(bands.id, id))

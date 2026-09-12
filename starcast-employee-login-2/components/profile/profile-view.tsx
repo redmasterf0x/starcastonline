@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { ProfilePostComposer } from "@/components/profile/profile-post-composer"
 
 interface UserProfile {
   id: string
@@ -384,6 +385,14 @@ export function ProfileView({ userId }: { userId: string }) {
         {/* Posts Tab */}
         {activeProfileTab === "posts" && (
           <div className="space-y-4">
+          {/* Own-profile inline composer - only when viewing yourself */}
+          {isOwnProfile && (
+            <ProfilePostComposer
+              authorInitials={`${profile.first_name == null ? "" : profile.first_name[0]}${profile.last_name == null ? "" : profile.last_name[0]}`}
+              authorPic={profile.profile_pic || null}
+              onPosted={() => fetchPageData()}
+            />
+          )}
             {posts.length === 0 ? (
               <div className="bg-[#0c0c3f]/50 border border-[#20205a]/50 rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 rounded-full bg-[#20205a]/50 flex items-center justify-center mx-auto mb-4">

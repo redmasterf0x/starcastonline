@@ -271,7 +271,12 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
           </div>
         </section>
 
-        {/* Open discussion board — any signed-in member can start a thread */}
+        {/* Custom Links (Linktree style) */}
+          {band.links && band.links.length > 0 && (
+  <LinkTree links={band.links.map((link: any) => ({ label: link.title, url: link.url }))} />
+)}
+
+          {/* Open discussion board — any signed-in member can start a thread */}
         <section className="mb-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.15em] text-[#9a9fc4]">
             <MessageCircle className="w-4 h-4" /> Discussion Board
