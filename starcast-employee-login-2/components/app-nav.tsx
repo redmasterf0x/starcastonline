@@ -82,6 +82,14 @@ export function AppNav({ isEmployee = false, isAdmin = false, currentPage = "" }
                 Community
               </Link>
               <Link
+                href="/watch"
+                className={`${
+                  currentPage === "watch" ? "text-[#f4b25c]" : "text-[#9a9fc4]"
+                } hover:text-[#f4b25c] transition-colors text-sm font-medium`}
+              >
+                Watch
+              </Link>
+              <Link
                 href="https://shop.starcast.online"
                 target="_blank"
                 rel="noopener noreferrer"
