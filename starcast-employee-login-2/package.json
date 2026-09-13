@@ -2,6 +2,7 @@
   "name": "my-v0-project",
   "version": "0.1.2",
   "private": true,
+  "packageManager": "npm@10.8.2",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -19,7 +20,6 @@
     "@libsql/client-wasm": "latest",
     "@lynx-js/react": "latest",
     "@neondatabase/serverless": "latest",
-    "@netlify/blobs": "^11.0.3",
     "@op-engineering/op-sqlite": "latest",
     "@opentelemetry/api": "latest",
     "@planetscale/database": "latest",
@@ -59,6 +59,7 @@
     "@tidbcloud/serverless": "latest",
     "@types/better-sqlite3": "latest",
     "@types/sql.js": "latest",
+    "@netlify/blobs": "latest",
     "@upstash/redis": "latest",
     "@xata.io/client": "latest",
     "autoprefixer": "^10.4.20",
@@ -108,7 +109,6 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.15.13",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^24",
     "@types/pg": "^8.11.10",
@@ -116,7 +116,12 @@
     "@types/react-dom": "^19",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
-    "typescript": "^5"
+    "typescript": "^4.7.4"
   },
-  "packageManager": "npm@10.8.2"
+  "pnpm": {
+    "overrides": {
+      "hono": "4.12.25"
+    }
+  }
 }
+
