@@ -119,28 +119,7 @@ export function ResponsiveHeader({
 
           {/* Desktop Navigation */}
           <nav className="hidden items-center gap-1 rounded-full border border-white/20 bg-[#05052d]/60 p-1 shadow-inner backdrop-blur-md lg:flex">
-            {/* Home link */}
-            <Link
-              href="/"
-              className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                currentPage === "/" ? "bg-[#ea6f2a] text-white shadow-sm" : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"
-              }`}
-            >
-              Home
-            </Link>
-
-            {/* Articles link */}
-            <Link
-              href="/articles"
-              className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                currentPage === "/articles" ? "bg-[#ea6f2a] text-white shadow-sm" : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"
-              }`}
-            >
-              Articles
-            </Link>
-
-            {/* Remaining nav links - skip Home, Articles since they're hardcoded above */}
-            {navLinks.slice(2).map(
+            {navLinks.map(
               (link) =>
                 link.show && (
                   <Link
