@@ -126,7 +126,7 @@ interface FriendRequest {
 
 export default function CommunityPage() {
   const [categories, setCategories] = useState<Category[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [posts, setPosts] = useState<CommunityPost[]>([])
   const [loading, setLoading] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -217,15 +217,18 @@ export default function CommunityPage() {
   }, [activeTab, currentUserDbId])
 
   useEffect(() => {
-    if (selectedCategory) {
+    if (activeTab === "feed") {
       fetchPosts()
     }
-  }, [selectedCategory, currentUserId])
+  }, [activeTab, selectedCategory, currentUserId])
 
   const fetchCategories = async () => {
     try {
       const data = await listCommunityCategories()
       setCategories(data)
+      if (data.length > 0 && !category) {
+        setCategory(data[0].slug)
+      }
     } catch {
       setCategories([])
     }
@@ -246,10 +249,9 @@ export default function CommunityPage() {
   }
 
   const fetchPosts = async () => {
-    if (!selectedCategory) return
     setLoading(true)
     try {
-      const data = await listCommunityPosts(selectedCategory)
+      const data = await listCommunityPosts(selectedCategory === "all" ? null : selectedCategory)
       setPosts(data as CommunityPost[])
     } catch {
       setPosts([])
@@ -485,364 +487,6 @@ export default function CommunityPage() {
     window.location.href = "/articles"
   }
 
-  // Category view with posts
-  if (selectedCategory) {
-    const currentCategory = categories.find((c) => c.slug === selectedCategory)
-    
-    return (
-      <div className="public-shell flex min-h-screen flex-col">
-        <ResponsiveHeader
-          currentPage="/community"
-          isAdmin={isAdmin}
-          isCrew={isCrew}
-          isLoggedIn={!!currentUserId}
-          onSignOut={handleSignOut}
-          onLogin={() => router.push("/login")}
-        />
-        
-        <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className="w-10 h-10 rounded-full bg-[#20205a]/50 hover:bg-[#20205a] flex items-center justify-center text-[#9a9fc4] hover:text-[#f5f7ff] transition-all"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{currentCategory?.icon}</span>
-                <div>
-                  {currentCategory?.show_title && (
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#ea6f2a] leading-tight">
-                      {currentCategory.show_title}
-                    </p>
-                  )}
-                  <h1 className="text-xl font-bold text-[#f5f7ff] leading-tight">{currentCategory?.name}</h1>
-                </div>
-              </div>
-            </div>
-            
-            {currentUserId && (
-              <Dialog open={createDialogOpen} onOpenChange={(open) => {
-                setCreateDialogOpen(open)
-                if (open) setPostError(null)
-                if (open && selectedCategory) setCategory(selectedCategory)
-              }}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white gap-2 rounded-full px-5">
-                    <Plus className="w-4 h-4" />
-                    New Post
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl">Create Post</DialogTitle>
-                    <DialogDescription className="text-[#9a9fc4]">
-                      Share with the community in {currentCategory?.name}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-5 mt-4">
-                    <div>
-                      <Label className="text-[#f5f7ff] text-sm font-medium">Category</Label>
-                      <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="mt-1.5 bg-[#05052d] border-[#20205a] text-[#f5f7ff]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#0c0c3f] border-[#20205a]">
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.slug} value={cat.slug} className="text-[#f5f7ff]">
-                              {cat.icon} {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-[#f5f7ff] text-sm font-medium">Title</Label>
-                      <Input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="What's on your mind?"
-                        className="mt-1.5 bg-[#05052d] border-[#20205a] text-[#f5f7ff] h-11"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[#f5f7ff] text-sm font-medium">Content</Label>
-                      <Textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder="Share your thoughts..."
-                        className="mt-1.5 bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[140px] resize-none"
-                      />
-                    </div>
-                    {images.length > 0 && (
-                      <div className="flex gap-2 flex-wrap">
-                        {images.map((img, idx) => (
-                          <div key={idx} className="relative group">
-                            <img src={img.preview} alt="" className="w-20 h-20 object-cover rounded-lg" />
-                            <button
-                              onClick={() => handleRemoveImage(idx)}
-                              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="w-3 h-3 text-white" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 pt-2 border-t border-[#20205a]">
-                      <label className="flex items-center gap-2 text-sm text-[#9a9fc4] hover:text-[#f5f7ff] cursor-pointer transition-colors">
-                        <ImageIcon className="w-5 h-5" />
-                        Add Image
-                        <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
-                      </label>
-                    </div>
-                    {postError && (
-                      <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                        {postError}
-                      </p>
-                    )}
-                    <Button
-                      onClick={handleSavePost}
-                      disabled={!title.trim() || !content.trim()}
-                      className="w-full bg-[#ea6f2a] hover:bg-[#bc3f00] text-white h-11 rounded-lg"
-                    >
-                      Post
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-
-          {/* Explains why posting/commenting is unavailable when banned */}
-          <SocialBanBanner className="mb-6" />
-
-          {/* Posts */}
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="w-8 h-8 border-2 border-[#ea6f2a]/30 border-t-[#ea6f2a] rounded-full animate-spin" />
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 rounded-full bg-[#20205a]/30 flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-8 h-8 text-[#9a9fc4]" />
-              </div>
-              <p className="text-[#f5f7ff] font-medium mb-1">No posts yet</p>
-              <p className="text-sm text-[#9a9fc4]">Be the first to start the conversation!</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {posts.map((post) => (
-                <article key={post.id} className="media-card overflow-hidden rounded-2xl">
-                  <div className="p-5">
-                    {/* Author */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#ea6f2a] to-[#20205a] p-0.5">
-                          <div className="w-full h-full rounded-full bg-[#05052d] flex items-center justify-center overflow-hidden">
-                            {post.employee?.profile_pic ? (
-                              <img src={post.employee.profile_pic} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-sm font-medium text-[#f5f7ff]">
-                                {post.employee?.first_name?.[0]}{post.employee?.last_name?.[0]}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[#f5f7ff] text-sm">
-                            {post.employee?.first_name} {post.employee?.last_name}
-                          </p>
-                          <p className="text-xs text-[#9a9fc4]">
-                            {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </p>
-                        </div>
-                      </div>
-                      <button className="p-2 rounded-full hover:bg-[#20205a]/50 text-[#9a9fc4] transition-colors">
-                        <MoreHorizontal className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    {/* Content */}
-                    <h2 className="text-lg font-semibold text-[#f5f7ff] mb-2 leading-snug">{post.title}</h2>
-                    <p className="text-[#9a9fc4] text-sm leading-relaxed whitespace-pre-wrap mb-4">{post.content}</p>
-
-                    {/* Images */}
-                    {post.images && post.images.length > 0 && (
-                      <div className="flex gap-2 mb-4 -mx-5 px-5 overflow-x-auto pb-2">
-                        {post.images.map((img, idx) => (
-                          <img 
-                            key={idx} 
-                            src={img.url} 
-                            alt="" 
-                            className="h-48 w-auto rounded-xl object-cover flex-shrink-0" 
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 pt-3 border-t border-[#20205a]/50">
-                      <button
-                        onClick={() => handleToggleStar(post.id, post.user_starred || false)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                          post.user_starred 
-                            ? "bg-[#ea6f2a]/20 text-[#ea6f2a]" 
-                            : "text-[#9a9fc4] hover:bg-[#20205a]/50 hover:text-[#f5f7ff]"
-                        }`}
-                      >
-                        <Heart className="w-4 h-4" fill={post.user_starred ? "currentColor" : "none"} />
-                        {post.star_count || 0}
-                      </button>
-                      <button
-                        onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[#9a9fc4] hover:bg-[#20205a]/50 hover:text-[#f5f7ff] transition-all"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        {post.comments?.length || 0}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Comments Section */}
-                  {showComments[post.id] && (
-                    <div className="border-t border-[#20205a]/50 bg-[#05052d]/50 p-4 space-y-4">
-                      {post.comments && post.comments.length > 0 && (
-                        <div className="space-y-3">
-                          {post.comments.map((comment) => (
-                            <div key={comment.id} className="space-y-2">
-                              <div className="flex gap-3">
-                                <div className="w-8 h-8 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden">
-                                  {comment.user?.profile_pic ? (
-                                    <img src={comment.user.profile_pic} alt="" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <span className="text-xs text-[#f5f7ff]">
-                                      {comment.user?.first_name?.[0]}{comment.user?.last_name?.[0]}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="bg-[#0c0c3f] rounded-2xl rounded-tl-sm px-4 py-2.5">
-                                    <p className="text-xs font-medium text-[#f5f7ff] mb-0.5">
-                                      {comment.user?.first_name} {comment.user?.last_name}
-                                    </p>
-                                    <p className="text-sm text-[#9a9fc4]">{comment.comment}</p>
-                                  </div>
-                                  <div className="flex items-center gap-3 mt-1 px-2">
-                                    <button
-                                      onClick={() => handleToggleCommentStar(comment.id, comment.user_starred || false)}
-                                      className={`text-xs font-medium transition-colors ${
-                                        comment.user_starred ? "text-[#ea6f2a]" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
-                                      }`}
-                                    >
-                                      Like {comment.star_count ? `(${comment.star_count})` : ""}
-                                    </button>
-                                    <button
-                                      onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                                      className="text-xs font-medium text-[#9a9fc4] hover:text-[#f5f7ff] transition-colors"
-                                    >
-                                      Reply
-                                    </button>
-                                    <span className="text-xs text-[#9a9fc4]/60">
-                                      {new Date(comment.created_at).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  
-                                  {/* Reply input */}
-                                  {replyingTo === comment.id && (
-                                    <div className="flex gap-2 mt-2">
-                                      <Input
-                                        value={replyText[comment.id] || ""}
-                                        onChange={(e) => setReplyText({ ...replyText, [comment.id]: e.target.value })}
-                                        placeholder="Write a reply..."
-                                        className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] text-sm h-9 rounded-full"
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            e.preventDefault()
-                                            handleAddReply(post.id, comment.id)
-                                          }
-                                        }}
-                                      />
-                                      <Button
-                                        onClick={() => handleAddReply(post.id, comment.id)}
-                                        size="sm"
-                                        className="bg-[#ea6f2a] hover:bg-[#bc3f00] h-9 px-4 rounded-full"
-                                        disabled={!replyText[comment.id]?.trim()}
-                                      >
-                                        Reply
-                                      </Button>
-                                    </div>
-                                  )}
-
-                                  {/* Replies */}
-                                  {comment.replies && comment.replies.length > 0 && (
-                                    <div className="mt-2 space-y-2">
-                                      {comment.replies.map((reply) => (
-                                        <div key={reply.id} className="flex gap-2">
-                                          <div className="w-6 h-6 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden">
-                                            {reply.user?.profile_pic ? (
-                                              <img src={reply.user.profile_pic} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                              <span className="text-[10px] text-[#f5f7ff]">
-                                                {reply.user?.first_name?.[0]}{reply.user?.last_name?.[0]}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <div className="flex-1">
-                                            <div className="bg-[#0c0c3f] rounded-2xl rounded-tl-sm px-3 py-2">
-                                              <p className="text-xs font-medium text-[#f5f7ff]">
-                                                {reply.user?.first_name} {reply.user?.last_name}
-                                              </p>
-                                              <p className="text-xs text-[#9a9fc4]">{reply.comment}</p>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Add comment */}
-                      <div className="flex gap-2">
-                        <Input
-                          value={commentText[post.id] || ""}
-                          onChange={(e) => setCommentText({ ...commentText, [post.id]: e.target.value })}
-                          placeholder="Write a comment..."
-                          className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] rounded-full"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault()
-                              handleAddComment(post.id)
-                            }
-                          }}
-                        />
-                        <Button
-                          onClick={() => handleAddComment(post.id)}
-                          className="bg-[#ea6f2a] hover:bg-[#bc3f00] rounded-full px-5"
-                          disabled={!commentText[post.id]?.trim()}
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </main>
-        <Footer />
-      </div>
-    )
-  }
-
   // Main community hub view
   return (
     <div className="public-shell flex min-h-screen flex-col">
@@ -918,35 +562,330 @@ export default function CommunityPage() {
           <TheDeck currentUserId={currentUserId} currentProfileId={currentUserDbId} />
         )}
 
-        {/* Feed Tab - Topics grouped by show */}
+        {/* Feed Tab - Community Discussions & General Posting */}
         {activeTab === "feed" && (
-          <div className="space-y-10">
-            {groupedCategories.map((group) => (
-              <section key={group.showTitle}>
-                <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#ea6f2a] mb-4">
-                  {group.showTitle}
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {group.categories.map((cat) => (
-                    <button
-                      key={cat.slug}
-                      onClick={() => setSelectedCategory(cat.slug)}
-                      className="group relative flex flex-col p-6 rounded-2xl bg-[#0c0c3f]/40 border border-[#20205a]/50 hover:border-[#ea6f2a]/50 hover:bg-[#0c0c3f]/70 transition-all text-left overflow-hidden"
-                    >
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#ea6f2a]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <span className="text-4xl mb-4 relative z-10">{cat.icon}</span>
-                      <h3 className="text-lg font-semibold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors mb-1 relative z-10">
-                        {cat.name}
-                      </h3>
-                      <p className="text-sm text-[#9a9fc4]/70 relative z-10">
-                        {cat.topic === "community" ? "Connect with fellow fans" : "Join the discussion"}
-                      </p>
-                      <ChevronRight className="absolute top-6 right-5 w-5 h-5 text-[#9a9fc4]/30 group-hover:text-[#ea6f2a] group-hover:translate-x-1 transition-all" />
-                    </button>
-                  ))}
+          <div className="space-y-6">
+            {/* Header / Intro Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-[#0c0c3f]/90 via-[#05052d]/90 to-[#121248]/90 border border-[#20205a]/80 shadow-xl">
+              <div>
+                <div className="flex items-center gap-2 text-[#ea6f2a] text-xs font-mono font-bold tracking-widest uppercase mb-1">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>OPEN FORUM // NO DAILY POST LIMITS</span>
                 </div>
-              </section>
-            ))}
+                <h2 className="text-xl sm:text-2xl font-black text-[#f5f7ff] tracking-tight">
+                  Community Discussions &amp; General Posting
+                </h2>
+                <p className="text-xs sm:text-sm text-[#9a9fc4] mt-1">
+                  Open discussion for everyone. Start threads, share stories, react to shows, and discuss music — post and comment freely!
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {currentUserId ? (
+                  <Button
+                    onClick={() => {
+                      setCreateDialogOpen(true)
+                      setPostError(null)
+                      if (selectedCategory && selectedCategory !== "all") {
+                        setCategory(selectedCategory)
+                      } else if (categories.length > 0) {
+                        setCategory(categories[0].slug)
+                      }
+                    }}
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-5 shadow-lg shadow-[#ea6f2a]/25"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Discussion Post
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => router.push("/login")}
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-5 shadow-lg shadow-[#ea6f2a]/25"
+                  >
+                    Sign In To Post
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              <button
+                onClick={() => setSelectedCategory("all")}
+                className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                  selectedCategory === "all"
+                    ? "bg-[#ea6f2a] text-white shadow-md shadow-[#ea6f2a]/25"
+                    : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:text-[#f5f7ff] border border-[#20205a]/50"
+                }`}
+              >
+                All Discussions
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.slug}
+                  onClick={() => setSelectedCategory(cat.slug)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                    selectedCategory === cat.slug
+                      ? "bg-[#ea6f2a] text-white shadow-md shadow-[#ea6f2a]/25"
+                      : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:text-[#f5f7ff] border border-[#20205a]/50"
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Discussions Feed */}
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <div className="w-8 h-8 border-2 border-[#ea6f2a]/30 border-t-[#ea6f2a] rounded-full animate-spin" />
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-16 px-4 rounded-2xl bg-[#0c0c3f]/40 border border-[#20205a]/50">
+                <div className="w-16 h-16 rounded-full bg-[#ea6f2a]/10 border border-[#ea6f2a]/20 flex items-center justify-center mx-auto mb-4 text-[#ea6f2a]">
+                  <MessageSquare className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-[#f5f7ff] mb-1">No discussion posts yet</h3>
+                <p className="text-sm text-[#9a9fc4] max-w-md mx-auto mb-6">
+                  {selectedCategory === "all"
+                    ? "Be the first to kick off the conversation! Share an idea, ask a question, or introduce yourself."
+                    : `No posts yet in this channel. Be the first to start a thread!`}
+                </p>
+                {currentUserId ? (
+                  <Button
+                    onClick={() => {
+                      setCreateDialogOpen(true)
+                      setPostError(null)
+                      if (selectedCategory !== "all") setCategory(selectedCategory)
+                      else if (categories.length > 0) setCategory(categories[0].slug)
+                    }}
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-6"
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Start Discussion
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => router.push("/login")}
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-6"
+                  >
+                    Sign In To Start Discussion
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <article key={post.id} className="media-card overflow-hidden rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50">
+                    <div className="p-5 sm:p-6">
+                      {/* Author & Meta */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <Link href={post.employee_id ? `/profile/${post.employee_id}` : "#"}>
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ea6f2a] to-[#20205a] p-0.5 cursor-pointer">
+                              <div className="w-full h-full rounded-full bg-[#05052d] flex items-center justify-center overflow-hidden">
+                                {post.employee?.profile_pic ? (
+                                  <img src={post.employee.profile_pic} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-xs font-bold text-[#f5f7ff]">
+                                    {post.employee?.first_name?.[0]}{post.employee?.last_name?.[0] || "U"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-[#f5f7ff] text-sm">
+                                {post.employee?.first_name} {post.employee?.last_name || "Community Member"}
+                              </p>
+                              {post.category && (
+                                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#20205a]/60 text-[#ffd166] border border-[#20205a]">
+                                  {categories.find((c) => c.slug === post.category)?.name || post.category}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-[#7f84ad]">
+                              {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <h3 className="text-lg font-bold text-[#f5f7ff] mb-2 leading-snug">{post.title}</h3>
+                      <p className="text-[#9a9fc4] text-sm leading-relaxed whitespace-pre-wrap mb-4">{post.content}</p>
+
+                      {/* Images */}
+                      {post.images && post.images.length > 0 && (
+                        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                          {post.images.map((img, idx) => (
+                            <img 
+                              key={idx} 
+                              src={img.url} 
+                              alt="" 
+                              className="h-48 w-auto rounded-xl object-cover flex-shrink-0 border border-[#20205a]" 
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-3 border-t border-[#20205a]/50">
+                        <button
+                          onClick={() => handleToggleStar(post.id, post.user_starred || false)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            post.user_starred 
+                              ? "bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/30" 
+                              : "text-[#9a9fc4] hover:bg-[#20205a]/50 hover:text-[#f5f7ff] border border-transparent"
+                          }`}
+                        >
+                          <Heart className="w-3.5 h-3.5" fill={post.user_starred ? "currentColor" : "none"} />
+                          <span>{post.star_count || 0}</span>
+                        </button>
+                        <button
+                          onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            showComments[post.id]
+                              ? "bg-[#20efe0]/15 text-[#20efe0] border border-[#20efe0]/30"
+                              : "text-[#9a9fc4] hover:bg-[#20205a]/50 hover:text-[#f5f7ff] border border-transparent"
+                          }`}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>{post.comments?.length || 0} comments</span>
+                        </button>
+                      </div>
+
+                      {/* Comment section */}
+                      {showComments[post.id] && (
+                        <div className="mt-4 pt-4 border-t border-[#20205a]/50 space-y-3">
+                          {post.comments && post.comments.length > 0 && (
+                            <div className="space-y-3 mb-4">
+                              {post.comments.map((comment) => (
+                                <div key={comment.id} className="flex gap-3 text-sm">
+                                  <div className="w-7 h-7 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                    {comment.user?.profile_pic ? (
+                                      <img src={comment.user.profile_pic} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-[10px] text-[#f5f7ff]">
+                                        {comment.user?.first_name?.[0]}{comment.user?.last_name?.[0]}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="bg-[#05052d] border border-[#20205a]/60 rounded-2xl px-4 py-2.5">
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-xs font-bold text-[#f5f7ff]">
+                                          {comment.user?.first_name} {comment.user?.last_name}
+                                        </p>
+                                        <span className="text-[10px] text-[#7f84ad]">
+                                          {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-[#c5caea] mt-1">{comment.comment}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1 ml-2 text-[11px] text-[#7f84ad]">
+                                      <button
+                                        onClick={() => handleToggleCommentStar(comment.id, comment.user_starred || false)}
+                                        className="hover:text-[#ea6f2a] flex items-center gap-1"
+                                      >
+                                        <Heart className="w-3 h-3" fill={comment.user_starred ? "currentColor" : "none"} />
+                                        {comment.star_count || 0}
+                                      </button>
+                                      <button
+                                        onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                                        className="hover:text-[#f5f7ff]"
+                                      >
+                                        Reply
+                                      </button>
+                                    </div>
+
+                                    {/* Threaded reply input */}
+                                    {replyingTo === comment.id && (
+                                      <div className="flex gap-2 mt-2">
+                                        <Input
+                                          value={replyText[comment.id] || ""}
+                                          onChange={(e) => setReplyText({ ...replyText, [comment.id]: e.target.value })}
+                                          placeholder="Write a reply..."
+                                          className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] text-xs h-8 rounded-full"
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              e.preventDefault()
+                                              handleAddReply(post.id, comment.id)
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          onClick={() => handleAddReply(post.id, comment.id)}
+                                          size="sm"
+                                          className="bg-[#ea6f2a] hover:bg-[#bc3f00] h-8 px-3 rounded-full text-xs"
+                                          disabled={!replyText[comment.id]?.trim()}
+                                        >
+                                          Reply
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {/* Nested replies */}
+                                    {comment.replies && comment.replies.length > 0 && (
+                                      <div className="mt-2 space-y-2 ml-4 border-l-2 border-[#20205a] pl-3">
+                                        {comment.replies.map((reply) => (
+                                          <div key={reply.id} className="flex gap-2">
+                                            <div className="w-5 h-5 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                              {reply.user?.profile_pic ? (
+                                                <img src={reply.user.profile_pic} alt="" className="w-full h-full object-cover" />
+                                              ) : (
+                                                <span className="text-[9px] text-[#f5f7ff]">
+                                                  {reply.user?.first_name?.[0]}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex-1 bg-[#05052d] border border-[#20205a]/40 rounded-xl px-3 py-1.5">
+                                              <p className="text-[11px] font-bold text-[#f5f7ff]">
+                                                {reply.user?.first_name} {reply.user?.last_name}
+                                              </p>
+                                              <p className="text-xs text-[#9a9fc4] mt-0.5">{reply.comment}</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add comment input */}
+                          <div className="flex gap-2">
+                            <Input
+                              value={commentText[post.id] || ""}
+                              onChange={(e) => setCommentText({ ...commentText, [post.id]: e.target.value })}
+                              placeholder={currentUserId ? "Write a comment..." : "Sign in to join discussion..."}
+                              disabled={!currentUserId}
+                              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] text-xs rounded-full h-9"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault()
+                                  handleAddComment(post.id)
+                                }
+                              }}
+                            />
+                            <Button
+                              onClick={() => handleAddComment(post.id)}
+                              className="bg-[#ea6f2a] hover:bg-[#bc3f00] rounded-full h-9 px-4"
+                              disabled={!currentUserId || !commentText[post.id]?.trim()}
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1493,6 +1432,130 @@ export default function CommunityPage() {
             </div>
           </div>
         )}
+
+        {/* Create Discussion Post Modal */}
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-[#f5f7ff]">
+                <MessageSquare className="w-5 h-5 text-[#ea6f2a]" />
+                New Discussion Post
+              </DialogTitle>
+              <DialogDescription className="text-xs text-[#9a9fc4]">
+                Share your thoughts, stories, and join the conversation. No daily limits in discussions!
+              </DialogDescription>
+            </DialogHeader>
+
+            {postError && (
+              <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-xs">
+                {postError}
+              </div>
+            )}
+
+            <div className="space-y-4 my-2">
+              <div>
+                <Label className="text-xs font-semibold text-[#9a9fc4] mb-1.5 block">
+                  Category / Channel
+                </Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.slug} className="focus:bg-[#20205a] focus:text-white">
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-[#9a9fc4] mb-1.5 block">
+                  Post Title
+                </Label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="What's on your mind? (e.g. Favorite session, backstage recap...)"
+                  className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-[#9a9fc4] mb-1.5 block">
+                  Discussion Content
+                </Label>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Write your post here... Feel free to be detailed!"
+                  rows={5}
+                  className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] resize-none"
+                />
+              </div>
+
+              {/* Image upload preview */}
+              <div>
+                <Label className="text-xs font-semibold text-[#9a9fc4] mb-1.5 block">
+                  Attach Image (Optional)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-xl bg-[#05052d] hover:bg-[#20205a]/60 border border-[#20205a] text-xs font-medium text-[#9a9fc4] hover:text-[#f5f7ff] transition-colors">
+                    <ImageIcon className="w-4 h-4 text-[#ea6f2a]" />
+                    Choose File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                  </label>
+                  {images.length > 0 && (
+                    <span className="text-xs text-[#20efe0] font-medium">
+                      {images.length} {images.length === 1 ? "image" : "images"} attached
+                    </span>
+                  )}
+                </div>
+
+                {images.length > 0 && (
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                    {images.map((img, i) => (
+                      <div key={i} className="relative group shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-[#20205a]">
+                        <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(i)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-black/70 hover:bg-red-600 text-white transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#20205a]/50">
+              <Button
+                variant="ghost"
+                onClick={() => setCreateDialogOpen(false)}
+                className="text-[#9a9fc4] hover:text-[#f5f7ff] hover:bg-[#20205a]/50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSavePost}
+                disabled={!title.trim() || !content.trim() || !category}
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold shadow-lg shadow-[#ea6f2a]/20"
+              >
+                Publish Discussion Post
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
       <Footer />
     </div>

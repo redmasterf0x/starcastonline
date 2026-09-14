@@ -86,7 +86,30 @@ export async function getCommunityViewer() {
 
 /** All community categories, tagged with their show for grouping. */
 export async function listCommunityCategories() {
-  const rows = await db.select().from(communityCategories).orderBy(asc(communityCategories.createdAt))
+  let rows = await db.select().from(communityCategories).orderBy(asc(communityCategories.createdAt))
+  if (rows.length === 0) {
+    const defaults = [
+      { name: "General Discussion", slug: "general", icon: "💬", showTitle: "Community Lounge", topic: "general" },
+      { name: "Shows & Originals", slug: "shows", icon: "📺", showTitle: "StarCast Shows", topic: "shows" },
+      { name: "Bands & Music", slug: "music", icon: "🎸", showTitle: "Soundstage", topic: "music" },
+      { name: "Production & Studio", slug: "production", icon: "🎙️", showTitle: "StarCast Studios", topic: "production" },
+      { name: "The Lounge (Off-Topic)", slug: "lounge", icon: "☕", showTitle: "Community Lounge", topic: "general" },
+    ]
+    try {
+      await db.insert(communityCategories).values(defaults)
+      rows = await db.select().from(communityCategories).orderBy(asc(communityCategories.createdAt))
+    } catch {
+      return defaults.map((d, i) => ({
+        id: `default-${i}`,
+        name: d.name,
+        slug: d.slug,
+        icon: d.icon,
+        show_id: "",
+        show_title: d.showTitle,
+        topic: d.topic,
+      }))
+    }
+  }
   return rows.map((c) => ({
     id: c.id,
     name: c.name,
@@ -314,14 +337,20 @@ async function decoratePost(
   }
 }
 
-/** Posts in a category with stars + threaded comments, sorted by stars. */
-export async function listCommunityPosts(categorySlug: string) {
+/** Posts in a category (or all categories if empty or 'all') with stars + threaded comments. */
+export async function listCommunityPosts(categorySlug?: string | null) {
   const viewer = await getViewerProfile()
-  const posts = await db
-    .select()
-    .from(communityPosts)
-    .where(eq(communityPosts.category, categorySlug))
-    .orderBy(desc(communityPosts.createdAt))
+  const posts =
+    categorySlug && categorySlug !== "all"
+      ? await db
+          .select()
+          .from(communityPosts)
+          .where(eq(communityPosts.category, categorySlug))
+          .orderBy(desc(communityPosts.createdAt))
+      : await db
+          .select()
+          .from(communityPosts)
+          .orderBy(desc(communityPosts.createdAt))
 
   const authorIds = [...new Set(posts.map((p) => p.authorId).filter(Boolean))] as string[]
   const authorProfiles =
@@ -329,7 +358,6 @@ export async function listCommunityPosts(categorySlug: string) {
   const profileById = new Map(authorProfiles.map((p) => [p.id, p]))
 
   const decorated = await Promise.all(posts.map((p) => decoratePost(p, viewer?.id ?? null, profileById)))
-  decorated.sort((a, b) => (b.star_count || 0) - (a.star_count || 0))
   return decorated
 }
 

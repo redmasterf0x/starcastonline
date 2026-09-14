@@ -68,10 +68,10 @@ const shows = [
 // Fallback editorial categories when database has few articles
 const EDITORIAL_TOPICS = [
   {
-    title: "Topeka High School Sports Central",
-    category: "Sports",
+    title: "Studio Soundstages & Live Sessions",
+    category: "Spotlight",
     tagColor: "#ea6f2a",
-    snippet: "Live coverage, game schedules, player spotlights, and tournament recaps across Shawnee County.",
+    snippet: "Behind-the-scenes multitrack recording, exclusive artist sessions, and broadcast gear breakdowns.",
     icon: Flame,
   },
   {
@@ -90,7 +90,7 @@ const EDITORIAL_TOPICS = [
   },
 ]
 
-// Interactive community conversation topics on The DECK
+// Interactive community conversation topics on The DECK & Discussions
 const DECK_TOPICS = [
   {
     title: "The Observation Deck // Ep. 25 Reactions",
@@ -107,11 +107,11 @@ const DECK_TOPICS = [
     snippet: "Shout out local acts gigging around Topeka, Lawrence, and Kansas City this upcoming weekend.",
   },
   {
-    title: "Friday Night Lights: Upcoming Matchup Predictions",
-    author: "Topeka Sports Desk",
-    replies: 27,
-    category: "Game Day",
-    snippet: "Who's taking the rivalry trophy this week? Post your score predictions and key players to watch.",
+    title: "Favorite StarCast Guest Or Live Set So Far?",
+    author: "Community Member",
+    replies: 29,
+    category: "General Discussion",
+    snippet: "Share which interviews, podcasts, or soundstage sets stood out most and who we should invite next.",
   },
 ]
 
@@ -371,7 +371,7 @@ export default async function HomePage() {
                   Articles, News &amp; Culture
                 </h2>
                 <p className="text-sm text-[#9a9fc4] mt-1">
-                  Independent reporting, sports breakdowns, and community voices from Topeka and the Midwest.
+                  Independent reporting, soundstage spotlights, and creative voices from Topeka and the Midwest.
                 </p>
               </div>
               <div className="flex items-center gap-2">
