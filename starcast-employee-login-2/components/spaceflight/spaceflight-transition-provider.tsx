@@ -642,10 +642,12 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
 
       {/* Content wrapper: modules quickly push away & fade out on exit, then cleanly push in on enter */}
       <div
-        className={`relative z-10 transition-all ${
+        className={`relative z-10 ${
           transitPhase === "fading-out" || transitPhase === "warping"
-            ? "opacity-0 scale-[0.88] blur-[3px] pointer-events-none duration-180 ease-in"
-            : "opacity-100 scale-100 blur-0 pointer-events-auto duration-300 ease-out"
+            ? "opacity-0 scale-[0.88] blur-[3px] pointer-events-none duration-180 ease-in transition-all"
+            : transitPhase === "fading-in"
+            ? "opacity-100 scale-100 blur-0 pointer-events-auto duration-300 ease-out transition-all"
+            : "opacity-100 pointer-events-auto"
         }`}
       >
         {children}

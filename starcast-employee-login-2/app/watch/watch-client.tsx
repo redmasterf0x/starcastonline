@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import type { WatchVideo } from "@/lib/youtube"
@@ -46,6 +47,12 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedShow, setSelectedShow] = useState("all")
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const previousScrollY = useRef(0)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Featured billboard episode (defaults to the latest video or AK Sin / Just JP)
   const billboardVideo = useMemo(() => {
@@ -101,12 +108,16 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
   }, [activeVideo])
 
   const handleOpenVideo = (video: WatchVideo) => {
+    if (typeof window !== "undefined") {
+      previousScrollY.current = window.scrollY
+      window.scrollTo({ top: 0, behavior: "instant" })
+    }
     setActiveVideo(video)
     const newUrl = new URL(window.location.href)
     newUrl.searchParams.set("v", video.id)
     window.history.pushState({}, "", newUrl.toString())
     if (theaterScrollRef.current) {
-      theaterScrollRef.current.scrollTo({ top: 0, behavior: "smooth" })
+      theaterScrollRef.current.scrollTo({ top: 0, behavior: "instant" })
     }
   }
 
@@ -115,6 +126,11 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
     const newUrl = new URL(window.location.href)
     newUrl.searchParams.delete("v")
     window.history.pushState({}, "", newUrl.toString())
+    if (typeof window !== "undefined" && previousScrollY.current) {
+      setTimeout(() => {
+        window.scrollTo({ top: previousScrollY.current, behavior: "instant" })
+      }, 30)
+    }
   }
 
   const handleShareVideo = (video: WatchVideo, e?: React.MouseEvent) => {
@@ -479,7 +495,7 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
       </main>
 
       {/* 4. Full-Space Video Theater (Takes up the whole space below the header) */}
-      {activeVideo && (
+      {activeVideo && mounted && typeof document !== "undefined" && createPortal(
         <div
           ref={theaterScrollRef}
           className="fixed top-16 sm:top-20 inset-x-0 bottom-0 z-40 bg-black flex flex-col overflow-y-auto animate-in fade-in duration-200"
@@ -651,7 +667,8 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
