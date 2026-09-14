@@ -107,6 +107,18 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
     }
   }, [activeVideo])
 
+  // Scroll theater to top AFTER React commits the new video to the DOM
+  useEffect(() => {
+    if (!activeVideo) return
+    // rAF ensures we run after the browser has painted the new content
+    const raf = requestAnimationFrame(() => {
+      if (theaterScrollRef.current) {
+        theaterScrollRef.current.scrollTo({ top: 0, behavior: "instant" })
+      }
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [activeVideo?.id])
+
   const handleOpenVideo = (video: WatchVideo) => {
     if (typeof window !== "undefined") {
       previousScrollY.current = window.scrollY
@@ -116,9 +128,8 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
     const newUrl = new URL(window.location.href)
     newUrl.searchParams.set("v", video.id)
     window.history.pushState({}, "", newUrl.toString())
-    if (theaterScrollRef.current) {
-      theaterScrollRef.current.scrollTo({ top: 0, behavior: "instant" })
-    }
+    // NOTE: theater scroll-to-top is handled by the useEffect above
+    // (which fires after React commits the new video to the DOM)
   }
 
   const handleCloseVideo = () => {
