@@ -11,6 +11,9 @@ import React, {
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Compass, Volume2, VolumeX, Radio, Sparkles } from "lucide-react"
+import { brandAssets } from "@/lib/brand-assets"
+
+export type TransitPhase = "idle" | "fading-out" | "warping" | "fading-in"
 
 export type PlanetInfo = {
   id: string
@@ -176,6 +179,7 @@ type SpaceflightContextType = {
   currentPlanet: PlanetInfo
   targetPlanet: PlanetInfo | null
   isWarping: boolean
+  transitPhase: TransitPhase
   audioEnabled: boolean
   toggleAudio: () => void
   transitTo: (path: string) => void
@@ -185,6 +189,7 @@ const SpaceflightContext = createContext<SpaceflightContextType>({
   currentPlanet: PLANETS["/"],
   targetPlanet: null,
   isWarping: false,
+  transitPhase: "idle",
   audioEnabled: false,
   toggleAudio: () => {},
   transitTo: () => {},
@@ -233,9 +238,11 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
 
   const [currentPlanet, setCurrentPlanet] = useState<PlanetInfo>(() => resolvePlanet(pathname))
   const [targetPlanet, setTargetPlanet] = useState<PlanetInfo | null>(null)
-  const [isWarping, setIsWarping] = useState(false)
+  const [transitPhase, setTransitPhase] = useState<TransitPhase>("idle")
   const [warpProgress, setWarpProgress] = useState(0)
   const [audioEnabled, setAudioEnabled] = useState(false)
+
+  const isWarping = transitPhase !== "idle"
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animFrameRef = useRef<number | null>(null)
@@ -268,7 +275,7 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
     setCurrentPlanet(planet)
   }, [pathname])
 
-  // Core transit function
+  // Core transit function: Fades out all modules, shows load logo, and fades in new modules
   const transitTo = useCallback(
     (targetPath: string) => {
       if (isNavigatingRef.current) return
@@ -277,16 +284,22 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
       // If already on same target, just navigate normally
       if (targetPath === pathname) return
 
+      // Reduced motion preference
+      if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        router.push(targetPath)
+        return
+      }
+
       isNavigatingRef.current = true
       setTargetPlanet(target)
-      setIsWarping(true)
+      setTransitPhase("fading-out")
       setWarpProgress(0)
 
       playCosmicWarpAudio(audioEnabled)
 
-      // Progression phases
+      // Total transition timeline
       const startTime = performance.now()
-      const DURATION = 680 // ms total flight
+      const DURATION = 820 // ms total flight
 
       const updateProgress = (now: number) => {
         const elapsed = now - startTime
@@ -299,17 +312,23 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
       }
       requestAnimationFrame(updateProgress)
 
-      // Jump to route at peak warp (360ms)
+      // Stage 1: Modules are fully faded out at 280ms. Push new route and enter peak warp.
       setTimeout(() => {
+        setTransitPhase("warping")
         router.push(targetPath)
-      }, 360)
+      }, 280)
 
-      // End transit effect
+      // Stage 2: Route switch complete. Begin load logo fade-out and new module fade-in at 700ms.
       setTimeout(() => {
-        setIsWarping(false)
+        setTransitPhase("fading-in")
+      }, 700)
+
+      // Stage 3: Return to idle at 1000ms.
+      setTimeout(() => {
+        setTransitPhase("idle")
         setTargetPlanet(null)
         isNavigatingRef.current = false
-      }, DURATION)
+      }, 1000)
     },
     [pathname, router, audioEnabled]
   )
@@ -475,12 +494,16 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         aria-hidden="true"
       />
 
-      {/* Warp Speed Transit HUD Overlay */}
-      {isWarping && (
+      {/* Warp Speed Transit HUD Overlay with StarCast Load Logo */}
+      {transitPhase !== "idle" && (
         <div
-          className="pointer-events-none fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-opacity duration-300"
+          className={`pointer-events-none fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-all duration-300 ${
+            transitPhase === "fading-in"
+              ? "opacity-0 scale-105 pointer-events-none"
+              : "opacity-100 scale-100"
+          }`}
           style={{
-            background: `radial-gradient(circle at center, transparent 30%, rgba(5, 5, 31, 0.85) 90%)`,
+            background: `radial-gradient(circle at center, ${destination.glowColor} 0%, rgba(5, 5, 45, 0.94) 50%, #05051f 100%)`,
           }}
         >
           {/* Atmospheric Entry Shockwave */}
@@ -495,41 +518,82 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
             }}
           />
 
-          {/* Central Flight Computer Reticle */}
-          <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-lg">
-            {/* Spinning reticle ring */}
-            <div className="relative mb-6 flex items-center justify-center">
+          {/* Central Flight Computer & StarCast Brand Load Logo Stage */}
+          <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-lg animate-in fade-in zoom-in-90 duration-300">
+            {/* Concentric Orbital Rings & Mascot Load Logo */}
+            <div className="relative mb-5 flex items-center justify-center w-40 h-40 sm:w-48 sm:h-48">
+              {/* Outer Dashed Celestial Ring with Planetary Node */}
               <div
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border border-dashed animate-spin"
+                className="w-full h-full rounded-full border border-dashed animate-spin absolute inset-0"
                 style={{
                   borderColor: destination.color,
-                  animationDuration: "3s",
+                  animationDuration: "8s",
                 }}
-              />
-              <div
-                className="absolute w-16 h-16 rounded-full border border-[#f5f7ff]/40 flex items-center justify-center"
               >
-                <Sparkles
-                  className="w-7 h-7 animate-pulse"
-                  style={{ color: destination.color }}
+                {/* Orbital Satellite Node */}
+                <div
+                  className="w-3.5 h-3.5 rounded-full absolute -top-1.5 left-1/2 -translate-x-1/2 border border-white shadow-lg"
+                  style={{
+                    backgroundColor: destination.color,
+                    boxShadow: `0 0 12px ${destination.color}`,
+                  }}
+                />
+              </div>
+
+              {/* Inner Pulsing Planetary Aura */}
+              <div
+                className="w-28 h-28 sm:w-36 sm:h-36 rounded-full animate-ping opacity-20 absolute inset-0 m-auto"
+                style={{ backgroundColor: destination.color }}
+              />
+
+              {/* Secondary Celestial Ring */}
+              <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#f5f7ff]/20 absolute inset-0 m-auto" />
+
+              {/* Center StarCast Capstone Mascot */}
+              <div className="relative z-10 flex items-center justify-center">
+                <img
+                  src={brandAssets.capstone.white || "/images/starcast-mascot.png"}
+                  alt="StarCast Mascot"
+                  className="w-24 h-24 sm:w-28 sm:h-28 object-contain animate-pulse drop-shadow-[0_0_28px_rgba(234,111,42,0.65)]"
                 />
               </div>
             </div>
 
-            {/* Telemetry data banner */}
-            <div className="rounded-full border border-[#20205a] bg-[#0c0c3f]/90 px-3.5 py-1 text-[11px] font-mono uppercase tracking-widest text-[#9a9fc4] shadow-lg mb-3 flex items-center gap-2">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-[#ea6f2a]" />
-              <span>ORBITAL TRANSIT LOCK // VELOCITY: {(0.92 + warpProgress * 0.07).toFixed(3)}c</span>
+            {/* StarCast Wordmark Logotype */}
+            <img
+              src={brandAssets.logotype.horizontalWhite || "/images/starcast-wordmark.png"}
+              alt="StarCast Media"
+              className="h-8 sm:h-9 mx-auto object-contain drop-shadow-md mb-2 relative z-10"
+            />
+
+            {/* Bouncing Cosmic Energy Nodes */}
+            <div className="flex items-center justify-center gap-2 mb-4 relative z-10">
+              <div
+                className="w-2 h-2 rounded-full animate-bounce"
+                style={{ backgroundColor: destination.color, animationDelay: "0ms" }}
+              />
+              <div
+                className="w-2 h-2 rounded-full animate-bounce"
+                style={{ backgroundColor: destination.color, animationDelay: "150ms" }}
+              />
+              <div
+                className="w-2 h-2 rounded-full animate-bounce"
+                style={{ backgroundColor: destination.color, animationDelay: "300ms" }}
+              />
             </div>
 
-            <h2
-              className="text-2xl sm:text-3xl font-black uppercase tracking-wider mb-1 drop-shadow-md text-[#f5f7ff]"
-            >
+            {/* Telemetry data banner */}
+            <div className="rounded-full border border-[#20205a] bg-[#0c0c3f]/90 px-3.5 py-1 text-[11px] font-mono uppercase tracking-widest text-[#9a9fc4] shadow-lg mb-2 flex items-center gap-2">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-[#ea6f2a]" />
+              <span>ORBITAL TRANSIT LOCK // {(0.92 + warpProgress * 0.07).toFixed(3)}c</span>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-wider mb-1 drop-shadow-md text-[#f5f7ff]">
               APPROACHING {destination.name}
             </h2>
 
             <p
-              className="text-xs sm:text-sm font-mono tracking-widest uppercase mb-4"
+              className="text-xs sm:text-sm font-mono tracking-widest uppercase mb-3"
               style={{ color: destination.color }}
             >
               {destination.designation} • {destination.distanceAu}
@@ -540,13 +604,13 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
             </p>
 
             {/* Progress flight bar */}
-            <div className="w-64 h-1 bg-[#20205a] rounded-full overflow-hidden mt-6">
+            <div className="w-64 h-1 bg-[#20205a] rounded-full overflow-hidden mt-4">
               <div
                 className="h-full transition-all duration-75"
                 style={{
                   width: `${Math.round(warpProgress * 100)}%`,
                   backgroundColor: destination.color,
-                  boxShadow: `0 0 12px ${destination.color}`,
+                  boxShadow: `0 0 14px ${destination.color}`,
                 }}
               />
             </div>
@@ -554,10 +618,12 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         </div>
       )}
 
-      {/* Content wrapper with subtle smooth scale-in */}
+      {/* Content wrapper: modules cleanly fade out on exit, then cleanly fade in on enter */}
       <div
-        className={`relative z-10 transition-all duration-500 ease-out ${
-          isWarping ? "scale-[0.985] opacity-60 blur-[1px]" : "scale-100 opacity-100 blur-0"
+        className={`relative z-10 transition-all ease-out ${
+          transitPhase === "fading-out" || transitPhase === "warping"
+            ? "opacity-0 scale-[0.97] blur-[6px] pointer-events-none duration-300"
+            : "opacity-100 scale-100 blur-0 pointer-events-auto duration-500"
         }`}
       >
         {children}
