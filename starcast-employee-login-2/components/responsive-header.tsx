@@ -79,7 +79,7 @@ export function ResponsiveHeader({
     { href: "/community", label: "Community", show: true },
     { href: "/bands", label: "Bands", show: true },
     { href: "/information", label: "Information", show: true },
-    { href: "https://shop.starcast.online", label: "Merch", show: true, external: true },
+    { href: "/merch", label: "Merch", show: true },
     { href: "/dashboard", label: "Dashboard", show: loggedIn },
   ]
 

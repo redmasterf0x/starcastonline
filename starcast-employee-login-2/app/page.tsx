@@ -574,10 +574,10 @@ export default async function HomePage() {
                   </p>
                 </div>
                 <div className="mt-5 pt-3 border-t border-[#20205a]/50">
-                  <Button asChild size="sm" variant="outline" className="w-full border-[#ffd166]/40 text-[#ffd166] hover:bg-[#ffd166]/15 hover:text-white">
-                    <a href="https://shop.starcast.online" target="_blank" rel="noopener noreferrer">
-                      Visit Store <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
-                    </a>
+                  <Button asChild size="sm" className="w-full bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold shadow-md shadow-[#ea6f2a]/20">
+                    <Link href="/merch">
+                      Shop Official Merch <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Link>
                   </Button>
                 </div>
               </div>

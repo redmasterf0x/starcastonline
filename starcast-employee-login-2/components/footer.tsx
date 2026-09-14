@@ -18,6 +18,7 @@ const siteLinks = [
   { label: "Bands", href: "/bands" },
   { label: "The DECK", href: "/community" },
   { label: "About", href: "/information" },
+  { label: "Merch", href: "/merch" },
   { label: "Sponsor", href: "/sponsors" },
 ]
 

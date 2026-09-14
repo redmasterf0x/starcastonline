@@ -115,6 +115,17 @@ export const PLANETS: Record<string, PlanetInfo> = {
     description: "Golden superstructure powering network operations and sponsors.",
     distanceAu: "5.20 AU",
   },
+  "/merch": {
+    id: "emporium",
+    name: "Helios Emporium",
+    designation: "OUTPOST-IX // SUPPLY DEPOT",
+    sector: "StarCast Supply Company",
+    color: "#ffd166",
+    secondaryColor: "#ea6f2a",
+    glowColor: "rgba(255, 209, 102, 0.45)",
+    description: "Orbital depot dispensing authentic StarCast apparel, caps, and broadcast gear.",
+    distanceAu: "4.80 AU",
+  },
   "/production": {
     id: "command",
     name: "Fleet Command",
