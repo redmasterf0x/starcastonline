@@ -100,13 +100,15 @@ export async function createBand(input: BandInput) {
   const viewer = await requireViewer()
   if (!input.name?.trim()) throw new Error("Band name is required")
 
-  // One page per account: reject if the user already owns a band.
+  // One page per account: reject if the user already owns a band (unless staff/admin).
   const existing = await db
     .select({ id: bands.id })
     .from(bands)
     .where(eq(bands.ownerUserId, viewer.userId))
     .limit(1)
-  if (existing.length > 0) throw new Error("You can only create one band page per account.")
+  if (existing.length > 0 && !viewer.isStaff && !viewer.isAdmin) {
+    throw new Error("You can only create one band page per account.")
+  }
 
   const slug = await uniqueSlug(slugify(input.name))
   const allowedTypes = ["band", "artist", "producer", "dj", "podcast"]
@@ -127,6 +129,7 @@ export async function createBand(input: BandInput) {
     .returning()
   revalidatePath("/portal")
   revalidatePath("/admin")
+  revalidatePath("/bands")
   return serialize(row)
 }
 
@@ -139,6 +142,7 @@ export async function setBandPublic(id: string, isPublic: boolean) {
   if (b.ownerUserId !== viewer.userId && !viewer.isStaff) throw new Error("Forbidden")
   await db.update(bands).set({ isPublic, updatedAt: new Date() }).where(eq(bands.id, id))
   revalidatePath("/portal")
+  revalidatePath("/bands")
   if (b.slug) revalidatePath(`/bands/${b.slug}`)
   return { success: true }
 }

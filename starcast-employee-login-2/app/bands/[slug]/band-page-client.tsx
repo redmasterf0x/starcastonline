@@ -172,7 +172,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
           variant="outline"
           className="mb-5 border-[#20efe0]/35 bg-[#0c0c3f]/55 text-[#c9fbf7] shadow-[0_0_20px_rgba(32,239,224,0.08)] hover:border-[#20efe0]/60 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
         >
-          <Link href="/community?tab=bands">
+          <Link href="/bands">
             <ArrowLeft className="mr-2 h-4 w-4" />
             All bands &amp; artists
           </Link>

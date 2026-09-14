@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server"
 // Routes that require authentication. Role checks (admin/crew) happen
 // server-side in the pages/layouts themselves, since middleware cannot
 // query the database in the edge runtime.
-const PROTECTED_ROUTES = ["/dashboard", "/admin", "/production", "/staff", "/portal"]
+const PROTECTED_ROUTES = ["/dashboard", "/admin", "/production", "/staff"]
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname

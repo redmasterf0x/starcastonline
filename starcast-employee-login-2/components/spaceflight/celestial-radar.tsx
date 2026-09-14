@@ -26,6 +26,7 @@ const ORBITAL_DESTINATIONS = [
   { path: "/watch", planet: PLANETS["/watch"], label: "Live Watch" },
   { path: "/shows", planet: PLANETS["/shows"], label: "Shows Archive" },
   { path: "/community", planet: PLANETS["/community"], label: "Community" },
+  { path: "/bands", planet: PLANETS["/bands"], label: "Soundstage Bands" },
   { path: "/portal", planet: PLANETS["/portal"], label: "Artist Portal" },
   { path: "/articles", planet: PLANETS["/articles"], label: "Articles" },
   { path: "/sponsors", planet: PLANETS["/sponsors"], label: "Sponsors" },

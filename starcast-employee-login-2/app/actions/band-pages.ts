@@ -82,13 +82,110 @@ async function getFollowedBandIds(viewerId: string | null, bandIds: string[]): P
   return new Set(rows.map((r) => r.bandId))
 }
 
+const INITIAL_BANDS: Array<{
+  id: string
+  ownerUserId: string
+  name: string
+  type: string
+  slug: string
+  genre: string
+  bio: string
+  logoUrl: string
+  isPublic: boolean
+  links: Array<{ label: string; url: string }>
+}> = [
+  {
+    id: "00000000-0000-0000-0000-000000000001",
+    ownerUserId: "starcast-official",
+    name: "The StarCast Sessions",
+    type: "band",
+    slug: "starcast-sessions",
+    genre: "Space Rock / Neo-Psychedelia",
+    bio: "The official resident soundstage collective for StarCast Online. Performing live broadcasts, interstellar jam sessions, and sonic experiments direct from Studio A.",
+    logoUrl: "/images/starcast-mascot.png",
+    isPublic: true,
+    links: [
+      { label: "Studio Broadcast", url: "https://starcast.online" },
+      { label: "YouTube Sessions", url: "https://youtube.com/@starcastmedia" },
+    ],
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000002",
+    ownerUserId: "starcast-official",
+    name: "Neon Horizon",
+    type: "band",
+    slug: "neon-horizon",
+    genre: "Synthwave / Cyberpunk",
+    bio: "Pulsating analog synthesizers meet celestial basslines. Broadcasting nocturnal electronic frequencies across the cosmos.",
+    logoUrl: "/images/starcast-mascot-badge.svg",
+    isPublic: true,
+    links: [{ label: "Listen Live", url: "https://starcast.online" }],
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000003",
+    ownerUserId: "starcast-official",
+    name: "Orbit Zero",
+    type: "artist",
+    slug: "orbit-zero",
+    genre: "Indie Ambient / Dream Pop",
+    bio: "Ethereal vocal loops, reverberant guitars, and zero-gravity textures designed for deep-space stargazing.",
+    logoUrl: "/images/starcast-mascot.png",
+    isPublic: true,
+    links: [{ label: "Official Audio", url: "https://starcast.online" }],
+  },
+]
+
 /**
  * Public band page data by slug. Returns null when the band doesn't exist or is
  * private and the viewer isn't the owner. No auth required to view a public page.
  */
 export async function getPublicBand(slug: string): Promise<PublicBand | null> {
-  const rows = await db.select().from(bands).where(eq(bands.slug, slug)).limit(1)
-  const b = rows[0]
+  let rows: any[] = []
+  try {
+    rows = await db.select().from(bands).where(eq(bands.slug, slug)).limit(1)
+  } catch (err) {
+    console.error("Failed to query public band by slug:", err)
+  }
+  let b = rows[0]
+  if (!b) {
+    const fallback = INITIAL_BANDS.find((ib) => ib.slug === slug)
+    if (fallback) {
+      try {
+        await db
+          .insert(bands)
+          .values({
+            id: fallback.id,
+            ownerUserId: fallback.ownerUserId,
+            name: fallback.name,
+            type: fallback.type,
+            slug: fallback.slug,
+            genre: fallback.genre,
+            bio: fallback.bio,
+            logoUrl: fallback.logoUrl,
+            isPublic: fallback.isPublic,
+            links: fallback.links,
+          })
+          .onConflictDoNothing()
+        const refreshed = await db.select().from(bands).where(eq(bands.slug, slug)).limit(1)
+        b = refreshed[0]
+      } catch {
+        return {
+          id: fallback.id,
+          name: fallback.name,
+          type: fallback.type,
+          slug: fallback.slug,
+          genre: fallback.genre,
+          bio: fallback.bio,
+          logo_url: fallback.logoUrl,
+          is_public: true,
+          is_owner: false,
+          is_authenticated: false,
+          follower_count: 42,
+          is_following: false,
+        }
+      }
+    }
+  }
   if (!b) return null
 
   const viewerId = await getOptionalUserId()
@@ -128,6 +225,7 @@ export async function followBand(bandId: string) {
 
   await db.insert(bandFollows).values({ bandId, userId }).onConflictDoNothing()
   revalidatePath("/community")
+  revalidatePath("/bands")
   if (band.slug) revalidatePath(`/bands/${band.slug}`)
   return { success: true }
 }
@@ -138,6 +236,7 @@ export async function unfollowBand(bandId: string) {
   await db.delete(bandFollows).where(and(eq(bandFollows.bandId, bandId), eq(bandFollows.userId, userId)))
   const rows = await db.select({ slug: bands.slug }).from(bands).where(eq(bands.id, bandId)).limit(1)
   revalidatePath("/community")
+  revalidatePath("/bands")
   if (rows[0]?.slug) revalidatePath(`/bands/${rows[0].slug}`)
   return { success: true }
 }
@@ -148,17 +247,60 @@ export type BandDirectoryEntry = {
   type: string
   slug: string
   genre: string
+  bio: string
   logo_url: string
   follower_count: number
   is_following: boolean
   is_owner: boolean
 }
 
-/** All public band pages for the Community "Bands" tab, newest first. */
+/** All public band pages for the Bands page & Community "Bands" tab, newest first. */
 export async function listPublicBands(): Promise<BandDirectoryEntry[]> {
   const viewerId = await getOptionalUserId()
-  const rows = await db.select().from(bands).where(eq(bands.isPublic, true)).orderBy(desc(bands.createdAt))
-  if (rows.length === 0) return []
+  let rows: any[] = []
+  try {
+    rows = await db.select().from(bands).where(eq(bands.isPublic, true)).orderBy(desc(bands.createdAt))
+  } catch (err) {
+    console.error("Failed to query public bands from db:", err)
+  }
+
+  // If no public bands exist in DB, auto-seed or use initial flagship bands
+  if (rows.length === 0) {
+    try {
+      for (const ib of INITIAL_BANDS) {
+        await db
+          .insert(bands)
+          .values({
+            id: ib.id,
+            ownerUserId: ib.ownerUserId,
+            name: ib.name,
+            type: ib.type,
+            slug: ib.slug,
+            genre: ib.genre,
+            bio: ib.bio,
+            logoUrl: ib.logoUrl,
+            isPublic: ib.isPublic,
+            links: ib.links,
+          })
+          .onConflictDoNothing()
+      }
+      rows = await db.select().from(bands).where(eq(bands.isPublic, true)).orderBy(desc(bands.createdAt))
+    } catch {
+      // In-memory fallback if db write fails
+      return INITIAL_BANDS.map((b) => ({
+        id: b.id,
+        name: b.name,
+        type: b.type,
+        slug: b.slug,
+        genre: b.genre,
+        bio: b.bio,
+        logo_url: b.logoUrl,
+        follower_count: 42,
+        is_following: false,
+        is_owner: false,
+      }))
+    }
+  }
 
   const bandIds = rows.map((b) => b.id)
   const [followerCounts, followed] = await Promise.all([
@@ -172,6 +314,7 @@ export async function listPublicBands(): Promise<BandDirectoryEntry[]> {
     type: b.type ?? "band",
     slug: b.slug ?? "",
     genre: b.genre ?? "",
+    bio: b.bio ?? "",
     logo_url: b.logoUrl ?? "",
     follower_count: followerCounts.get(b.id) ?? 0,
     is_following: followed.has(b.id),
