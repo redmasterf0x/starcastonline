@@ -177,7 +177,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#05051f] text-[#f5f7ff]">
+    <div className="public-shell flex flex-col min-h-screen text-[#f5f7ff]">
       <ResponsiveHeader />
 
       <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8">
