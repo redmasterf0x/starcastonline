@@ -194,27 +194,29 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                 alt={`${band.name} banner`}
                 className="w-full h-full object-cover object-center"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-black/20 to-transparent pointer-events-none" />
             </div>
           ) : (
             <div className="h-32 sm:h-40 bg-gradient-to-r from-[#ea6f2a]/25 via-[#bc3f00]/15 to-[#20efe0]/15" />
           )}
-          <div className="px-6 pb-6 -mt-12 sm:-mt-16">
-            <div className="flex items-end gap-4">
-              {band.logo_url ? (
-                <img
-                  src={band.logo_url}
-                  alt={band.name}
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl relative z-10"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl relative z-10">
-                  <Music className="w-10 h-10 text-[#ea6f2a]" />
-                </div>
-              )}
-              <div className="flex-1 pb-1">
+          <div className="relative z-10 px-6 pb-6 pt-3 sm:pt-4">
+            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
+              <div className="-mt-14 sm:-mt-20 shrink-0 relative z-20">
+                {band.logo_url ? (
+                  <img
+                    src={band.logo_url}
+                    alt={band.name}
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl">
+                    <Music className="w-10 h-10 text-[#ea6f2a]" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl font-bold text-[#f5f7ff]">{band.name}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-[#f5f7ff] tracking-tight">{band.name}</h1>
                   <Badge className="bg-[#ea6f2a]/15 text-[#ea6f2a] border border-[#ea6f2a]/30">
                     {band.type === "artist" ? "Artist" : "Band"}
                   </Badge>
