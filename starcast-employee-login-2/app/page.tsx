@@ -84,15 +84,22 @@ export default async function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#05052d] via-[#05052d]/70 to-[#05052d]/40" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#05052d]/80 via-transparent to-[#05052d]/80" />
 
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 text-center flex flex-col items-center">
-              <h1 className="font-bold text-[#f5f7ff] leading-none tracking-tight text-balance">
-                <span className="block text-5xl md:text-7xl lg:text-8xl">STARCAST</span>
-                <span className="block text-3xl md:text-5xl lg:text-6xl mt-2 bg-gradient-to-r from-[#ea6f2a] via-[#f2a04a] to-[#22b573] bg-clip-text text-transparent">
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-28 text-left flex flex-col items-start">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#0284c7]/20 border border-[#38bdf8]/40 text-[#38bdf8] text-xs font-mono font-bold tracking-widest uppercase mb-5 backdrop-blur-sm">
+                <span className="w-2 h-2 rounded-full bg-[#ea6f2a] animate-pulse" />
+                STARCAST ONLINE // BETA BROADCAST
+              </div>
+
+              <h1 className="font-black text-[#f5f7ff] leading-none tracking-tight text-left">
+                <span className="block text-6xl sm:text-8xl md:text-9xl lg:text-[10rem] font-black drop-shadow-2xl">
+                  STARCAST
+                </span>
+                <span className="block text-4xl sm:text-6xl md:text-7xl lg:text-8xl mt-3 bg-gradient-to-r from-[#ea6f2a] via-[#f2a04a] to-[#20efe0] bg-clip-text text-transparent font-black drop-shadow-xl">
                   ONLINE
                 </span>
               </h1>
 
-              <p className="text-[#9a9fc4] text-base md:text-lg max-w-2xl mt-6 text-pretty">
+              <p className="text-[#d4d8ee] text-base md:text-xl max-w-2xl mt-6 text-left leading-relaxed">
                 Every Starcast Media show in one place. Watch the latest upload from each series right here.
               </p>
             </div>

@@ -18,15 +18,20 @@ export function AppNav({ isEmployee = false, isAdmin = false, currentPage = "" }
   }
 
   return (
-    <header className="bg-[#bc3f00]/85 border-b border-[#bc3f00] shadow-lg backdrop-blur overflow-visible">
+    <header className="bg-[#0284c7] border-b border-[#38bdf8]/40 shadow-[0_8px_30px_rgba(2,132,199,0.35)] backdrop-blur overflow-visible">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 -my-14">
-              <img src={brandAssets.capstone.white || "/placeholder.svg"} alt="Starcast Media" className="w-48 h-48 object-contain" />
-              <span className="text-3xl font-bold tracking-tight text-[#f5f7ff] leading-none">
-                STARCAST <span className="text-[#f4b25c]">MEDIA</span>
-              </span>
+            <div className="flex items-center gap-3">
+              <img src={brandAssets.capstone.white || "/placeholder.svg"} alt="Starcast Media" className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow" />
+              <div className="flex items-center gap-2">
+                <span className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-none">
+                  STARCAST <span className="text-[#ffd166]">ONLINE</span>
+                </span>
+                <span className="rounded-full bg-[#ea6f2a] px-2.5 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-widest text-white shadow-md border border-white/40">
+                  BETA
+                </span>
+              </div>
             </div>
             <nav className="flex items-center gap-6">
               {isAdmin && (

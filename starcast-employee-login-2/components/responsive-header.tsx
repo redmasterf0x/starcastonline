@@ -85,29 +85,42 @@ export function ResponsiveHeader({
   ]
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#b35a1f]/35 bg-[#D4722B] shadow-[0_8px_30px_rgba(80,30,0,0.3)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[#38bdf8]/40 bg-[#0284c7] shadow-[0_8px_30px_rgba(2,132,199,0.35)] backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-85">
-            <img
-              src={brandAssets.capstone.white || "/placeholder.svg"}
-              alt=""
-              className="h-11 w-11 object-contain drop-shadow-lg"
-            />
-            <img
-              src={brandAssets.logotype.horizontalWhite || "/placeholder.svg"}
-              alt="Starcast Media"
-              className="hidden h-6 object-contain sm:block md:h-7"
-            />
+        <div className="flex h-16 sm:h-20 items-center justify-between gap-4">
+          {/* Left-aligned, Bigger StarCast Online Logo with BETA Tag */}
+          <Link href="/" className="flex items-center gap-3 sm:gap-3.5 transition-all hover:opacity-90 group shrink-0">
+            <div className="relative flex items-center justify-center">
+              <img
+                src={brandAssets.capstone.white || "/placeholder.svg"}
+                alt="StarCast Mascot"
+                className="h-12 w-12 sm:h-14 sm:w-14 object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-transform group-hover:scale-105"
+              />
+            </div>
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="flex flex-col text-left leading-none">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-wider text-white drop-shadow-md">
+                    STARCAST
+                  </span>
+                  <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-wider text-[#ffd166] drop-shadow-md">
+                    ONLINE
+                  </span>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#ea6f2a] px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-widest text-white shadow-md border border-white/40 ring-1 ring-[#ea6f2a]/50">
+                BETA
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden items-center gap-1 rounded-full border border-[#8796cb]/25 bg-[#303568]/55 p-1 shadow-inner shadow-[#05052d]/25 lg:flex">
+          <nav className="hidden items-center gap-1 rounded-full border border-white/20 bg-[#05052d]/60 p-1 shadow-inner backdrop-blur-md lg:flex">
             {/* Home link */}
             <Link
               href="/"
               className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                currentPage === "/" ? "bg-[#ea6f2a] text-white" : "text-[#d4d8ee] hover:bg-[#8796cb]/15 hover:text-[#f5f7ff]"
+                currentPage === "/" ? "bg-[#ea6f2a] text-white shadow-sm" : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"
               }`}
             >
               Home
@@ -117,7 +130,7 @@ export function ResponsiveHeader({
             <Link
               href="/articles"
               className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                currentPage === "/articles" ? "bg-[#ea6f2a] text-white" : "text-[#d4d8ee] hover:bg-[#8796cb]/15 hover:text-[#f5f7ff]"
+                currentPage === "/articles" ? "bg-[#ea6f2a] text-white shadow-sm" : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"
               }`}
             >
               Articles
@@ -134,10 +147,10 @@ export function ResponsiveHeader({
                     rel={link.external ? "noopener noreferrer" : undefined}
                     className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
                       currentPage === link.href
-                        ? "bg-[#ea6f2a] text-white"
+                        ? "bg-[#ea6f2a] text-white shadow-sm"
                         : link.label === "Merch"
-                          ? "text-[#f08a4a] hover:bg-[#ea6f2a]/10 hover:text-[#f4a56e]"
-                          : "text-[#d4d8ee] hover:bg-[#8796cb]/15 hover:text-[#f5f7ff]"
+                          ? "text-[#ffd166] font-semibold hover:bg-white/15 hover:text-white"
+                          : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"
                     }`}
                   >
                     {link.label}
@@ -153,7 +166,7 @@ export function ResponsiveHeader({
                 onClick={handleSignOut}
                 variant="outline"
                 size="sm"
-                className="border-[#aeb8dd]/45 bg-[#303568]/35 text-[#e4e7f5] hover:bg-[#8796cb]/20 hover:text-[#f5f7ff]"
+                className="border-white/30 bg-[#05052d]/60 text-white hover:bg-[#05052d] hover:text-white"
               >
                 Sign Out
               </Button>
@@ -161,7 +174,7 @@ export function ResponsiveHeader({
               <Button
                 onClick={handleLogin}
                 size="sm"
-                className="bg-[#ea6f2a] hover:bg-[#f2854a] text-white"
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold shadow-md shadow-[#ea6f2a]/30 border border-white/20"
               >
                 Sign In / Sign Up
               </Button>
