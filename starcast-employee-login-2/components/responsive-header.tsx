@@ -74,6 +74,7 @@ export function ResponsiveHeader({
 
   const navLinks = [
     { href: "/", label: "Home", show: true },
+    { href: "/watch", label: "Watch", show: true },
     { href: "/articles", label: "Articles", show: true },
     { href: "/community", label: "Community", show: true },
     { href: "/bands", label: "Bands", show: true },
