@@ -199,34 +199,60 @@ export function useSpaceflight() {
   return useContext(SpaceflightContext)
 }
 
-function playCosmicWarpAudio(enabled: boolean) {
+function playSpaceshipTransitionAudio(enabled: boolean) {
   if (!enabled || typeof window === "undefined") return
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
     if (!AudioCtx) return
     const ctx = new AudioCtx()
 
-    // Sub-bass sweep
+    // 1. Sub-bass hyperdrive jump sweep
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     const filter = ctx.createBiquadFilter()
 
     osc.type = "sawtooth"
     filter.type = "lowpass"
-    filter.frequency.setValueAtTime(80, ctx.currentTime)
-    filter.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 0.3)
-    filter.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.65)
+    filter.frequency.setValueAtTime(70, ctx.currentTime)
+    filter.frequency.exponentialRampToValueAtTime(280, ctx.currentTime + 0.18)
+    filter.frequency.exponentialRampToValueAtTime(45, ctx.currentTime + 0.5)
 
     gain.gain.setValueAtTime(0.001, ctx.currentTime)
-    gain.gain.linearRampToValueAtTime(0.09, ctx.currentTime + 0.22)
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.7)
+    gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.12)
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55)
 
     osc.connect(filter)
     filter.connect(gain)
     gain.connect(ctx.destination)
 
     osc.start()
-    osc.stop(ctx.currentTime + 0.75)
+    osc.stop(ctx.currentTime + 0.6)
+
+    // 2. Spaceship airlock pneumatic pressure hiss
+    const bufferSize = Math.floor(ctx.sampleRate * 0.2)
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1
+    }
+    const noise = ctx.createBufferSource()
+    noise.buffer = buffer
+    const noiseFilter = ctx.createBiquadFilter()
+    noiseFilter.type = "bandpass"
+    noiseFilter.frequency.setValueAtTime(1600, ctx.currentTime)
+    noiseFilter.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.2)
+    noiseFilter.Q.setValueAtTime(2.5, ctx.currentTime)
+
+    const noiseGain = ctx.createGain()
+    noiseGain.gain.setValueAtTime(0.035, ctx.currentTime)
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
+
+    noise.connect(noiseFilter)
+    noiseFilter.connect(noiseGain)
+    noiseGain.connect(ctx.destination)
+
+    noise.start()
+    noise.stop(ctx.currentTime + 0.21)
   } catch {
     // Audio autoplay blocked or not permitted
   }
@@ -275,7 +301,7 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
     setCurrentPlanet(planet)
   }, [pathname])
 
-  // Core transit function: Fades out all modules, shows load logo, and fades in new modules
+  // Spaceship transit: quick push-away of modules, airlock doors seal & open, no text
   const transitTo = useCallback(
     (targetPath: string) => {
       if (isNavigatingRef.current) return
@@ -295,11 +321,11 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
       setTransitPhase("fading-out")
       setWarpProgress(0)
 
-      playCosmicWarpAudio(audioEnabled)
+      playSpaceshipTransitionAudio(audioEnabled)
 
-      // Total transition timeline
+      // Snappy spaceship flight timeline (580ms total)
       const startTime = performance.now()
-      const DURATION = 820 // ms total flight
+      const DURATION = 580 // ms total flight
 
       const updateProgress = (now: number) => {
         const elapsed = now - startTime
@@ -312,23 +338,23 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
       }
       requestAnimationFrame(updateProgress)
 
-      // Stage 1: Modules are fully faded out at 280ms. Push new route and enter peak warp.
+      // Stage 1: Quick push-away & doors sealed at 200ms. Push route into hyperspace.
       setTimeout(() => {
         setTransitPhase("warping")
         router.push(targetPath)
-      }, 280)
+      }, 200)
 
-      // Stage 2: Route switch complete. Begin load logo fade-out and new module fade-in at 700ms.
+      // Stage 2: Arrived! Doors slide open and new page modules push forward at 420ms.
       setTimeout(() => {
         setTransitPhase("fading-in")
-      }, 700)
+      }, 420)
 
-      // Stage 3: Return to idle at 1000ms.
+      // Stage 3: Return to idle at 580ms.
       setTimeout(() => {
         setTransitPhase("idle")
         setTargetPlanet(null)
         isNavigatingRef.current = false
-      }, 1000)
+      }, 580)
     },
     [pathname, router, audioEnabled]
   )
@@ -494,67 +520,166 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         aria-hidden="true"
       />
 
-      {/* Warp Speed Transit HUD Overlay with StarCast Load Logo */}
+      {/* Left Spaceship Bulkhead Airlock Door */}
+      <div
+        className={`fixed top-0 bottom-0 left-0 w-1/2 z-[9990] pointer-events-none transition-transform ease-out ${
+          transitPhase === "fading-out" || transitPhase === "warping"
+            ? "translate-x-0 duration-200"
+            : "-translate-x-full duration-240"
+        }`}
+        style={{
+          background: "linear-gradient(135deg, #050518 0%, #080825 50%, #0d0d38 100%)",
+          borderRight: "2px solid #20205a",
+          boxShadow: "inset -12px 0 30px rgba(0,0,0,0.8), 10px 0 40px rgba(0,0,0,0.7)",
+        }}
+        aria-hidden="true"
+      >
+        {/* Hull carbon grid texture */}
+        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px]" />
+
+        {/* Vertical power reactor strip */}
+        <div
+          className="absolute top-0 bottom-0 right-4 w-1"
+          style={{
+            backgroundColor: destination.color,
+            boxShadow: `0 0 16px ${destination.color}`,
+          }}
+        />
+
+        {/* Hazard warning stripe on seam */}
+        <div
+          className="absolute top-0 bottom-0 right-0 w-2.5 opacity-60"
+          style={{
+            backgroundImage: `repeating-linear-gradient(45deg, ${destination.color} 0, ${destination.color} 6px, #050518 6px, #050518 12px)`,
+          }}
+        />
+
+        {/* Airlock mechanical bolts */}
+        <div className="absolute right-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+        <div className="absolute right-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+      </div>
+
+      {/* Right Spaceship Bulkhead Airlock Door */}
+      <div
+        className={`fixed top-0 bottom-0 right-0 w-1/2 z-[9990] pointer-events-none transition-transform ease-out ${
+          transitPhase === "fading-out" || transitPhase === "warping"
+            ? "translate-x-0 duration-200"
+            : "translate-x-full duration-240"
+        }`}
+        style={{
+          background: "linear-gradient(225deg, #050518 0%, #080825 50%, #0d0d38 100%)",
+          borderLeft: "2px solid #20205a",
+          boxShadow: "inset 12px 0 30px rgba(0,0,0,0.8), -10px 0 40px rgba(0,0,0,0.7)",
+        }}
+        aria-hidden="true"
+      >
+        {/* Hull carbon grid texture */}
+        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px]" />
+
+        {/* Vertical power reactor strip */}
+        <div
+          className="absolute top-0 bottom-0 left-4 w-1"
+          style={{
+            backgroundColor: destination.color,
+            boxShadow: `0 0 16px ${destination.color}`,
+          }}
+        />
+
+        {/* Hazard warning stripe on seam */}
+        <div
+          className="absolute top-0 bottom-0 left-0 w-2.5 opacity-60"
+          style={{
+            backgroundImage: `repeating-linear-gradient(-45deg, ${destination.color} 0, ${destination.color} 6px, #050518 6px, #050518 12px)`,
+          }}
+        />
+
+        {/* Airlock mechanical bolts */}
+        <div className="absolute left-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+        <div className="absolute left-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+      </div>
+
+      {/* Spaceship Cockpit Viewport & StarCast Load Logo (No Text) */}
       {transitPhase !== "idle" && (
         <div
-          className={`pointer-events-none fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-all duration-300 ${
+          className={`fixed inset-0 z-[9995] pointer-events-none flex flex-col items-center justify-center transition-all duration-200 ${
             transitPhase === "fading-in"
-              ? "opacity-0 scale-105 pointer-events-none"
+              ? "opacity-0 scale-110 pointer-events-none"
               : "opacity-100 scale-100"
           }`}
-          style={{
-            background: `radial-gradient(circle at center, ${destination.glowColor} 0%, rgba(5, 5, 45, 0.94) 50%, #05051f 100%)`,
-          }}
+          aria-hidden="true"
         >
+          {/* Cockpit Visor Canopy Glass Vignette */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(circle at center, transparent 35%, rgba(5, 5, 32, 0.7) 75%, #050518 100%)`,
+            }}
+          />
+
           {/* Atmospheric Entry Shockwave */}
           <div
             className="absolute rounded-full pointer-events-none transition-transform"
             style={{
-              width: "200vmax",
-              height: "200vmax",
+              width: "180vmax",
+              height: "180vmax",
               background: `radial-gradient(circle, ${destination.glowColor} 0%, transparent 60%)`,
-              opacity: warpProgress > 0.4 ? (1 - warpProgress) * 1.2 : warpProgress * 2,
-              transform: `scale(${0.3 + warpProgress * 1.6})`,
+              opacity: warpProgress > 0.4 ? (1 - warpProgress) * 1.5 : warpProgress * 2,
+              transform: `scale(${0.3 + warpProgress * 1.5})`,
             }}
           />
 
-          {/* Central Flight Computer & StarCast Brand Load Logo Stage */}
-          <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-lg animate-in fade-in zoom-in-90 duration-300">
-            {/* Concentric Orbital Rings & Mascot Load Logo */}
-            <div className="relative mb-5 flex items-center justify-center w-40 h-40 sm:w-48 sm:h-48">
-              {/* Outer Dashed Celestial Ring with Planetary Node */}
+          {/* Cockpit Canopy Corner Brackets */}
+          <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-[#20efe0]/50 rounded-tl-sm" />
+          <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-[#20efe0]/50 rounded-tr-sm" />
+          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-[#20efe0]/50 rounded-bl-sm" />
+          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-[#20efe0]/50 rounded-br-sm" />
+
+          {/* Center Viewport Stage - Pure Spaceship & Mascot Logo (NO TEXT) */}
+          <div className="relative z-10 flex flex-col items-center justify-center">
+            {/* Concentric Cockpit Gimbal & Target Reticle */}
+            <div className="relative flex items-center justify-center w-36 h-36 sm:w-44 sm:h-44 mb-3">
+              {/* Outer Dashed Rotating Reticle */}
               <div
                 className="w-full h-full rounded-full border border-dashed animate-spin absolute inset-0"
                 style={{
                   borderColor: destination.color,
-                  animationDuration: "8s",
+                  animationDuration: "6s",
                 }}
               >
-                {/* Orbital Satellite Node */}
+                {/* Orbital Satellite Sensor Node */}
                 <div
                   className="w-3.5 h-3.5 rounded-full absolute -top-1.5 left-1/2 -translate-x-1/2 border border-white shadow-lg"
                   style={{
                     backgroundColor: destination.color,
-                    boxShadow: `0 0 12px ${destination.color}`,
+                    boxShadow: `0 0 14px ${destination.color}`,
                   }}
                 />
               </div>
 
-              {/* Inner Pulsing Planetary Aura */}
+              {/* Cockpit Viewport Crosshairs */}
+              <div className="absolute -top-3 w-0.5 h-3 bg-[#f5f7ff]/40" />
+              <div className="absolute -bottom-3 w-0.5 h-3 bg-[#f5f7ff]/40" />
+              <div className="absolute -left-3 w-3 h-0.5 bg-[#f5f7ff]/40" />
+              <div className="absolute -right-3 w-3 h-0.5 bg-[#f5f7ff]/40" />
+
+              {/* Inner Pulsing Planetary Reactor Halo */}
               <div
-                className="w-28 h-28 sm:w-36 sm:h-36 rounded-full animate-ping opacity-20 absolute inset-0 m-auto"
+                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full animate-ping opacity-25 absolute inset-0 m-auto"
                 style={{ backgroundColor: destination.color }}
               />
 
-              {/* Secondary Celestial Ring */}
-              <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-[#f5f7ff]/20 absolute inset-0 m-auto" />
+              {/* Reinforced Viewport Glass Ring */}
+              <div
+                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border-2 absolute inset-0 m-auto"
+                style={{ borderColor: `${destination.color}50` }}
+              />
 
-              {/* Center StarCast Capstone Mascot */}
+              {/* Center Floating StarCast Astronaut Mascot */}
               <div className="relative z-10 flex items-center justify-center">
                 <img
                   src={brandAssets.capstone.white || "/images/starcast-mascot.png"}
                   alt="StarCast Mascot"
-                  className="w-24 h-24 sm:w-28 sm:h-28 object-contain animate-pulse drop-shadow-[0_0_28px_rgba(234,111,42,0.65)]"
+                  className="w-24 h-24 sm:w-28 sm:h-28 object-contain animate-pulse drop-shadow-[0_0_30px_rgba(234,111,42,0.7)]"
                 />
               </div>
             </div>
@@ -563,11 +688,11 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
             <img
               src={brandAssets.logotype.horizontalWhite || "/images/starcast-wordmark.png"}
               alt="StarCast Media"
-              className="h-8 sm:h-9 mx-auto object-contain drop-shadow-md mb-2 relative z-10"
+              className="h-7 sm:h-8 mx-auto object-contain drop-shadow-md mb-2 relative z-10"
             />
 
-            {/* Bouncing Cosmic Energy Nodes */}
-            <div className="flex items-center justify-center gap-2 mb-4 relative z-10">
+            {/* Bouncing Energy Reactor Nodes */}
+            <div className="flex items-center justify-center gap-2 relative z-10">
               <div
                 className="w-2 h-2 rounded-full animate-bounce"
                 style={{ backgroundColor: destination.color, animationDelay: "0ms" }}
@@ -581,49 +706,16 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
                 style={{ backgroundColor: destination.color, animationDelay: "300ms" }}
               />
             </div>
-
-            {/* Telemetry data banner */}
-            <div className="rounded-full border border-[#20205a] bg-[#0c0c3f]/90 px-3.5 py-1 text-[11px] font-mono uppercase tracking-widest text-[#9a9fc4] shadow-lg mb-2 flex items-center gap-2">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-[#ea6f2a]" />
-              <span>ORBITAL TRANSIT LOCK // {(0.92 + warpProgress * 0.07).toFixed(3)}c</span>
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-wider mb-1 drop-shadow-md text-[#f5f7ff]">
-              APPROACHING {destination.name}
-            </h2>
-
-            <p
-              className="text-xs sm:text-sm font-mono tracking-widest uppercase mb-3"
-              style={{ color: destination.color }}
-            >
-              {destination.designation} • {destination.distanceAu}
-            </p>
-
-            <p className="text-xs text-[#9a9fc4] max-w-xs sm:max-w-sm line-clamp-1 italic">
-              &ldquo;{destination.description}&rdquo;
-            </p>
-
-            {/* Progress flight bar */}
-            <div className="w-64 h-1 bg-[#20205a] rounded-full overflow-hidden mt-4">
-              <div
-                className="h-full transition-all duration-75"
-                style={{
-                  width: `${Math.round(warpProgress * 100)}%`,
-                  backgroundColor: destination.color,
-                  boxShadow: `0 0 14px ${destination.color}`,
-                }}
-              />
-            </div>
           </div>
         </div>
       )}
 
-      {/* Content wrapper: modules cleanly fade out on exit, then cleanly fade in on enter */}
+      {/* Content wrapper: modules quickly push away & fade out on exit, then cleanly push in on enter */}
       <div
-        className={`relative z-10 transition-all ease-out ${
+        className={`relative z-10 transition-all ${
           transitPhase === "fading-out" || transitPhase === "warping"
-            ? "opacity-0 scale-[0.97] blur-[6px] pointer-events-none duration-300"
-            : "opacity-100 scale-100 blur-0 pointer-events-auto duration-500"
+            ? "opacity-0 scale-[0.85] blur-[4px] pointer-events-none duration-200 ease-in"
+            : "opacity-100 scale-100 blur-0 pointer-events-auto duration-300 ease-out"
         }`}
       >
         {children}

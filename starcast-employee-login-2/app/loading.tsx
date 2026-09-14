@@ -56,10 +56,6 @@ export default function Loading() {
             style={{ animationDelay: "300ms" }}
           />
         </div>
-
-        <p className="text-[11px] font-mono uppercase tracking-widest text-[#9a9fc4]">
-          INITIALIZING BROADCAST NODE...
-        </p>
       </div>
     </div>
   )
