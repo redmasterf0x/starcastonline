@@ -30,6 +30,7 @@ import {
 } from "@/app/actions/band-pages"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -1002,11 +1003,11 @@ export default function CommunityPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
                     {filteredBands.map((b) => (
                       <div
                         key={b.id}
-                        className="group relative rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 via-[#070725]/80 to-[#05051f] overflow-hidden flex flex-col justify-between hover:border-[#20efe0]/60 transition-all duration-300 hover:shadow-[0_0_30px_rgba(32,239,224,0.18)]"
+                        className="group relative rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 via-[#070725]/80 to-[#05051f] overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/50 transition-all duration-300 hover:shadow-[0_0_35px_rgba(234,111,42,0.18)]"
                       >
                         {/* Soundstage Banner Header */}
                         <div className="relative w-full h-28 sm:h-36 bg-[#05052d] overflow-hidden">
@@ -1017,9 +1018,11 @@ export default function CommunityPage() {
                               className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-r from-[#ea6f2a]/25 via-[#10104a] to-[#20efe0]/20" />
+                            <div className="w-full h-full bg-gradient-to-r from-[#ea6f2a]/25 via-[#10104a] to-[#20efe0]/20">
+                              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:20px_20px]" />
+                            </div>
                           )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#0c0c3f]/50 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#070725] via-[#0c0c3f]/50 to-transparent" />
                           <div className="absolute top-3 right-3">
                             <Badge
                               variant="outline"
@@ -1034,9 +1037,11 @@ export default function CommunityPage() {
                                 : "Band"}
                             </Badge>
                           </div>
+                          {/* Subtle glow pulse on banner */}
+                          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#ea6f2a]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </div>
 
-                        <div className="p-6 pt-0 flex-1 flex flex-col justify-between -mt-9 relative z-10">
+                        <div className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-between -mt-9 relative z-10">
                           <div>
                             {/* Avatar & Title Row */}
                             <div className="flex items-start gap-3.5 mb-3.5">
@@ -1045,32 +1050,35 @@ export default function CommunityPage() {
                                   <img
                                     src={b.logo_url}
                                     alt={b.name}
-                                    className="w-16 h-16 rounded-2xl object-cover border-2 border-[#20efe0]/50 bg-[#05052d] shadow-xl group-hover:border-[#20efe0] transition-colors"
+                                    className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl object-cover border-2 border-[#20efe0]/50 bg-[#05052d] shadow-xl shadow-black/40 group-hover:border-[#ea6f2a]/70 transition-colors"
                                   />
                                 ) : (
-                                  <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ea6f2a]/20 border-2 border-[#ea6f2a]/50 shadow-xl">
+                                  <div className="flex items-center justify-center w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-gradient-to-br from-[#ea6f2a]/30 to-[#0c0c3f] border-2 border-[#ea6f2a]/40 shadow-xl shadow-black/40">
                                     <Music className="w-8 h-8 text-[#ea6f2a]" />
                                   </div>
                                 )}
+                                {/* Online indicator dot */}
+                                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#ea6f2a] border-2 border-[#070725] shadow-sm shadow-[#ea6f2a]/50" />
                               </div>
 
                               <div className="flex-1 min-w-0 pt-1">
-                                <Link href={`/bands/${b.slug}`} className="block group-hover:text-[#20efe0] transition-colors">
-                                  <h3 className="font-bold text-lg sm:text-xl text-[#f5f7ff] truncate group-hover:text-[#20efe0]">
+                                <Link href={`/bands/${b.slug}`} className="block transition-colors">
+                                  <h3 className="font-extrabold text-lg sm:text-xl text-[#f5f7ff] truncate group-hover:text-[#ea6f2a] transition-colors">
                                     {b.name}
                                   </h3>
                                 </Link>
 
-                                <div className="flex items-center gap-2 text-xs sm:text-sm text-[#cbd0f2] mt-1 flex-wrap">
+                                <div className="flex items-center gap-2 text-xs text-[#cbd0f2] mt-1 flex-wrap">
                                   {b.genre && (
-                                    <span className="text-[#20efe0] font-semibold text-xs truncate">
+                                    <span className="text-[#20efe0] font-bold text-xs truncate">
                                       {b.genre}
                                     </span>
                                   )}
-                                  <span>·</span>
-                                  <span className="flex items-center gap-1 text-xs">
-                                    <Users className="w-3.5 h-3.5 text-[#38bdf8]" />
-                                    {b.follower_count} {b.follower_count === 1 ? "fan" : "fans"}
+                                  {b.genre && <span className="text-[#20205a]">/</span>}
+                                  <span className="flex items-center gap-1">
+                                    <Users className="w-3 h-3 text-[#20efe0]" />
+                                    <strong className="text-[#f5f7ff] font-bold">{b.follower_count}</strong>
+                                    <span className="text-[#9a9fc4]">{b.follower_count === 1 ? "fan" : "fans"}</span>
                                   </span>
                                 </div>
                               </div>
@@ -1084,12 +1092,12 @@ export default function CommunityPage() {
                             )}
                           </div>
 
-                          {/* Card Action Strip (Enlarged Mobile Tap Area) */}
-                          <div className="pt-3.5 border-t border-[#20205a]/60 flex items-center justify-between gap-2.5 mt-2">
+                          {/* Card Action Strip */}
+                          <div className="pt-3.5 border-t border-[#20205a]/50 flex items-center gap-2 mt-2">
                             <Button
                               asChild
                               size="sm"
-                              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-xs sm:text-sm font-bold rounded-xl h-10 px-4 shadow-md shadow-[#ea6f2a]/20 flex-1"
+                              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-xs sm:text-sm font-bold rounded-xl h-10 sm:h-11 px-4 shadow-md shadow-[#ea6f2a]/30 flex-1 transition-all active:scale-[0.97]"
                             >
                               <Link href={`/bands/${b.slug}`}>
                                 View Act
@@ -1101,11 +1109,10 @@ export default function CommunityPage() {
                               onClick={() => setQrBandTarget(b)}
                               size="sm"
                               variant="outline"
-                              className="border-[#20efe0]/50 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white text-xs sm:text-sm font-semibold rounded-xl h-10 px-3 shrink-0"
+                              className="border-[#20efe0]/40 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/15 hover:border-[#20efe0] hover:text-white text-xs font-semibold rounded-xl h-10 sm:h-11 px-3 shrink-0 transition-all"
                               title="Get Band QR Code"
                             >
-                              <QrCode className="w-4 h-4 mr-1.5" />
-                              QR Pass
+                              <QrCode className="w-4 h-4" />
                             </Button>
 
                             {!b.is_owner && currentUserId && (
@@ -1113,11 +1120,12 @@ export default function CommunityPage() {
                                 onClick={() => handleToggleBandFollow(b)}
                                 size="sm"
                                 variant="outline"
-                                className={`text-xs sm:text-sm rounded-xl h-10 px-3 shrink-0 font-semibold ${
+                                className={`text-xs rounded-xl h-10 sm:h-11 px-3 shrink-0 font-semibold transition-all ${
                                   b.is_following
-                                    ? "border-[#20205a] text-[#cbd0f2] hover:text-white"
-                                    : "border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/20"
+                                    ? "border-emerald-700/50 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/60"
+                                    : "border-[#20205a] text-[#dbe0fb] hover:border-[#ea6f2a]/50 hover:text-white"
                                 }`}
+                                title={b.is_following ? "Unfollow" : "Follow"}
                               >
                                 {b.is_following ? (
                                   <UserMinus className="w-4 h-4" />
