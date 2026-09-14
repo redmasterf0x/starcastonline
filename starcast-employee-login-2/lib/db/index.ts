@@ -30,5 +30,15 @@ export function resolvePostgresUrl(): string {
   return valid
 }
 
-export const pool = new Pool({ connectionString: resolvePostgresUrl() })
+const connectionUrl = resolvePostgresUrl()
+export const pool = new Pool({ connectionString: connectionUrl })
 export const db = drizzle(pool, { schema })
+
+// Non-blocking schema safeguard for runtime environments
+if (connectionUrl && !connectionUrl.includes("placeholder")) {
+  pool
+    .query(`ALTER TABLE bands ADD COLUMN IF NOT EXISTS links JSONB DEFAULT '[]'::jsonb;`)
+    .catch(() => {
+      // Ignore build-time or connection setup errors
+    })
+}

@@ -118,7 +118,10 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
     const next = !isPublic
     setIsPublic(next)
     try {
-      await setBandPublic(band.id, next)
+      const res = await setBandPublic(band.id, next)
+      if (res && !res.success) {
+        throw new Error(res.error || "Failed to update visibility")
+      }
     } catch (e: any) {
       setIsPublic(!next)
       setError(e?.message || "Failed to update visibility")

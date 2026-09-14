@@ -62,10 +62,13 @@ export function BandLinksPanel({ band, onUpdated }: { band: Band; onUpdated: () 
     
     setIsSaving(true)
     try {
-      await updateBand(band.id, {
+      const res = await updateBand(band.id, {
         name: band.name, // required by input type
         links: validLinks,
       })
+      if (res && !res.success) {
+        throw new Error(res.error || "Failed to save links")
+      }
       toast.success("Links saved successfully!")
       setLinks(validLinks)
       onUpdated()

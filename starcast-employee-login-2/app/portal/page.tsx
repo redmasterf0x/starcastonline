@@ -224,11 +224,21 @@ export default function PortalPage() {
     setError("")
     try {
       if (bandDialog === "new") {
-        const band = await createBand(bandForm)
+        const res = await createBand(bandForm)
+        if (!res || !res.success) {
+          setError(res?.error || "Failed to create band")
+          return
+        }
         await refreshBands()
-        setSelectedBandId(band.id)
+        if (res.id) {
+          setSelectedBandId(res.id)
+        }
       } else if (bandDialog === "edit" && selectedBand) {
-        await updateBand(selectedBand.id, bandForm)
+        const res = await updateBand(selectedBand.id, bandForm)
+        if (!res || !res.success) {
+          setError(res?.error || "Failed to update band")
+          return
+        }
         await refreshBands()
       }
       setBandDialog(null)
@@ -242,7 +252,11 @@ export default function PortalPage() {
     if (!selectedBand) return
     setError("")
     try {
-      await signYoutubeAgreement(selectedBand.id)
+      const res = await signYoutubeAgreement(selectedBand.id)
+      if (!res || !res.success) {
+        setError(res?.error || "Failed to sign agreement")
+        return
+      }
       await refreshBands()
     } catch (e: any) {
       setError(e?.message || "Failed to sign agreement")
@@ -444,6 +458,7 @@ export default function PortalPage() {
             </Button>
             <Button
               onClick={() => {
+                setError("")
                 setBandForm(emptyBandForm)
                 setBandDialog("new")
               }}
@@ -517,6 +532,7 @@ export default function PortalPage() {
             <CardContent>
               <Button
                 onClick={() => {
+                  setError("")
                   setBandForm(emptyBandForm)
                   setBandDialog("new")
                 }}
@@ -547,6 +563,7 @@ export default function PortalPage() {
                 ))}
                 <button
                   onClick={() => {
+                    setError("")
                     setBandForm(emptyBandForm)
                     setBandDialog("new")
                   }}
@@ -634,6 +651,7 @@ export default function PortalPage() {
                         size="sm"
                         className="border-[#20205a] text-[#f5f7ff] bg-transparent hover:bg-[#20205a]/30"
                         onClick={() => {
+                          setError("")
                           setBandForm({
                             name: selectedBand.name,
                             type: selectedBand.type,
@@ -909,6 +927,11 @@ export default function PortalPage() {
                 : "Update your public profile details."}
             </DialogDescription>
           </DialogHeader>
+          {error && (
+            <div className="p-3 rounded-lg border border-red-800/80 bg-red-950/60 text-red-300 text-xs font-medium">
+              {error}
+            </div>
+          )}
           <div className="space-y-3">
             <div>
               <Label className="text-[#f5f7ff]">Name</Label>
