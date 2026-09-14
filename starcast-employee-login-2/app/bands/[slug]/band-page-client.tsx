@@ -187,19 +187,28 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
 
         {/* Band hero */}
         <section className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50 overflow-hidden mb-8">
-          <div className="h-28 bg-gradient-to-r from-[#ea6f2a]/25 via-[#bc3f00]/15 to-[#20efe0]/15" />
-          <div className="px-6 pb-6 -mt-12">
+          {band.banner_url ? (
+            <div className="relative h-44 sm:h-60 w-full overflow-hidden bg-[#05052d]">
+              <img
+                src={band.banner_url}
+                alt={`${band.name} banner`}
+                className="w-full h-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-black/20 to-transparent" />
+            </div>
+          ) : (
+            <div className="h-32 sm:h-40 bg-gradient-to-r from-[#ea6f2a]/25 via-[#bc3f00]/15 to-[#20efe0]/15" />
+          )}
+          <div className="px-6 pb-6 -mt-12 sm:-mt-16">
             <div className="flex items-end gap-4">
               {band.logo_url ? (
-                <Image
-                  src={band.logo_url || "/placeholder.svg"}
+                <img
+                  src={band.logo_url}
                   alt={band.name}
-                  width={96}
-                  height={96}
-                  className="w-24 h-24 rounded-2xl object-cover border-4 border-[#0c0c3f] bg-[#05052d]"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl relative z-10"
                 />
               ) : (
-                <div className="flex items-center justify-center w-24 h-24 rounded-2xl border-4 border-[#0c0c3f] bg-[#05052d]">
+                <div className="flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl relative z-10">
                   <Music className="w-10 h-10 text-[#ea6f2a]" />
                 </div>
               )}

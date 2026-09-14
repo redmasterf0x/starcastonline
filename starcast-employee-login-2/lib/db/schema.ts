@@ -344,6 +344,7 @@ export const bands = pgTable("bands", {
   contactEmail: text("contact_email"),
   contactPhone: text("contact_phone"),
   logoUrl: text("logo_url"),
+  bannerUrl: text("banner_url"),
   links: jsonb("links").default([]),
   hasActivePass: boolean("has_active_pass").notNull().default(false),
   passExpiresAt: timestamp("pass_expires_at", { withTimezone: true }),

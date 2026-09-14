@@ -14,6 +14,7 @@ export type BandInput = {
   contactEmail?: string
   contactPhone?: string
   logoUrl?: string
+  bannerUrl?: string
   links?: any[]
 }
 
@@ -42,6 +43,7 @@ function serialize(b: typeof bands.$inferSelect) {
     contact_email: b.contactEmail ?? "",
     contact_phone: b.contactPhone ?? "",
     logo_url: b.logoUrl ?? "",
+    banner_url: b.bannerUrl ?? "",
     links: Array.isArray(b.links) ? b.links : [],
     has_active_pass: Boolean(b.hasActivePass),
     pass_expires_at: toIso(b.passExpiresAt),
@@ -128,16 +130,16 @@ export async function createBand(input: BandInput) {
       return { success: false, error: "Band name is required" }
     }
 
-    // One page per account: reject if the user already owns a band (unless staff/admin).
+    // One page per account: strictly enforce one band or artist page per account.
     const existing = await db
       .select({ id: bands.id, name: bands.name })
       .from(bands)
       .where(eq(bands.ownerUserId, viewer.userId))
       .limit(1)
-    if (existing.length > 0 && !viewer.isStaff && !viewer.isAdmin) {
+    if (existing.length > 0) {
       return {
         success: false,
-        error: `You already have an active profile ("${existing[0].name}"). Each account can manage one artist or band page.`,
+        error: `You already have an active profile ("${existing[0].name}"). Each account can only create one band or artist page.`,
         existingBandId: existing[0].id,
       }
     }
@@ -156,6 +158,7 @@ export async function createBand(input: BandInput) {
         contactEmail: input.contactEmail?.trim() || null,
         contactPhone: input.contactPhone?.trim() || null,
         logoUrl: input.logoUrl?.trim() || null,
+        bannerUrl: input.bannerUrl?.trim() || null,
         links: Array.isArray(input.links) ? input.links : [],
       })
       .returning()
@@ -208,12 +211,15 @@ export async function updateBand(id: string, input: BandInput) {
         contactEmail: input.contactEmail !== undefined ? (input.contactEmail?.trim() || null) : b.contactEmail,
         contactPhone: input.contactPhone !== undefined ? (input.contactPhone?.trim() || null) : b.contactPhone,
         logoUrl: input.logoUrl !== undefined ? (input.logoUrl?.trim() || null) : b.logoUrl,
+        bannerUrl: input.bannerUrl !== undefined ? (input.bannerUrl?.trim() || null) : b.bannerUrl,
         links: Array.isArray(input.links) ? input.links : b.links,
         updatedAt: new Date(),
       })
       .where(eq(bands.id, id))
     revalidatePath("/portal")
     revalidatePath("/admin")
+    revalidatePath("/bands")
+    if (b.slug) revalidatePath(`/bands/${b.slug}`)
     return { success: true }
   } catch (err: any) {
     console.error("updateBand error:", err)

@@ -51,6 +51,7 @@ export type PublicBand = {
   genre: string
   bio: string
   logo_url: string
+  banner_url: string
   is_public: boolean
   is_owner: boolean
   is_authenticated: boolean
@@ -91,6 +92,7 @@ const INITIAL_BANDS: Array<{
   genre: string
   bio: string
   logoUrl: string
+  bannerUrl: string
   isPublic: boolean
   links: Array<{ label: string; url: string }>
 }> = [
@@ -103,6 +105,7 @@ const INITIAL_BANDS: Array<{
     genre: "Space Rock / Neo-Psychedelia",
     bio: "The official resident soundstage collective for StarCast Online. Performing live broadcasts, interstellar jam sessions, and sonic experiments direct from Studio A.",
     logoUrl: "/images/starcast-mascot.png",
+    bannerUrl: "",
     isPublic: true,
     links: [
       { label: "Studio Broadcast", url: "https://starcast.online" },
@@ -118,6 +121,7 @@ const INITIAL_BANDS: Array<{
     genre: "Synthwave / Cyberpunk",
     bio: "Pulsating analog synthesizers meet celestial basslines. Broadcasting nocturnal electronic frequencies across the cosmos.",
     logoUrl: "/images/starcast-mascot-badge.svg",
+    bannerUrl: "",
     isPublic: true,
     links: [{ label: "Listen Live", url: "https://starcast.online" }],
   },
@@ -130,6 +134,7 @@ const INITIAL_BANDS: Array<{
     genre: "Indie Ambient / Dream Pop",
     bio: "Ethereal vocal loops, reverberant guitars, and zero-gravity textures designed for deep-space stargazing.",
     logoUrl: "/images/starcast-mascot.png",
+    bannerUrl: "",
     isPublic: true,
     links: [{ label: "Official Audio", url: "https://starcast.online" }],
   },
@@ -177,6 +182,7 @@ export async function getPublicBand(slug: string): Promise<PublicBand | null> {
           genre: fallback.genre,
           bio: fallback.bio,
           logo_url: fallback.logoUrl,
+          banner_url: fallback.bannerUrl || "",
           is_public: true,
           is_owner: false,
           is_authenticated: false,
@@ -205,6 +211,7 @@ export async function getPublicBand(slug: string): Promise<PublicBand | null> {
     genre: b.genre ?? "",
     bio: b.bio ?? "",
     logo_url: b.logoUrl ?? "",
+    banner_url: b.bannerUrl ?? "",
     is_public: b.isPublic,
     is_owner: isOwner,
     is_authenticated: viewerId != null,
@@ -249,6 +256,7 @@ export type BandDirectoryEntry = {
   genre: string
   bio: string
   logo_url: string
+  banner_url: string
   follower_count: number
   is_following: boolean
   is_owner: boolean
@@ -279,6 +287,7 @@ export async function listPublicBands(): Promise<BandDirectoryEntry[]> {
             genre: ib.genre,
             bio: ib.bio,
             logoUrl: ib.logoUrl,
+            bannerUrl: ib.bannerUrl,
             isPublic: ib.isPublic,
             links: ib.links,
           })
@@ -295,6 +304,7 @@ export async function listPublicBands(): Promise<BandDirectoryEntry[]> {
         genre: b.genre,
         bio: b.bio,
         logo_url: b.logoUrl,
+        banner_url: b.bannerUrl || "",
         follower_count: 42,
         is_following: false,
         is_owner: false,
@@ -316,6 +326,7 @@ export async function listPublicBands(): Promise<BandDirectoryEntry[]> {
     genre: b.genre ?? "",
     bio: b.bio ?? "",
     logo_url: b.logoUrl ?? "",
+    banner_url: b.bannerUrl ?? "",
     follower_count: followerCounts.get(b.id) ?? 0,
     is_following: followed.has(b.id),
     is_owner: viewerId != null && viewerId === b.ownerUserId,

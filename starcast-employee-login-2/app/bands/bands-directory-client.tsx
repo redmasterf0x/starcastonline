@@ -259,24 +259,37 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
             {filteredBands.map((band) => (
               <div
                 key={band.id}
-                className="group relative rounded-2xl border border-[#20205a]/60 bg-gradient-to-b from-[#0c0c3f]/70 to-[#0c0c3f]/40 p-6 flex flex-col justify-between hover:border-[#ea6f2a]/50 transition-all hover:shadow-[0_0_30px_rgba(234,111,42,0.12)]"
+                className="group relative rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50 overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/50 transition-all hover:shadow-[0_0_30px_rgba(234,111,42,0.14)]"
               >
-                <div>
-                  {/* Card Header: Avatar & Info */}
-                  <div className="flex items-start gap-4 mb-4">
-                    {band.logo_url ? (
-                      <Image
-                        src={band.logo_url || "/placeholder.svg"}
-                        alt={band.name}
-                        width={64}
-                        height={64}
-                        className="w-16 h-16 rounded-2xl object-cover border border-[#20205a] flex-shrink-0 bg-[#05052d]"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 flex-shrink-0">
-                        <Music className="w-8 h-8 text-[#ea6f2a]" />
-                      </div>
-                    )}
+                {/* Soundstage Banner Header */}
+                <div className="relative w-full h-24 bg-[#05052d] overflow-hidden">
+                  {band.banner_url ? (
+                    <img
+                      src={band.banner_url}
+                      alt={`${band.name} banner`}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-[#ea6f2a]/20 via-[#10104a] to-[#20efe0]/20" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#0c0c3f]/50 to-transparent" />
+                </div>
+
+                <div className="p-6 pt-0 flex-1 flex flex-col justify-between -mt-9 relative z-10">
+                  <div>
+                    {/* Card Header: Avatar & Info */}
+                    <div className="flex items-start gap-4 mb-4">
+                      {band.logo_url ? (
+                        <img
+                          src={band.logo_url}
+                          alt={band.name}
+                          className="w-16 h-16 rounded-2xl object-cover border-2 border-[#0c0c3f] flex-shrink-0 bg-[#05052d] shadow-lg"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ea6f2a]/15 border-2 border-[#0c0c3f] flex-shrink-0 shadow-lg">
+                          <Music className="w-8 h-8 text-[#ea6f2a]" />
+                        </div>
+                      )}
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -360,7 +373,8 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
                   )}
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
           </div>
         )}
       </main>

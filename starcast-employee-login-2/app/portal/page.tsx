@@ -45,6 +45,11 @@ import {
   Shield,
   Layers,
   Users,
+  ImageIcon,
+  Upload,
+  Camera,
+  Trash2,
+  Loader2,
 } from "lucide-react"
 
 interface Band {
@@ -57,6 +62,8 @@ interface Band {
   bio: string
   contact_email: string
   contact_phone: string
+  logo_url: string
+  banner_url: string
   has_active_pass: boolean
   pass_expires_at: string | null
   youtube_agreement_signed: boolean
@@ -107,6 +114,8 @@ const emptyBandForm: BandInput = {
   bio: "",
   contactEmail: "",
   contactPhone: "",
+  logoUrl: "",
+  bannerUrl: "",
   links: [],
 }
 
@@ -130,6 +139,45 @@ export default function PortalPage() {
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
   const [portalTab, setPortalTab] = useState<"posts" | "links" | "studio" | "payments">("posts")
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [savingBand, setSavingBand] = useState(false)
+
+  async function handleUploadLogo(file: File) {
+    setUploadingLogo(true)
+    setError("")
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("folder", "bands/logos")
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+      setBandForm((prev) => ({ ...prev, logoUrl: data.url }))
+    } catch (e: any) {
+      setError(e?.message || "Failed to upload profile picture")
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  async function handleUploadBanner(file: File) {
+    setUploadingBanner(true)
+    setError("")
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("folder", "bands/banners")
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+      setBandForm((prev) => ({ ...prev, bannerUrl: data.url }))
+    } catch (e: any) {
+      setError(e?.message || "Failed to upload banner")
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
 
   const activeBandsList = (isAdmin || isStaff) && viewMode === "all" ? allBandsList : bands
   const selectedBand =
@@ -222,6 +270,7 @@ export default function PortalPage() {
 
   async function handleSaveBand() {
     setError("")
+    setSavingBand(true)
     try {
       if (bandDialog === "new") {
         const res = await createBand(bandForm)
@@ -230,8 +279,9 @@ export default function PortalPage() {
           return
         }
         await refreshBands()
-        if (res.id) {
-          setSelectedBandId(res.id)
+        const newId = res.id || (res as any).band?.id
+        if (newId) {
+          setSelectedBandId(newId)
         }
       } else if (bandDialog === "edit" && selectedBand) {
         const res = await updateBand(selectedBand.id, bandForm)
@@ -245,6 +295,8 @@ export default function PortalPage() {
       setBandForm(emptyBandForm)
     } catch (e: any) {
       setError(e?.message || "Failed to save band")
+    } finally {
+      setSavingBand(false)
     }
   }
 
@@ -456,18 +508,24 @@ export default function PortalPage() {
                 Public Directory
               </Link>
             </Button>
-            <Button
-              onClick={() => {
-                setError("")
-                setBandForm(emptyBandForm)
-                setBandDialog("new")
-              }}
-              size="sm"
-              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Register Band
-            </Button>
+            {bands.length === 0 ? (
+              <Button
+                onClick={() => {
+                  setError("")
+                  setBandForm(emptyBandForm)
+                  setBandDialog("new")
+                }}
+                size="sm"
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Register Band
+              </Button>
+            ) : (
+              <Badge className="bg-[#22b573]/15 text-[#22b573] border-[#22b573]/30 px-3 py-1 text-xs font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> 1 Verified Act (Max 1)
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -561,61 +619,183 @@ export default function PortalPage() {
                     {b.name}
                   </button>
                 ))}
-                <button
-                  onClick={() => {
-                    setError("")
-                    setBandForm(emptyBandForm)
-                    setBandDialog("new")
-                  }}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium border border-dashed border-[#20205a] text-[#9a9fc4] hover:border-[#ea6f2a]/50 hover:text-white transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5 inline mr-1" /> New Band
-                </button>
               </div>
             )}
 
             {selectedBand && (
               <>
                 {/* Band profile card */}
-                <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
-                  <CardHeader className="flex flex-row items-start justify-between gap-4">
-                    <div>
-                      <CardTitle className="text-[#f5f7ff] flex items-center gap-2">
-                        {selectedBand.name}
-                        {selectedBand.genre && (
-                          <Badge variant="outline" className="border-[#20205a] text-[#9a9fc4]">
-                            {selectedBand.genre}
-                          </Badge>
-                        )}
-                        <Badge
-                          variant="outline"
-                          className={
-                            selectedBand.is_public
-                              ? "border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10"
-                              : "border-yellow-700/40 text-yellow-400 bg-yellow-900/20"
-                          }
-                        >
-                          {selectedBand.is_public ? "Public" : "Draft / Private"}
-                        </Badge>
-                      </CardTitle>
-                      {selectedBand.bio && (
-                        <CardDescription className="text-[#9a9fc4] mt-1">{selectedBand.bio}</CardDescription>
-                      )}
-                      {selectedBand.slug && (
-                        <p className="text-xs text-[#9a9fc4] mt-2">
-                          Public page:{" "}
-                          <a
-                            href={`/bands/${selectedBand.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#ea6f2a] hover:underline"
-                          >
-                            /bands/{selectedBand.slug}
-                          </a>
-                        </p>
-                      )}
+                <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60 overflow-hidden">
+                  {/* Soundstage Banner */}
+                  <div className="relative w-full h-36 sm:h-52 bg-[#05052d] overflow-hidden group">
+                    {selectedBand.banner_url ? (
+                      <img
+                        src={selectedBand.banner_url}
+                        alt={`${selectedBand.name} Banner`}
+                        className="w-full h-full object-cover object-center"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-[#ea6f2a]/25 via-[#bc3f00]/15 to-[#20efe0]/15 flex items-center justify-center text-[#9a9fc4] text-xs font-mono">
+                        <span>STARCAST SOUNDSTAGE // NO CUSTOM BANNER</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-black/20 to-transparent pointer-events-none" />
+
+                    {/* Quick change banner button */}
+                    <div className="absolute top-3 right-3 opacity-90 group-hover:opacity-100 transition-opacity">
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0]
+                            if (f && selectedBand) {
+                              setUploadingBanner(true)
+                              setError("")
+                              try {
+                                const fd = new FormData()
+                                fd.append("file", f)
+                                fd.append("folder", "bands/banners")
+                                const res = await fetch("/api/upload", { method: "POST", body: fd })
+                                const data = await res.json()
+                                if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+                                await updateBand(selectedBand.id, {
+                                  name: selectedBand.name,
+                                  type: selectedBand.type,
+                                  genre: selectedBand.genre,
+                                  bio: selectedBand.bio,
+                                  contactEmail: selectedBand.contact_email,
+                                  contactPhone: selectedBand.contact_phone,
+                                  logoUrl: selectedBand.logo_url,
+                                  bannerUrl: data.url,
+                                })
+                                await refreshBands()
+                              } catch (err: any) {
+                                setError(err?.message || "Failed to upload banner")
+                              } finally {
+                                setUploadingBanner(false)
+                              }
+                            }
+                          }}
+                        />
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0c0c3f]/85 border border-[#20205a] text-[#f5f7ff] backdrop-blur-md hover:border-[#20efe0]/50 hover:bg-[#0c0c3f] transition-all cursor-pointer shadow-lg">
+                          {uploadingBanner ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#20efe0]" />
+                              <span>Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3.5 h-3.5 text-[#20efe0]" />
+                              <span>{selectedBand.banner_url ? "Change Banner" : "Upload Banner"}</span>
+                            </>
+                          )}
+                        </span>
+                      </label>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
+                  </div>
+
+                  <CardHeader className="flex flex-col sm:flex-row items-start justify-between gap-4 -mt-10 sm:-mt-14 relative z-10">
+                    <div className="flex items-start gap-4">
+                      {/* Avatar / Profile Pic with quick upload */}
+                      <div className="relative group/avatar shrink-0">
+                        {selectedBand.logo_url ? (
+                          <img
+                            src={selectedBand.logo_url}
+                            alt={selectedBand.name}
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl">
+                            <Music className="w-9 h-9 text-[#ea6f2a]" />
+                          </div>
+                        )}
+                        <label className="absolute inset-0 rounded-2xl bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center text-white text-[10px] font-semibold transition-opacity cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const f = e.target.files?.[0]
+                              if (f && selectedBand) {
+                                setUploadingLogo(true)
+                                setError("")
+                                try {
+                                  const fd = new FormData()
+                                  fd.append("file", f)
+                                  fd.append("folder", "bands/logos")
+                                  const res = await fetch("/api/upload", { method: "POST", body: fd })
+                                  const data = await res.json()
+                                  if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+                                  await updateBand(selectedBand.id, {
+                                    name: selectedBand.name,
+                                    type: selectedBand.type,
+                                    genre: selectedBand.genre,
+                                    bio: selectedBand.bio,
+                                    contactEmail: selectedBand.contact_email,
+                                    contactPhone: selectedBand.contact_phone,
+                                    logoUrl: data.url,
+                                    bannerUrl: selectedBand.banner_url,
+                                  })
+                                  await refreshBands()
+                                } catch (err: any) {
+                                  setError(err?.message || "Failed to upload photo")
+                                } finally {
+                                  setUploadingLogo(false)
+                                }
+                              }
+                            }}
+                          />
+                          {uploadingLogo ? (
+                            <Loader2 className="w-5 h-5 animate-spin text-[#ea6f2a]" />
+                          ) : (
+                            <>
+                              <Camera className="w-4 h-4 mb-0.5" />
+                              <span>Photo</span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+
+                      <div>
+                        <CardTitle className="text-[#f5f7ff] flex items-center gap-2 flex-wrap">
+                          {selectedBand.name}
+                          {selectedBand.genre && (
+                            <Badge variant="outline" className="border-[#20205a] text-[#9a9fc4]">
+                              {selectedBand.genre}
+                            </Badge>
+                          )}
+                          <Badge
+                            variant="outline"
+                            className={
+                              selectedBand.is_public
+                                ? "border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10"
+                                : "border-yellow-700/40 text-yellow-400 bg-yellow-900/20"
+                            }
+                          >
+                            {selectedBand.is_public ? "Public" : "Draft / Private"}
+                          </Badge>
+                        </CardTitle>
+                        {selectedBand.bio && (
+                          <CardDescription className="text-[#9a9fc4] mt-1 line-clamp-2">{selectedBand.bio}</CardDescription>
+                        )}
+                        {selectedBand.slug && (
+                          <p className="text-xs text-[#9a9fc4] mt-2">
+                            Public page:{" "}
+                            <a
+                              href={`/bands/${selectedBand.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#ea6f2a] hover:underline"
+                            >
+                              /bands/{selectedBand.slug}
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
                       {selectedBand.slug && (
                         <>
                           <Button
@@ -659,6 +839,8 @@ export default function PortalPage() {
                             bio: selectedBand.bio || "",
                             contactEmail: selectedBand.contact_email || "",
                             contactPhone: selectedBand.contact_phone || "",
+                            logoUrl: selectedBand.logo_url || "",
+                            bannerUrl: selectedBand.banner_url || "",
                             links: [],
                           })
                           setBandDialog("edit")
@@ -916,15 +1098,23 @@ export default function PortalPage() {
 
       {/* Band create/edit dialog */}
       <Dialog open={bandDialog !== null} onOpenChange={(open) => !open && setBandDialog(null)}>
-        <DialogContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+        <DialogContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-[#f5f7ff]">
-              {bandDialog === "new" ? "Register Band or Artist Page" : "Edit Profile"}
+            <DialogTitle className="text-[#f5f7ff] flex items-center gap-2">
+              {bandDialog === "new" ? (
+                <>
+                  <Plus className="w-5 h-5 text-[#ea6f2a]" /> Register Band or Artist Page
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 text-[#20efe0]" /> Edit Band Profile & Visuals
+                </>
+              )}
             </DialogTitle>
             <DialogDescription className="text-[#9a9fc4]">
               {bandDialog === "new"
-                ? "Create a public page for your band or solo project."
-                : "Update your public profile details."}
+                ? "Create your official soundstage act, custom banner, and avatar. Each account can only create one page."
+                : "Update your soundstage visual branding, bio, and booking contacts."}
             </DialogDescription>
           </DialogHeader>
           {error && (
@@ -932,82 +1122,279 @@ export default function PortalPage() {
               {error}
             </div>
           )}
-          <div className="space-y-3">
-            <div>
-              <Label className="text-[#f5f7ff]">Name</Label>
-              <Input
-                value={bandForm.name}
-                onChange={(e) => setBandForm({ ...bandForm, name: e.target.value })}
-                className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                placeholder="Band or artist name"
-              />
+          <div className="space-y-4 pt-1">
+            {/* Visual Branding Section: Banner & Profile Pic */}
+            <div className="p-4 rounded-xl bg-[#05052d]/80 border border-[#20205a] space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#20efe0] flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" /> Visual Branding & Soundstage Media
+                </span>
+                <span className="text-[11px] text-[#9a9fc4]">Banner & profile picture</span>
+              </div>
+
+              {/* Soundstage Banner */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-[#f5f7ff]">Soundstage Header Banner</Label>
+                  {bandForm.bannerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setBandForm({ ...bandForm, bannerUrl: "" })}
+                      className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove Banner
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative w-full h-28 sm:h-32 rounded-xl overflow-hidden border border-[#20205a] bg-[#0c0c3f] group">
+                  {bandForm.bannerUrl ? (
+                    <img
+                      src={bandForm.bannerUrl}
+                      alt="Banner Preview"
+                      className="w-full h-full object-cover object-center"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-r from-[#ea6f2a]/20 via-[#10104a] to-[#20efe0]/20 text-[#9a9fc4]">
+                      <ImageIcon className="w-7 h-7 mb-1 opacity-50 text-[#20efe0]" />
+                      <span className="text-xs font-mono">1600 × 500 recommended</span>
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-xs font-medium flex items-center gap-1.5 shadow-lg">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0]
+                          if (f) await handleUploadBanner(f)
+                        }}
+                      />
+                      {uploadingBanner ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" /> Upload File
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={bandForm.bannerUrl || ""}
+                    onChange={(e) => setBandForm({ ...bandForm, bannerUrl: e.target.value })}
+                    placeholder="Or enter banner image URL (https://...)"
+                    className="bg-[#0c0c3f] border-[#20205a] text-xs text-[#f5f7ff] h-8"
+                  />
+                  <label className="cursor-pointer shrink-0">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0]
+                        if (f) await handleUploadBanner(f)
+                      }}
+                    />
+                    <span className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-[#20205a] bg-[#0c0c3f] hover:bg-[#20205a]/40 text-[#f5f7ff] text-xs font-medium">
+                      {uploadingBanner ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-[#20efe0]" />
+                      ) : (
+                        <Upload className="w-3 h-3 text-[#20efe0]" />
+                      )}
+                      Browse
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Profile Picture / Logo Section */}
+              <div className="space-y-2 pt-2 border-t border-[#20205a]/60">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-[#f5f7ff]">Profile Picture / Act Logo</Label>
+                  {bandForm.logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setBandForm({ ...bandForm, logoUrl: "" })}
+                      className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove Photo
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-[#20205a] bg-[#0c0c3f] shrink-0 group">
+                    {bandForm.logoUrl ? (
+                      <img
+                        src={bandForm.logoUrl}
+                        alt="Profile Pic Preview"
+                        className="w-full h-full object-cover object-center"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#9a9fc4]">
+                        <Music className="w-6 h-6 text-[#ea6f2a]" />
+                      </div>
+                    )}
+                    <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0]
+                          if (f) await handleUploadLogo(f)
+                        }}
+                      />
+                      {uploadingLogo ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      ) : (
+                        <Camera className="w-4 h-4 text-white" />
+                      )}
+                    </label>
+                  </div>
+
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={bandForm.logoUrl || ""}
+                        onChange={(e) => setBandForm({ ...bandForm, logoUrl: e.target.value })}
+                        placeholder="Or enter profile pic URL (https://...)"
+                        className="bg-[#0c0c3f] border-[#20205a] text-xs text-[#f5f7ff] h-8"
+                      />
+                      <label className="cursor-pointer shrink-0">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0]
+                            if (f) await handleUploadLogo(f)
+                          }}
+                        />
+                        <span className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-[#20205a] bg-[#0c0c3f] hover:bg-[#20205a]/40 text-[#f5f7ff] text-xs font-medium">
+                          {uploadingLogo ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-[#ea6f2a]" />
+                          ) : (
+                            <Upload className="w-3 h-3 text-[#ea6f2a]" />
+                          )}
+                          Browse
+                        </span>
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-[#9a9fc4]">
+                      Square format (1:1), PNG or JPG. Max 5MB recommended.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label className="text-[#f5f7ff]">Type</Label>
-              <select
-                value={bandForm.type}
-                onChange={(e) => setBandForm({ ...bandForm, type: e.target.value })}
-                className="w-full h-10 px-3 rounded-md bg-[#05052d] border border-[#20205a] text-[#f5f7ff] text-sm"
-              >
-                <option value="band">Band / Group</option>
-                <option value="artist">Solo Artist / Musician</option>
-                <option value="producer">Producer / Beatmaker</option>
-                <option value="dj">DJ / Electronic</option>
-                <option value="podcast">Podcast / Audio Show</option>
-              </select>
+
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
+                <Label className="text-xs text-[#f5f7ff]">Act or Band Name *</Label>
+                <Input
+                  value={bandForm.name}
+                  onChange={(e) => setBandForm({ ...bandForm, name: e.target.value })}
+                  className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
+                  placeholder="e.g. JetPlane Bungalow"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#f5f7ff]">Act Type</Label>
+                <select
+                  value={bandForm.type}
+                  onChange={(e) => setBandForm({ ...bandForm, type: e.target.value })}
+                  className="w-full h-10 px-3 rounded-md bg-[#05052d] border border-[#20205a] text-[#f5f7ff] text-sm"
+                >
+                  <option value="band">Band / Group</option>
+                  <option value="artist">Solo Artist / Musician</option>
+                  <option value="producer">Producer / Beatmaker</option>
+                  <option value="dj">DJ / Electronic</option>
+                  <option value="podcast">Podcast / Audio Show</option>
+                </select>
+              </div>
             </div>
+
             <div>
-              <Label className="text-[#f5f7ff]">Genre</Label>
+              <Label className="text-xs text-[#f5f7ff]">Genre</Label>
               <Input
                 value={bandForm.genre}
                 onChange={(e) => setBandForm({ ...bandForm, genre: e.target.value })}
                 className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                placeholder="Rock, Hip-Hop, Electronic, etc."
+                placeholder="Rock, Hip-Hop, Electronic, Neo-Soul, etc."
               />
             </div>
+
             <div>
-              <Label className="text-[#f5f7ff]">Bio</Label>
+              <Label className="text-xs text-[#f5f7ff]">Bio / Soundstage Description</Label>
               <Textarea
+                rows={3}
                 value={bandForm.bio}
                 onChange={(e) => setBandForm({ ...bandForm, bio: e.target.value })}
                 className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                placeholder="Tell fans and listeners about your sound..."
+                placeholder="Tell fans and listeners about your sound, roots, upcoming drops..."
               />
             </div>
-            <div>
-              <Label className="text-[#f5f7ff]">Contact Email</Label>
-              <Input
-                value={bandForm.contactEmail}
-                onChange={(e) => setBandForm({ ...bandForm, contactEmail: e.target.value })}
-                className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                placeholder="booking@yourband.com"
-              />
-            </div>
-            <div>
-              <Label className="text-[#f5f7ff]">Contact Phone</Label>
-              <Input
-                value={bandForm.contactPhone}
-                onChange={(e) => setBandForm({ ...bandForm, contactPhone: e.target.value })}
-                className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                placeholder="(optional)"
-              />
+
+            {/* Contact Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-[#f5f7ff]">Contact Email</Label>
+                <Input
+                  value={bandForm.contactEmail}
+                  onChange={(e) => setBandForm({ ...bandForm, contactEmail: e.target.value })}
+                  className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
+                  placeholder="booking@yourband.com"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#f5f7ff]">Contact Phone</Label>
+                <Input
+                  value={bandForm.contactPhone}
+                  onChange={(e) => setBandForm({ ...bandForm, contactPhone: e.target.value })}
+                  className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
+                  placeholder="(optional)"
+                />
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="border-[#20205a] text-[#f5f7ff] bg-transparent"
-              onClick={() => setBandDialog(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveBand}
-              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
-              disabled={!bandForm.name?.trim()}
-            >
-              Save Profile
-            </Button>
+
+          <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-[#20205a]/60">
+            <span className="text-[11px] text-[#9a9fc4]">
+              Limit: 1 official band or artist page per StarCast account.
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="border-[#20205a] text-[#f5f7ff] bg-transparent"
+                onClick={() => setBandDialog(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveBand}
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
+                disabled={!bandForm.name?.trim() || savingBand}
+              >
+                {savingBand ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Saving...
+                  </>
+                ) : bandDialog === "new" ? (
+                  "Create Page"
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

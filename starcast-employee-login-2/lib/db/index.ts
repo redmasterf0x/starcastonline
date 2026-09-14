@@ -37,7 +37,10 @@ export const db = drizzle(pool, { schema })
 // Non-blocking schema safeguard for runtime environments
 if (connectionUrl && !connectionUrl.includes("placeholder")) {
   pool
-    .query(`ALTER TABLE bands ADD COLUMN IF NOT EXISTS links JSONB DEFAULT '[]'::jsonb;`)
+    .query(`
+      ALTER TABLE bands ADD COLUMN IF NOT EXISTS links JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE bands ADD COLUMN IF NOT EXISTS banner_url TEXT;
+    `)
     .catch(() => {
       // Ignore build-time or connection setup errors
     })
