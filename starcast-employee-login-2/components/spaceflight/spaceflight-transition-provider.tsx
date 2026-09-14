@@ -11,7 +11,6 @@ import React, {
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Compass, Volume2, VolumeX, Radio, Sparkles } from "lucide-react"
-import { brandAssets } from "@/lib/brand-assets"
 
 export type TransitPhase = "idle" | "fading-out" | "warping" | "fading-in"
 
@@ -634,10 +633,10 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
           <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-[#20efe0]/50 rounded-bl-sm" />
           <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-[#20efe0]/50 rounded-br-sm" />
 
-          {/* Center Viewport Stage - Pure Spaceship & Mascot Logo (NO TEXT) */}
+          {/* Center Viewport Stage - Pure Spaceship Navigation Reticle (Zero Logos, Zero Text) */}
           <div className="relative z-10 flex flex-col items-center justify-center">
             {/* Concentric Cockpit Gimbal & Target Reticle */}
-            <div className="relative flex items-center justify-center w-36 h-36 sm:w-44 sm:h-44 mb-3">
+            <div className="relative flex items-center justify-center w-32 h-32 sm:w-40 sm:h-40 mb-3">
               {/* Outer Dashed Rotating Reticle */}
               <div
                 className="w-full h-full rounded-full border border-dashed animate-spin absolute inset-0"
@@ -657,39 +656,32 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
               </div>
 
               {/* Cockpit Viewport Crosshairs */}
-              <div className="absolute -top-3 w-0.5 h-3 bg-[#f5f7ff]/40" />
-              <div className="absolute -bottom-3 w-0.5 h-3 bg-[#f5f7ff]/40" />
-              <div className="absolute -left-3 w-3 h-0.5 bg-[#f5f7ff]/40" />
-              <div className="absolute -right-3 w-3 h-0.5 bg-[#f5f7ff]/40" />
+              <div className="absolute -top-3 w-0.5 h-4 bg-[#f5f7ff]/40" />
+              <div className="absolute -bottom-3 w-0.5 h-4 bg-[#f5f7ff]/40" />
+              <div className="absolute -left-3 w-4 h-0.5 bg-[#f5f7ff]/40" />
+              <div className="absolute -right-3 w-4 h-0.5 bg-[#f5f7ff]/40" />
 
               {/* Inner Pulsing Planetary Reactor Halo */}
               <div
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full animate-ping opacity-25 absolute inset-0 m-auto"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full animate-ping opacity-25 absolute inset-0 m-auto"
                 style={{ backgroundColor: destination.color }}
               />
 
               {/* Reinforced Viewport Glass Ring */}
               <div
-                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border-2 absolute inset-0 m-auto"
-                style={{ borderColor: `${destination.color}50` }}
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 absolute inset-0 m-auto"
+                style={{ borderColor: `${destination.color}60` }}
               />
 
-              {/* Center Floating StarCast Astronaut Mascot */}
-              <div className="relative z-10 flex items-center justify-center">
-                <img
-                  src={brandAssets.capstone.white || "/images/starcast-mascot.png"}
-                  alt="StarCast Mascot"
-                  className="w-24 h-24 sm:w-28 sm:h-28 object-contain animate-pulse drop-shadow-[0_0_30px_rgba(234,111,42,0.7)]"
-                />
-              </div>
+              {/* Center Core Reactor Node */}
+              <div
+                className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-white/90 shadow-2xl animate-pulse"
+                style={{
+                  backgroundColor: destination.color,
+                  boxShadow: `0 0 24px ${destination.color}, 0 0 48px ${destination.glowColor}`,
+                }}
+              />
             </div>
-
-            {/* StarCast Wordmark Logotype */}
-            <img
-              src={brandAssets.logotype.horizontalWhite || "/images/starcast-wordmark.png"}
-              alt="StarCast Media"
-              className="h-7 sm:h-8 mx-auto object-contain drop-shadow-md mb-2 relative z-10"
-            />
 
             {/* Bouncing Energy Reactor Nodes */}
             <div className="flex items-center justify-center gap-2 relative z-10">
