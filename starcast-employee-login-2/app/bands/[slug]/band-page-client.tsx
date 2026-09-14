@@ -8,6 +8,8 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { BandQrModal } from "@/components/bands/band-qr-modal"
+import { LinkTree } from "@/components/LinkTree"
 import {
   Music,
   Share2,
@@ -23,6 +25,12 @@ import {
   UserPlus,
   UserMinus,
   ArrowLeft,
+  QrCode,
+  Sparkles,
+  Radio,
+  ExternalLink,
+  ShieldCheck,
+  Settings,
 } from "lucide-react"
 import {
   type PublicBand,
@@ -72,6 +80,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
   const [posts, setPosts] = useState<BandPost[]>(initialPosts)
   const [isPublic, setIsPublic] = useState(band.is_public)
   const [copied, setCopied] = useState(false)
+  const [qrModalOpen, setQrModalOpen] = useState(false)
   const [error, setError] = useState("")
   const [isFollowing, setIsFollowing] = useState(band.is_following)
   const [followerCount, setFollowerCount] = useState(band.follower_count)
@@ -88,11 +97,13 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
   }
 
   function handleShare() {
-    const url = `${window.location.origin}/bands/${band.slug}`
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
+    const url = typeof window !== "undefined" ? `${window.location.origin}/bands/${band.slug}` : `https://starcast.online/bands/${band.slug}`
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      })
+    }
   }
 
   async function handleToggleFollow() {
@@ -166,163 +177,260 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-[#05051f] text-[#f5f7ff]">
       <ResponsiveHeader />
 
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <Button
-          asChild
-          variant="outline"
-          className="mb-5 border-[#20efe0]/35 bg-[#0c0c3f]/55 text-[#c9fbf7] shadow-[0_0_20px_rgba(32,239,224,0.08)] hover:border-[#20efe0]/60 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
-        >
-          <Link href="/bands">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            All bands &amp; artists
-          </Link>
-        </Button>
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        {/* Navigation Breadcrumb Bar */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <Button
+            asChild
+            variant="outline"
+            className="border-[#20efe0]/35 bg-[#0c0c3f]/55 text-[#c9fbf7] shadow-[0_0_20px_rgba(32,239,224,0.08)] hover:border-[#20efe0]/60 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff] rounded-xl"
+          >
+            <Link href="/bands">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Soundstage Directory
+            </Link>
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setQrModalOpen(true)}
+              variant="outline"
+              className="border-[#20efe0]/40 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white rounded-xl text-xs font-semibold h-9 shadow-md shadow-[#20efe0]/10"
+            >
+              <QrCode className="w-3.5 h-3.5 mr-1.5" />
+              Get QR Code
+            </Button>
+
+            <Button
+              onClick={handleShare}
+              variant="outline"
+              className="border-[#20205a] bg-[#0c0c3f]/80 text-[#9a9fc4] hover:text-[#f5f7ff] hover:bg-[#20205a]/40 rounded-xl text-xs h-9"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? "Link Copied!" : "Share"}
+            </Button>
+          </div>
+        </div>
 
         {error && (
-          <div className="mb-6 p-3 rounded-lg border border-red-800 bg-red-950/40 text-red-300 text-sm">{error}</div>
+          <div className="mb-6 p-4 rounded-xl border border-red-800/80 bg-red-950/40 text-red-300 text-sm">
+            {error}
+          </div>
         )}
 
-        {/* Band hero */}
-        <section className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50 overflow-hidden mb-8">
+        {/* Soundstage Grand Hero */}
+        <section className="relative rounded-3xl border border-[#20205a]/80 bg-gradient-to-b from-[#0c0c3f]/80 via-[#070725]/90 to-[#05051f] overflow-hidden mb-8 shadow-2xl shadow-black/60">
+          {/* Banner Image Stage Rig */}
           {band.banner_url ? (
-            <div className="relative h-44 sm:h-60 w-full overflow-hidden bg-[#05052d]">
+            <div className="relative h-52 sm:h-72 w-full overflow-hidden bg-[#05052d]">
               <img
                 src={band.banner_url}
                 alt={`${band.name} banner`}
                 className="w-full h-full object-cover object-center"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-black/20 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#05051f]/40 to-transparent pointer-events-none" />
+              {/* Audio tracking grid overlay */}
+              <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
             </div>
           ) : (
-            <div className="h-32 sm:h-40 bg-gradient-to-r from-[#ea6f2a]/25 via-[#bc3f00]/15 to-[#20efe0]/15" />
+            <div className="relative h-40 sm:h-52 w-full overflow-hidden bg-gradient-to-r from-[#ea6f2a]/25 via-[#121248] to-[#20efe0]/20">
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] to-transparent pointer-events-none" />
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+            </div>
           )}
-          <div className="relative z-10 px-6 pb-6 pt-3 sm:pt-4">
-            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
-              <div className="-mt-14 sm:-mt-20 shrink-0 relative z-20">
-                {band.logo_url ? (
-                  <img
-                    src={band.logo_url}
-                    alt={band.name}
-                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-4 border-[#0c0c3f] bg-[#05052d] shadow-xl">
-                    <Music className="w-10 h-10 text-[#ea6f2a]" />
-                  </div>
-                )}
+
+          {/* Soundstage Verified Beacon */}
+          <div className="absolute top-4 right-4 z-20 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#05051f]/80 border border-[#20efe0]/40 backdrop-blur-md text-[11px] font-mono text-[#20efe0]">
+            <Radio className="w-3.5 h-3.5 animate-pulse text-[#38ef7d]" />
+            <span>SOUNDSTAGE LIVE // TOPEKA</span>
+          </div>
+
+          <div className="relative z-10 px-6 sm:px-8 pb-8 pt-2 sm:pt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
+              {/* Overlapping Avatar with Glow */}
+              <div className="-mt-16 sm:-mt-24 shrink-0 relative z-20">
+                <div className="relative p-1 rounded-2xl bg-gradient-to-tr from-[#ea6f2a] via-[#ffd166] to-[#20efe0] shadow-2xl shadow-[#ea6f2a]/20">
+                  {band.logo_url ? (
+                    <img
+                      src={band.logo_url}
+                      alt={band.name}
+                      className="w-28 h-28 sm:w-36 sm:h-36 rounded-xl object-cover bg-[#05052d] border-2 border-[#0c0c3f]"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center w-28 h-28 sm:w-36 sm:h-36 rounded-xl bg-[#0c0c3f] border-2 border-[#0c0c3f]">
+                      <Music className="w-12 h-12 text-[#ea6f2a]" />
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Band Title & Metadata */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-[#f5f7ff] tracking-tight">{band.name}</h1>
-                  <Badge className="bg-[#ea6f2a]/15 text-[#ea6f2a] border border-[#ea6f2a]/30">
-                    {band.type === "artist" ? "Artist" : "Band"}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-2xl sm:text-4xl font-black text-[#f5f7ff] tracking-tight">
+                    {band.name}
+                  </h1>
+                  <Badge className="bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40 font-mono text-xs uppercase px-2.5 py-0.5">
+                    {band.type === "artist"
+                      ? "Solo Artist"
+                      : band.type === "producer"
+                      ? "Producer"
+                      : band.type === "dj"
+                      ? "DJ / Electronic"
+                      : "Band"}
                   </Badge>
                   {band.genre && (
-                    <Badge variant="outline" className="border-[#20205a] text-[#9a9fc4]">
+                    <Badge variant="outline" className="border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10 font-mono text-xs">
                       {band.genre}
                     </Badge>
                   )}
                   {band.is_owner && !isPublic && (
-                    <Badge className="bg-yellow-900/30 text-yellow-400 border border-yellow-700/40">
-                      <Lock className="w-3 h-3 mr-1" /> Private
+                    <Badge className="bg-yellow-900/40 text-yellow-300 border border-yellow-700/50">
+                      <Lock className="w-3 h-3 mr-1" /> Private Act
                     </Badge>
                   )}
                 </div>
-                <p className="flex items-center gap-1.5 text-sm text-[#9a9fc4] mt-1.5">
-                  <Users className="w-3.5 h-3.5" />
-                  {followerCount} {followerCount === 1 ? "follower" : "followers"}
-                </p>
+
+                <div className="flex items-center gap-4 text-xs sm:text-sm text-[#9a9fc4] mt-2.5 flex-wrap">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Users className="w-4 h-4 text-[#38bdf8]" />
+                    <strong className="text-[#f5f7ff] font-bold">{followerCount}</strong> {followerCount === 1 ? "follower" : "followers"}
+                  </span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#ffd166]" />
+                    StarCast Resident Act
+                  </span>
+                </div>
               </div>
             </div>
 
-            {band.bio && <p className="text-[#9a9fc4] mt-4 leading-relaxed text-pretty">{band.bio}</p>}
+            {/* Bio Description */}
+            {band.bio && (
+              <div className="mt-5 pt-5 border-t border-[#20205a]/50">
+                <p className="text-sm sm:text-base text-[#c4c8e8] leading-relaxed text-pretty max-w-3xl">
+                  {band.bio}
+                </p>
+              </div>
+            )}
 
-            <div className="flex items-center gap-2 mt-5 flex-wrap">
+            {/* Interactive Action Ribbon */}
+            <div className="flex items-center gap-3 mt-6 pt-5 border-t border-[#20205a]/50 flex-wrap">
               {!band.is_owner && band.is_authenticated && (
                 <Button
                   onClick={handleToggleFollow}
                   disabled={followBusy}
                   className={
                     isFollowing
-                      ? "border border-[#20205a] bg-transparent text-[#f5f7ff] hover:bg-[#20205a]/30"
-                      : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
+                      ? "border border-[#20205a] bg-transparent text-[#f5f7ff] hover:bg-[#20205a]/40 rounded-xl"
+                      : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-xl shadow-lg shadow-[#ea6f2a]/25"
                   }
                 >
                   {isFollowing ? (
-                    <UserMinus className="w-4 h-4 mr-1.5" />
+                    <UserMinus className="w-4 h-4 mr-2" />
                   ) : (
-                    <UserPlus className="w-4 h-4 mr-1.5" />
+                    <UserPlus className="w-4 h-4 mr-2" />
                   )}
-                  {isFollowing ? "Following" : "Follow"}
+                  {isFollowing ? "Following Act" : "Follow Act"}
                 </Button>
               )}
+
+              <Button
+                onClick={() => setQrModalOpen(true)}
+                className="bg-gradient-to-r from-[#20efe0]/20 to-[#0c0c3f] border border-[#20efe0]/50 text-[#20efe0] hover:bg-[#20efe0]/30 hover:text-white rounded-xl font-semibold shadow-md"
+              >
+                <QrCode className="w-4 h-4 mr-2 text-[#20efe0]" />
+                Get QR Code
+              </Button>
+
               <Button
                 onClick={handleShare}
-                variant={band.is_owner ? "default" : "outline"}
-                className={
-                  band.is_owner
-                    ? "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
-                    : "border-[#20205a] text-[#f5f7ff] bg-transparent hover:bg-[#20205a]/30"
-                }
+                variant="outline"
+                className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-[#20205a]/40 rounded-xl"
               >
-                {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Share2 className="w-4 h-4 mr-1.5" />}
-                {copied ? "Link copied" : "Share page"}
+                {copied ? <Check className="w-4 h-4 mr-2 text-emerald-400" /> : <Share2 className="w-4 h-4 mr-2" />}
+                {copied ? "Link Copied" : "Share Page"}
               </Button>
+
               {band.is_owner && (
-                <Button
-                  variant="outline"
-                  onClick={handleTogglePublic}
-                  className="border-[#20205a] text-[#f5f7ff] bg-transparent hover:bg-[#20205a]/30"
-                >
-                  {isPublic ? <Globe className="w-4 h-4 mr-1.5" /> : <Lock className="w-4 h-4 mr-1.5" />}
-                  {isPublic ? "Public" : "Private"}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleTogglePublic}
+                    className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-[#20205a]/40 rounded-xl"
+                  >
+                    {isPublic ? <Globe className="w-4 h-4 mr-2 text-emerald-400" /> : <Lock className="w-4 h-4 mr-2 text-yellow-400" />}
+                    {isPublic ? "Public Page" : "Private Page"}
+                  </Button>
+
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/15 rounded-xl ml-auto"
+                  >
+                    <Link href="/portal">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Artist Portal Edit
+                    </Link>
+                  </Button>
+                </>
               )}
             </div>
           </div>
         </section>
 
-        {/* Custom Links (Linktree style) */}
-          {band.links && band.links.length > 0 && (
-  <LinkTree links={band.links.map((link: any) => ({ label: link.title, url: link.url }))} />
-)}
+        {/* Custom Links (Cosmic Linktree style) */}
+        {band.links && band.links.length > 0 && (
+          <LinkTree links={band.links.map((link: any) => ({ label: link.title, url: link.url }))} />
+        )}
 
-          {/* Open discussion board — any signed-in member can start a thread */}
-        <section className="mb-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.15em] text-[#9a9fc4]">
-            <MessageCircle className="w-4 h-4" /> Discussion Board
-          </h2>
+        {/* Open Discussion Board */}
+        <section className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-[#ea6f2a]" />
+            <h2 className="text-base sm:text-lg font-bold text-[#f5f7ff] tracking-tight">
+              Soundstage Discussion &amp; Fan Wall
+            </h2>
+          </div>
+          <span className="text-xs font-mono text-[#9a9fc4]">
+            {posts.length} {posts.length === 1 ? "thread" : "threads"}
+          </span>
         </section>
+
+        {/* Composer for signed-in users */}
         {band.is_authenticated && (
-          <section className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50 p-4 mb-8">
+          <section className="rounded-2xl border border-[#20205a]/80 bg-[#0c0c3f]/60 p-5 mb-8 shadow-xl">
             <Textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={
-                band.is_owner ? "Share an update with your followers..." : `Start a discussion about ${band.name}...`
+                band.is_owner
+                  ? `Broadcast an official announcement to your ${followerCount} followers...`
+                  : `Start a conversation or shout out ${band.name}...`
               }
-              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[90px] resize-none"
+              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[100px] resize-none rounded-xl"
             />
+
             {draftImages.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-3">
                 {draftImages.map((img, idx) => (
-                  <div key={idx} className="relative">
+                  <div key={idx} className="relative group">
                     <Image
                       src={img.preview || "/placeholder.svg"}
                       alt="Attachment preview"
                       width={80}
                       height={80}
-                      className="w-20 h-20 rounded-lg object-cover border border-[#20205a]"
+                      className="w-20 h-20 rounded-xl object-cover border border-[#20205a]"
                     />
                     <button
                       onClick={() => {
                         URL.revokeObjectURL(img.preview)
                         setDraftImages((prev) => prev.filter((_, i) => i !== idx))
                       }}
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#bc3f00] text-white flex items-center justify-center"
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#bc3f00] text-white flex items-center justify-center shadow-md"
                       aria-label="Remove image"
                     >
                       <X className="w-3 h-3" />
@@ -331,7 +439,8 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                 ))}
               </div>
             )}
-            <div className="flex items-center justify-between mt-3">
+
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#20205a]/50">
               <input
                 ref={fileRef}
                 type="file"
@@ -344,26 +453,30 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                 variant="ghost"
                 size="sm"
                 onClick={() => fileRef.current?.click()}
-                className="text-[#9a9fc4] hover:text-[#ea6f2a] hover:bg-transparent"
+                className="text-[#9a9fc4] hover:text-[#20efe0] hover:bg-transparent text-xs"
               >
-                <ImageIcon className="w-4 h-4 mr-1.5" /> Add image
+                <ImageIcon className="w-4 h-4 mr-1.5" /> Attach Photos
               </Button>
+
               <Button
                 onClick={handlePost}
                 disabled={posting || (!draft.trim() && draftImages.length === 0)}
-                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-5 shadow-md shadow-[#ea6f2a]/20 text-xs sm:text-sm"
               >
-                <Send className="w-4 h-4 mr-1.5" /> {posting ? "Posting..." : "Post"}
+                <Send className="w-4 h-4 mr-1.5" /> {posting ? "Posting..." : "Publish Post"}
               </Button>
             </div>
           </section>
         )}
 
-        {/* Posts feed */}
+        {/* Posts Feed */}
         {posts.length === 0 ? (
-          <div className="text-center py-16 text-[#9a9fc4]">
-            <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p>No posts yet{band.is_authenticated ? " — start the discussion above." : "."}</p>
+          <div className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-12 text-center text-[#9a9fc4]">
+            <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30 text-[#ea6f2a]" />
+            <p className="text-base font-medium text-[#f5f7ff]">No discussions yet</p>
+            <p className="text-xs text-[#9a9fc4] mt-1">
+              {band.is_authenticated ? "Be the first to share an update or start a thread above!" : "Sign in to start the discussion."}
+            </p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -381,16 +494,31 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
         )}
 
         {!band.is_authenticated && (
-          <p className="text-center text-sm text-[#9a9fc4] mt-8">
-            <Link href="/login" className="text-[#ea6f2a] hover:underline">
-              Sign in
-            </Link>{" "}
-            to join the conversation.
-          </p>
+          <div className="mt-8 p-6 rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/40 text-center">
+            <p className="text-sm text-[#9a9fc4]">
+              Want to join the conversation?{" "}
+              <Link href="/login" className="text-[#ea6f2a] hover:underline font-semibold">
+                Sign in to your StarCast account
+              </Link>
+            </p>
+          </div>
         )}
       </main>
 
       <Footer />
+
+      {/* QR Code Modal */}
+      <BandQrModal
+        isOpen={qrModalOpen}
+        onOpenChange={setQrModalOpen}
+        band={{
+          name: band.name,
+          slug: band.slug,
+          logo_url: band.logo_url,
+          genre: band.genre,
+          type: band.type,
+        }}
+      />
     </div>
   )
 }
@@ -436,26 +564,26 @@ function PostCard({
   }
 
   return (
-    <article className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50 p-5">
-      <div className="flex items-start gap-3">
+    <article className="rounded-2xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 to-[#070725]/80 p-5 sm:p-6 shadow-xl hover:border-[#ea6f2a]/40 transition-colors">
+      <div className="flex items-start gap-3.5">
         <Avatar name={post.author_name} src={post.author_avatar} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="font-semibold text-[#f5f7ff] leading-tight flex items-center gap-1.5">
+              <p className="font-bold text-[#f5f7ff] leading-tight flex items-center gap-1.5 flex-wrap">
                 {post.author_name}
                 {post.author_is_owner && (
-                  <Badge className="bg-[#ea6f2a]/15 text-[#ea6f2a] border border-[#ea6f2a]/30 text-[10px] px-1.5 py-0 h-4">
+                  <Badge className="bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40 text-[10px] px-2 py-0 h-4 uppercase font-mono font-bold">
                     {band.type === "artist" ? "Artist" : "Band"}
                   </Badge>
                 )}
               </p>
-              <p className="text-xs text-[#9a9fc4]">{timeAgo(post.created_at)}</p>
+              <p className="text-xs text-[#9a9fc4] mt-0.5">{timeAgo(post.created_at)}</p>
             </div>
             {post.can_delete && (
               <button
                 onClick={() => onDeletePost(post.id)}
-                className="text-[#9a9fc4] hover:text-[#bc3f00] transition-colors"
+                className="text-[#9a9fc4] hover:text-red-400 p-1.5 rounded-lg hover:bg-[#20205a]/40 transition-colors"
                 aria-label="Delete post"
               >
                 <Trash2 className="w-4 h-4" />
@@ -464,19 +592,21 @@ function PostCard({
           </div>
 
           {post.content && (
-            <p className="text-[#f5f7ff]/90 mt-2 whitespace-pre-wrap leading-relaxed text-pretty">{post.content}</p>
+            <p className="text-[#f5f7ff]/95 mt-3 whitespace-pre-wrap leading-relaxed text-pretty text-sm sm:text-base">
+              {post.content}
+            </p>
           )}
 
           {post.images.length > 0 && (
-            <div className={`grid gap-2 mt-3 ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`grid gap-2.5 mt-3.5 ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
               {post.images.map((src, idx) => (
                 <Image
                   key={idx}
                   src={src || "/placeholder.svg"}
-                  alt={`Post image ${idx + 1}`}
+                  alt={`Post attachment ${idx + 1}`}
                   width={600}
                   height={400}
-                  className="w-full rounded-xl object-cover border border-[#20205a] max-h-96"
+                  className="w-full rounded-xl object-cover border border-[#20205a] max-h-96 shadow-md"
                 />
               ))}
             </div>
@@ -484,34 +614,34 @@ function PostCard({
         </div>
       </div>
 
-      {/* Comments */}
-      <div className="mt-4 pl-2 border-l-2 border-[#20205a]/50 space-y-3">
+      {/* Comments Section */}
+      <div className="mt-5 pl-3 border-l-2 border-[#20205a]/60 space-y-3">
         {post.comments.map((c) => (
           <div key={c.id} className="flex items-start gap-2.5 group">
             <Avatar name={c.author_name} src={c.author_avatar} />
             <div className="flex-1 min-w-0">
-              <div className="rounded-xl bg-[#05052d]/70 px-3 py-2">
+              <div className="rounded-xl bg-[#05052d]/90 border border-[#20205a]/50 px-3.5 py-2.5 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-[#f5f7ff]">{c.author_name}</p>
+                  <p className="text-xs font-bold text-[#f5f7ff]">{c.author_name}</p>
                   {c.can_delete && (
                     <button
                       onClick={() => handleDeleteComment(c.id)}
-                      className="text-[#9a9fc4] hover:text-[#bc3f00] opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-[#9a9fc4] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                       aria-label="Delete comment"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   )}
                 </div>
-                <p className="text-sm text-[#f5f7ff]/90 whitespace-pre-wrap">{c.content}</p>
+                <p className="text-xs sm:text-sm text-[#c4c8e8] mt-1 whitespace-pre-wrap">{c.content}</p>
               </div>
-              <p className="text-[11px] text-[#9a9fc4] mt-1 ml-1">{timeAgo(c.created_at)}</p>
+              <p className="text-[10px] text-[#9a9fc4] mt-1 ml-1">{timeAgo(c.created_at)}</p>
             </div>
           </div>
         ))}
 
         {band.is_authenticated ? (
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-2">
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -521,16 +651,16 @@ function PostCard({
                   handleComment()
                 }
               }}
-              placeholder="Write a comment..."
-              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[40px] max-h-24 resize-none py-2"
+              placeholder="Write a reply..."
+              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[40px] max-h-24 resize-none py-2 text-xs rounded-xl"
               rows={1}
             />
             <Button
               onClick={handleComment}
               disabled={submitting || !comment.trim()}
               size="icon"
-              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white shrink-0"
-              aria-label="Send comment"
+              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white shrink-0 rounded-xl h-10 w-10 shadow-md shadow-[#ea6f2a]/20"
+              aria-label="Send reply"
             >
               <Send className="w-4 h-4" />
             </Button>

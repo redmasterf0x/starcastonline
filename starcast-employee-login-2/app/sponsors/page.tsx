@@ -11,7 +11,10 @@ import { loadStripe } from "@stripe/stripe-js"
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js"
 import { Check, Upload, ArrowLeft, Star, Zap } from "lucide-react"
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const stripePromise =
+  typeof window !== "undefined" && process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+    : null
 
 export default function SponsorsPage() {
   const [step, setStep] = useState<"packages" | "form" | "checkout">("packages")
@@ -330,11 +333,21 @@ export default function SponsorsPage() {
               <ArrowLeft className="w-4 h-4" /> Back to form
             </button>
 
-            <div className="rounded-2xl border border-[#20205a] bg-white overflow-hidden">
-              <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
-                <EmbeddedCheckout />
-              </EmbeddedCheckoutProvider>
-            </div>
+            {stripePromise ? (
+              <div className="rounded-2xl border border-[#20205a] bg-white overflow-hidden">
+                <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+                  <EmbeddedCheckout />
+                </EmbeddedCheckoutProvider>
+              </div>
+            ) : (
+              <div className="p-8 rounded-2xl border border-[#20205a] bg-[#0c0c3f]/80 text-center space-y-4">
+                <p className="text-[#f5f7ff] font-semibold">Sponsorship Request Received!</p>
+                <p className="text-sm text-[#9a9fc4]">
+                  Online credit card checkout is being configured. Our production team will contact you directly at{" "}
+                  <span className="text-[#ea6f2a]">{formData.contactEmail}</span> to finalize your package details and invoice.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

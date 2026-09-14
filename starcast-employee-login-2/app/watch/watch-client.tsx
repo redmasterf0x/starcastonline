@@ -625,6 +625,9 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
                           <img
                             src={nextVid.thumbnail}
                             alt={nextVid.title}
+                            onError={(e) => {
+                              ;(e.target as HTMLImageElement).src = "/images/spacemanlogo.png"
+                            }}
                             className="w-full h-full object-cover group-hover/mini:scale-105 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/mini:opacity-100 transition-opacity flex items-center justify-center">
@@ -760,6 +763,9 @@ function VideoCard({ video, onPlay, onShare, copied }: VideoCardProps) {
           src={video.thumbnail}
           alt={video.title}
           loading="lazy"
+          onError={(e) => {
+            ;(e.target as HTMLImageElement).src = "/images/spacemanlogo.png"
+          }}
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
         />
 

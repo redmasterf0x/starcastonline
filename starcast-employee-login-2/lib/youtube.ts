@@ -225,7 +225,7 @@ export const FALLBACK_WATCH_VIDEOS: WatchVideo[] = [
     duration: "44:37",
     views: "89 views",
     timeAgo: "2 months ago",
-    thumbnail: "https://i.ytimg.com/vi/r19c5i8hN3w/hqdefault.jpg",
+    thumbnail: "https://i.ytimg.com/vi/Hefw7zEuzx8/hqdefault.jpg",
   },
   {
     id: "KxLwH3oFfoc",
@@ -318,9 +318,10 @@ export async function getWatchVideos(): Promise<WatchVideo[]> {
         if (!obj || typeof obj !== "object") return
         if (obj.lockupViewModel) {
           const l = obj.lockupViewModel
-          const videoId =
-            l.contentId ||
-            l.rendererContext?.commandContext?.onTap?.innertubeCommand?.watchEndpoint?.videoId
+          const rawId =
+            l.rendererContext?.commandContext?.onTap?.innertubeCommand?.watchEndpoint?.videoId ||
+            (typeof l.contentId === "string" && !l.contentId.startsWith("PL") ? l.contentId : null)
+          const videoId = typeof rawId === "string" && /^[a-zA-Z0-9_-]{11}$/.test(rawId) ? rawId : null
           const title = l.metadata?.lockupMetadataViewModel?.title?.content
           if (videoId && title && !allVideos.has(videoId)) {
             let duration = ""

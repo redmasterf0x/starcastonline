@@ -49,11 +49,13 @@ import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { SocialBanBanner } from "@/components/community/social-ban-banner"
 import { TheDeck } from "@/components/community/the-deck"
+import { BandQrModal } from "@/components/bands/band-qr-modal"
 import { 
   Search, UserPlus, UserCheck, Clock, MessageSquare, Users, 
   ArrowBigUp, MessageCircle, ChevronRight, ChevronLeft, 
   Sparkles, TrendingUp, Send, X, Plus, Image as ImageIcon,
-  Heart, Share2, Bookmark, MoreHorizontal, User, Music, UserMinus
+  Heart, Share2, Bookmark, MoreHorizontal, User, Music, UserMinus,
+  QrCode, Radio, ArrowRight, ExternalLink
 } from "lucide-react"
 
 interface CommunityPost {
@@ -159,6 +161,7 @@ export default function CommunityPage() {
   const [bandsLoading, setBandsLoading] = useState(false)
   const [bandSearch, setBandSearch] = useState("")
   const [bandActionError, setBandActionError] = useState("")
+  const [qrBandTarget, setQrBandTarget] = useState<BandDirectoryEntry | null>(null)
 
   // Form state
   const [title, setTitle] = useState("")
@@ -889,7 +892,7 @@ export default function CommunityPage() {
           </div>
         )}
 
-        {/* Bands Tab — discover band/artist pages and see posts from bands you follow */}
+        {/* Bands Tab — Soundstage Artists & Resident Acts */}
         {activeTab === "bands" && (
           <div className="space-y-6">
             {bandActionError && (
@@ -898,168 +901,310 @@ export default function CommunityPage() {
               </p>
             )}
 
-            <div className="flex items-center gap-2">
-              {(
-                [
-                  { id: "discover", label: "Discover" },
-                  { id: "following", label: "Following" },
-                ] as const
-              ).map((sub) => (
-                <button
-                  key={sub.id}
-                  onClick={() => setBandsView(sub.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    bandsView === sub.id
-                      ? "bg-[#ea6f2a] text-white"
-                      : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:text-[#f5f7ff] border border-[#20205a]/50"
-                  }`}
+            {/* Soundstage Dispatch Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-[#0c0c3f]/90 via-[#05052d]/95 to-[#101048]/90 border border-[#20205a]/80 shadow-xl">
+              <div>
+                <div className="flex items-center gap-2 text-[#20efe0] text-xs font-mono font-bold tracking-widest uppercase mb-1">
+                  <Radio className="w-3.5 h-3.5 text-[#ea6f2a] animate-pulse" />
+                  <span>STARCAST SOUNDSTAGE // TOPEKA RESIDENTS &amp; ACTS</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-[#f5f7ff] tracking-tight">
+                  Soundstage Bands &amp; Artist Roster
+                </h2>
+                <p className="text-xs sm:text-sm text-[#9a9fc4] mt-1">
+                  Discover regional Kansas musicians, follow their soundstage updates, catch live set alerts, and grab direct QR code passes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <Button
+                  asChild
+                  className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-5 shadow-lg shadow-[#ea6f2a]/25 text-xs sm:text-sm h-10"
                 >
-                  {sub.label}
-                </button>
-              ))}
+                  <Link href="/portal">
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Register Your Act
+                  </Link>
+                </Button>
+
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-[#20efe0]/40 bg-[#0c0c3f]/60 text-[#c9fbf7] hover:bg-[#20efe0]/15 hover:text-white rounded-full px-4 text-xs sm:text-sm h-10"
+                >
+                  <Link href="/bands">
+                    <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                    Full Directory
+                  </Link>
+                </Button>
+              </div>
             </div>
 
-            {bandsLoading ? (
-              <div className="text-center py-16 text-[#9a9fc4]">Loading bands...</div>
-            ) : bandsView === "discover" ? (
-              <>
-                <div className="relative max-w-md">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9a9fc4]" />
+            {/* Sub-Navigation & Search */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {(
+                  [
+                    { id: "discover", label: `Discover Acts (${bandsList.length})` },
+                    { id: "following", label: "Following Feed" },
+                  ] as const
+                ).map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => setBandsView(sub.id)}
+                    className={`px-5 py-2.5 rounded-full text-xs font-semibold tracking-wide transition-all ${
+                      bandsView === sub.id
+                        ? "bg-[#ea6f2a] text-white shadow-md shadow-[#ea6f2a]/25"
+                        : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:text-[#f5f7ff] border border-[#20205a]/50"
+                    }`}
+                  >
+                    {sub.label}
+                  </button>
+                ))}
+              </div>
+
+              {bandsView === "discover" && (
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9fc4]" />
                   <Input
                     value={bandSearch}
                     onChange={(e) => setBandSearch(e.target.value)}
-                    placeholder="Search bands by name or genre..."
-                    className="bg-[#0c0c3f]/60 border-[#20205a]/50 text-[#f5f7ff] pl-12 h-12 rounded-xl"
+                    placeholder="Search act or genre..."
+                    className="bg-[#0c0c3f]/80 border-[#20205a] text-[#f5f7ff] pl-10 h-10 text-xs rounded-full focus:border-[#20efe0]"
                   />
                 </div>
+              )}
+            </div>
 
+            {bandsLoading ? (
+              <div className="text-center py-16 text-[#9a9fc4] space-y-3">
+                <div className="w-8 h-8 border-2 border-[#ea6f2a] border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-mono">TUNING SOUNDSTAGE FREQUENCIES...</p>
+              </div>
+            ) : bandsView === "discover" ? (
+              <>
                 {filteredBands.length === 0 ? (
-                  <div className="text-center py-16 text-[#9a9fc4]">
-                    <Music className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                    <p>
+                  <div className="text-center py-16 text-[#9a9fc4] rounded-2xl border border-[#20205a]/40 bg-[#0c0c3f]/30 p-8">
+                    <Music className="w-10 h-10 mx-auto mb-3 opacity-40 text-[#ea6f2a]" />
+                    <p className="text-sm font-semibold text-[#f5f7ff]">
                       {bandsList.length === 0
-                        ? "No band pages yet. Create one from your dashboard's Artist Portal."
-                        : "No bands match your search."}
+                        ? "No registered soundstage acts yet."
+                        : "No acts match your search."}
+                    </p>
+                    <p className="text-xs text-[#9a9fc4] mt-1">
+                      {bandsList.length === 0
+                        ? "Register your band or solo project through the Artist Portal to be featured here."
+                        : "Try a different artist name or genre filter."}
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {filteredBands.map((b) => (
                       <div
                         key={b.id}
-                        className="flex flex-col p-5 rounded-2xl bg-[#0c0c3f]/40 border border-[#20205a]/50 hover:border-[#ea6f2a]/40 transition-colors"
+                        className="group relative rounded-2xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 via-[#070725]/80 to-[#05051f] overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/60 transition-all duration-300 hover:shadow-[0_0_25px_rgba(234,111,42,0.18)]"
                       >
-                        <Link href={`/bands/${b.slug}`} className="flex items-center gap-3 group">
-                          {b.logo_url ? (
-                            <Image
-                              src={b.logo_url || "/placeholder.svg"}
-                              alt={b.name}
-                              width={48}
-                              height={48}
-                              className="w-12 h-12 rounded-xl object-cover border border-[#20205a] flex-shrink-0"
+                        {/* Soundstage Banner Header */}
+                        <div className="relative w-full h-24 bg-[#05052d] overflow-hidden">
+                          {b.banner_url ? (
+                            <img
+                              src={b.banner_url}
+                              alt={`${b.name} banner`}
+                              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                             />
                           ) : (
-                            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 flex-shrink-0">
-                              <Music className="w-5 h-5 text-[#ea6f2a]" />
-                            </div>
+                            <div className="w-full h-full bg-gradient-to-r from-[#ea6f2a]/25 via-[#10104a] to-[#20efe0]/20" />
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors truncate">
-                              {b.name}
-                            </p>
-                            <p className="text-xs text-[#9a9fc4] truncate">
-                              {b.genre || (b.type === "artist" ? "Artist" : "Band")} · {b.follower_count}{" "}
-                              {b.follower_count === 1 ? "follower" : "followers"}
-                            </p>
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#0c0c3f]/50 to-transparent" />
+                          <div className="absolute top-2 right-2">
+                            <Badge
+                              variant="outline"
+                              className="border-[#20efe0]/40 text-[#20efe0] bg-[#05051f]/80 text-[9px] uppercase font-mono tracking-wider backdrop-blur-sm"
+                            >
+                              {b.type === "artist"
+                                ? "Solo Artist"
+                                : b.type === "producer"
+                                ? "Producer"
+                                : b.type === "dj"
+                                ? "DJ"
+                                : "Band"}
+                            </Badge>
                           </div>
-                        </Link>
-                        {!b.is_owner && currentUserId && (
-                          <Button
-                            onClick={() => handleToggleBandFollow(b)}
-                            size="sm"
-                            className={`mt-4 ${
-                              b.is_following
-                                ? "border border-[#20205a] bg-transparent text-[#f5f7ff] hover:bg-[#20205a]/30"
-                                : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
-                            }`}
-                          >
-                            {b.is_following ? (
-                              <UserMinus className="w-3.5 h-3.5 mr-1.5" />
-                            ) : (
-                              <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+                        </div>
+
+                        <div className="p-5 pt-0 flex-1 flex flex-col justify-between -mt-8 relative z-10">
+                          <div>
+                            {/* Avatar & Title Row */}
+                            <div className="flex items-start gap-3.5 mb-3">
+                              <div className="relative shrink-0">
+                                {b.logo_url ? (
+                                  <img
+                                    src={b.logo_url}
+                                    alt={b.name}
+                                    className="w-14 h-14 rounded-xl object-cover border-2 border-[#20efe0]/40 bg-[#05052d] shadow-lg group-hover:border-[#20efe0] transition-colors"
+                                  />
+                                ) : (
+                                  <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-[#ea6f2a]/20 border-2 border-[#ea6f2a]/50 shadow-lg">
+                                    <Music className="w-7 h-7 text-[#ea6f2a]" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex-1 min-w-0 pt-1">
+                                <Link href={`/bands/${b.slug}`} className="block group-hover:text-[#ea6f2a] transition-colors">
+                                  <h3 className="font-bold text-base text-[#f5f7ff] truncate group-hover:text-[#ea6f2a]">
+                                    {b.name}
+                                  </h3>
+                                </Link>
+
+                                <div className="flex items-center gap-2 text-xs text-[#9a9fc4] mt-0.5 flex-wrap">
+                                  {b.genre && (
+                                    <span className="text-[#20efe0] font-medium text-[11px] truncate">
+                                      {b.genre}
+                                    </span>
+                                  )}
+                                  <span>·</span>
+                                  <span className="flex items-center gap-1 text-[11px]">
+                                    <Users className="w-3 h-3 text-[#38bdf8]" />
+                                    {b.follower_count} {b.follower_count === 1 ? "fan" : "fans"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Bio Preview */}
+                            {b.bio && (
+                              <p className="text-xs text-[#9a9fc4] line-clamp-2 leading-relaxed mb-3">
+                                {b.bio}
+                              </p>
                             )}
-                            {b.is_following ? "Following" : "Follow"}
-                          </Button>
-                        )}
+                          </div>
+
+                          {/* Card Action Strip */}
+                          <div className="pt-3 border-t border-[#20205a]/50 flex items-center justify-between gap-2 mt-2">
+                            <Button
+                              asChild
+                              size="sm"
+                              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-xs font-semibold rounded-lg h-8 px-3 shadow-md shadow-[#ea6f2a]/20 flex-1"
+                            >
+                              <Link href={`/bands/${b.slug}`}>
+                                View Act
+                                <ArrowRight className="w-3 h-3 ml-1" />
+                              </Link>
+                            </Button>
+
+                            <Button
+                              onClick={() => setQrBandTarget(b)}
+                              size="sm"
+                              variant="outline"
+                              className="border-[#20efe0]/40 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white text-xs rounded-lg h-8 px-2.5 shrink-0"
+                              title="Get Band QR Code"
+                            >
+                              <QrCode className="w-3.5 h-3.5 mr-1" />
+                              QR
+                            </Button>
+
+                            {!b.is_owner && currentUserId && (
+                              <Button
+                                onClick={() => handleToggleBandFollow(b)}
+                                size="sm"
+                                variant="outline"
+                                className={`text-xs rounded-lg h-8 px-2.5 shrink-0 ${
+                                  b.is_following
+                                    ? "border-[#20205a] text-[#9a9fc4] hover:text-white"
+                                    : "border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/15"
+                                }`}
+                              >
+                                {b.is_following ? (
+                                  <UserMinus className="w-3 h-3" />
+                                ) : (
+                                  <UserPlus className="w-3 h-3" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </>
             ) : !currentUserId ? (
-              <p className="text-center text-sm text-[#9a9fc4] py-16">
-                <Link href="/login" className="text-[#ea6f2a] hover:underline">
-                  Sign in
-                </Link>{" "}
-                to follow bands and see their posts here.
-              </p>
+              <div className="text-center py-16 text-[#9a9fc4] rounded-2xl border border-[#20205a]/40 bg-[#0c0c3f]/30 p-8">
+                <p className="text-sm font-semibold text-[#f5f7ff] mb-2">Sign in to view your artist feed</p>
+                <p className="text-xs text-[#9a9fc4] mb-4">Follow bands in Discover to receive backstage notes and live notifications.</p>
+                <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-full">
+                  <Link href="/login">Sign In</Link>
+                </Button>
+              </div>
             ) : followedFeed.length === 0 ? (
-              <div className="text-center py-16 text-[#9a9fc4]">
-                <UserPlus className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p>Follow a band from Discover to see their posts here.</p>
+              <div className="text-center py-16 text-[#9a9fc4] rounded-2xl border border-[#20205a]/40 bg-[#0c0c3f]/30 p-8">
+                <UserPlus className="w-10 h-10 mx-auto mb-3 opacity-40 text-[#20efe0]" />
+                <p className="text-base font-semibold text-[#f5f7ff]">You are not following any acts yet</p>
+                <p className="text-xs text-[#9a9fc4] mt-1 max-w-sm mx-auto">
+                  Switch to the Discover tab above to find Topeka &amp; Midwest musicians to follow.
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {followedFeed.map((post) => (
-                  <Link
+                  <article
                     key={post.id}
-                    href={`/bands/${post.band_slug}`}
-                    className="block p-5 rounded-2xl bg-[#0c0c3f]/40 border border-[#20205a]/50 hover:border-[#ea6f2a]/40 transition-colors"
+                    className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#0c0c3f]/80 to-[#070725]/90 border border-[#20205a]/70 hover:border-[#ea6f2a]/50 transition-colors shadow-lg"
                   >
-                    <div className="flex items-center gap-2 mb-3">
-                      {post.band_logo_url ? (
-                        <Image
-                          src={post.band_logo_url || "/placeholder.svg"}
-                          alt={post.band_name}
-                          width={28}
-                          height={28}
-                          className="w-7 h-7 rounded-lg object-cover border border-[#20205a]"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#ea6f2a]/15 border border-[#ea6f2a]/30">
-                          <Music className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <Link href={`/bands/${post.band_slug}`} className="flex items-center gap-3 group">
+                        {post.band_logo_url ? (
+                          <Image
+                            src={post.band_logo_url || "/placeholder.svg"}
+                            alt={post.band_name}
+                            width={36}
+                            height={36}
+                            className="w-9 h-9 rounded-xl object-cover border border-[#20efe0]/30 group-hover:border-[#20efe0] transition-colors"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30">
+                            <Music className="w-4 h-4 text-[#ea6f2a]" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors">
+                            {post.band_name}
+                          </p>
+                          <p className="text-[11px] text-[#9a9fc4]">
+                            {post.author_is_owner ? "Official Band Dispatch" : `${post.author_name}`}
+                          </p>
                         </div>
-                      )}
-                      <span className="text-sm font-semibold text-[#f5f7ff]">{post.band_name}</span>
-                      <span className="text-xs text-[#9a9fc4]">
-                        {post.author_is_owner ? "posted an update" : `${post.author_name} posted`}
-                      </span>
+                      </Link>
+
+                      <Button asChild size="sm" variant="ghost" className="text-xs text-[#20efe0] hover:text-white">
+                        <Link href={`/bands/${post.band_slug}`}>
+                          Visit Soundstage →
+                        </Link>
+                      </Button>
                     </div>
+
                     {post.content && (
-                      <p className="text-[#f5f7ff]/90 text-sm whitespace-pre-wrap leading-relaxed text-pretty line-clamp-3">
+                      <p className="text-[#f5f7ff]/90 text-sm whitespace-pre-wrap leading-relaxed text-pretty mt-2">
                         {post.content}
                       </p>
                     )}
+
                     {post.images.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mt-3">
-                        {post.images.slice(0, 3).map((src, idx) => (
+                      <div className={`grid gap-2 mt-3.5 ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                        {post.images.map((src, idx) => (
                           <Image
                             key={idx}
                             src={src || "/placeholder.svg"}
                             alt={`${post.band_name} post image ${idx + 1}`}
-                            width={200}
-                            height={140}
-                            className="w-full h-24 rounded-lg object-cover border border-[#20205a]"
+                            width={400}
+                            height={250}
+                            className="w-full rounded-xl object-cover border border-[#20205a] max-h-72"
                           />
                         ))}
                       </div>
                     )}
-                    <div className="flex items-center gap-3 mt-3 text-xs text-[#9a9fc4]">
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="w-3.5 h-3.5" /> {post.comments.length}
-                      </span>
-                    </div>
-                  </Link>
+                  </article>
                 ))}
               </div>
             )}
@@ -1556,6 +1701,15 @@ export default function CommunityPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Band QR Modal */}
+        {qrBandTarget && (
+          <BandQrModal
+            isOpen={!!qrBandTarget}
+            onOpenChange={(open) => !open && setQrBandTarget(null)}
+            band={qrBandTarget}
+          />
+        )}
       </main>
       <Footer />
     </div>
