@@ -75,11 +75,39 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
     }
   }, [searchParams, initialVideos])
 
+  const theaterScrollRef = useRef<HTMLDivElement>(null)
+
+  // Handle escape key to close video
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && activeVideo) {
+        handleCloseVideo()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [activeVideo])
+
+  // Lock background scroll when activeVideo is open
+  useEffect(() => {
+    if (activeVideo) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [activeVideo])
+
   const handleOpenVideo = (video: WatchVideo) => {
     setActiveVideo(video)
     const newUrl = new URL(window.location.href)
     newUrl.searchParams.set("v", video.id)
     window.history.pushState({}, "", newUrl.toString())
+    if (theaterScrollRef.current) {
+      theaterScrollRef.current.scrollTo({ top: 0, behavior: "smooth" })
+    }
   }
 
   const handleCloseVideo = () => {
@@ -450,55 +478,76 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
         )}
       </main>
 
-      {/* 4. Cosmic Theater Player Modal */}
+      {/* 4. Full-Space Video Theater (Takes up the whole space below the header) */}
       {activeVideo && (
         <div
-          className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 lg:p-6 animate-in fade-in duration-200"
-          onClick={handleCloseVideo}
+          ref={theaterScrollRef}
+          className="fixed top-16 sm:top-20 inset-x-0 bottom-0 z-40 bg-black flex flex-col overflow-y-auto animate-in fade-in duration-200"
         >
-          <div
-            className="relative w-full max-w-5xl max-h-[95vh] bg-[#0c0c3f] border border-[#20205a] rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Top Modal Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#20205a] bg-[#05052d]/90">
-              <div className="flex items-center gap-2 min-w-0 pr-4">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+          {/* Main Full-Height Viewport Container (100% of the screen below the header) */}
+          <div className="w-full h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] flex flex-col shrink-0 bg-black relative">
+            {/* Top Control Bar */}
+            <div className="h-12 sm:h-14 px-3 sm:px-6 bg-[#05051a] border-b border-[#20205a]/60 flex items-center justify-between gap-3 shrink-0">
+              {/* Left: Back button + Show badge + Title */}
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
+                <button
+                  onClick={handleCloseVideo}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0c0c3f] hover:bg-[#ea6f2a] text-[#20efe0] hover:text-white text-xs sm:text-sm font-semibold transition-all shrink-0 border border-white/10"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden xs:inline">Back to Browse</span>
+                </button>
                 <Badge
                   variant="outline"
-                  className="border-[#20efe0]/50 text-[#20efe0] text-[10px] uppercase font-bold shrink-0"
+                  className="border-[#20efe0]/50 text-[#20efe0] text-[10px] uppercase font-bold shrink-0 hidden sm:inline-flex"
                 >
                   {activeVideo.show}
                 </Badge>
-                <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md lg:max-w-xl">
                   {activeVideo.title}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Right: Actions */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={() => handleShareVideo(activeVideo)}
                   title="Share Episode"
-                  className="p-2 rounded-lg bg-[#0c0c3f] hover:bg-[#20205a] text-[#9a9fc4] hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#0c0c3f] hover:bg-[#20205a] text-[#9a9fc4] hover:text-white text-xs font-semibold transition-colors border border-white/10"
                 >
                   {copiedId === activeVideo.id ? (
-                    <Check className="w-4 h-4 text-green-400" />
+                    <>
+                      <Check className="w-3.5 h-3.5 text-green-400" />
+                      <span className="text-green-400 hidden sm:inline">Copied!</span>
+                    </>
                   ) : (
-                    <Share2 className="w-4 h-4" />
+                    <>
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Share</span>
+                    </>
                   )}
                 </button>
+                <a
+                  href={`https://www.youtube.com/watch?v=${activeVideo.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors shadow-sm"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> YouTube
+                </a>
                 <button
                   onClick={handleCloseVideo}
-                  className="p-2 rounded-lg bg-[#0c0c3f] hover:bg-red-950 text-[#9a9fc4] hover:text-red-300 transition-colors"
+                  title="Close Player"
+                  className="p-1.5 sm:p-2 rounded-lg bg-[#0c0c3f] hover:bg-red-950 text-[#9a9fc4] hover:text-red-300 transition-colors border border-white/10"
                   aria-label="Close Player"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Video Player Embed (16:9) */}
-            <div className="relative w-full aspect-video bg-black shrink-0">
+            {/* Video Player Embed - Takes up 100% of the space */}
+            <div className="relative w-full flex-1 bg-black flex items-center justify-center overflow-hidden">
               <iframe
                 src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}?autoplay=1&rel=0&modestbranding=1`}
                 title={activeVideo.title}
@@ -507,40 +556,62 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
                 className="w-full h-full border-0"
               />
             </div>
+          </div>
 
-            {/* Video Details & Binge Queue */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 bg-gradient-to-b from-[#0c0c3f] to-[#05051a]">
+          {/* Details & Up Next Binge Tray (Accessible by scrolling down) */}
+          <div className="w-full bg-gradient-to-b from-[#080825] to-[#040416] border-t border-[#20205a]/60 px-4 sm:px-8 py-6 space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white leading-snug">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className="border-[#20efe0] text-[#20efe0] text-xs font-bold">
+                      {activeVideo.show}
+                    </Badge>
+                    {activeVideo.timeAgo && (
+                      <span className="text-xs text-[#9a9fc4]">Published {activeVideo.timeAgo}</span>
+                    )}
+                  </div>
+                  <h3 className="text-lg sm:text-2xl font-black text-white leading-snug">
                     {activeVideo.title}
                   </h3>
-                  <div className="flex items-center gap-3 text-xs text-[#9a9fc4] mt-2 flex-wrap">
-                    <span className="text-[#20efe0] font-semibold">{activeVideo.show}</span>
-                    {activeVideo.duration && <span>• {activeVideo.duration}</span>}
-                    {activeVideo.views && <span>• {activeVideo.views}</span>}
-                    {activeVideo.timeAgo && <span>• {activeVideo.timeAgo}</span>}
+                  <div className="flex items-center gap-4 text-xs text-[#9a9fc4] mt-2 font-mono">
+                    {activeVideo.duration && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-[#20efe0]" /> {activeVideo.duration}
+                      </span>
+                    )}
+                    {activeVideo.views && (
+                      <span className="flex items-center gap-1">
+                        <Eye className="w-3.5 h-3.5 text-[#20efe0]" /> {activeVideo.views}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCloseVideo}
+                    className="px-4 py-2 rounded-xl bg-[#0c0c3f] border border-[#20205a] hover:border-[#20efe0] text-white text-xs font-bold transition-colors"
+                  >
+                    Back to All Shows
+                  </button>
                   <a
                     href={`https://www.youtube.com/watch?v=${activeVideo.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-md shadow-red-600/30"
+                    className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-md shadow-red-600/30"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" /> Open on YouTube
+                    <ExternalLink className="w-3.5 h-3.5" /> Watch on YouTube
                   </a>
                 </div>
               </div>
 
-              {/* Up Next in this Show (Binge Tray) */}
+              {/* Up Next in this Show */}
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#9a9fc4] mb-3 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#20efe0]" /> More from StarCast Online
+                  <Sparkles className="w-3.5 h-3.5 text-[#20efe0]" /> Up Next from StarCast Online
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                   {initialVideos
                     .filter((v) => v.id !== activeVideo.id)
                     .slice(0, 4)
@@ -548,7 +619,7 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
                       <div
                         key={nextVid.id}
                         onClick={() => handleOpenVideo(nextVid)}
-                        className="group/mini relative rounded-xl overflow-hidden border border-[#20205a] bg-[#05052d] cursor-pointer hover:border-[#ea6f2a] transition-all"
+                        className="group/mini relative rounded-xl overflow-hidden border border-[#20205a] bg-[#0c0c3f]/80 cursor-pointer hover:border-[#ea6f2a] transition-all"
                       >
                         <div className="relative aspect-video w-full overflow-hidden">
                           <img
@@ -557,7 +628,7 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
                             className="w-full h-full object-cover group-hover/mini:scale-105 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/mini:opacity-100 transition-opacity flex items-center justify-center">
-                            <Play className="w-6 h-6 text-[#ea6f2a] fill-current drop-shadow-md" />
+                            <Play className="w-7 h-7 text-[#ea6f2a] fill-current drop-shadow-md" />
                           </div>
                           {nextVid.duration && (
                             <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono text-white">
@@ -565,11 +636,11 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
                             </span>
                           )}
                         </div>
-                        <div className="p-2">
+                        <div className="p-2.5">
                           <p className="text-xs font-semibold text-white truncate group-hover/mini:text-[#ea6f2a]">
                             {nextVid.title}
                           </p>
-                          <p className="text-[10px] text-[#9a9fc4] mt-0.5">{nextVid.show}</p>
+                          <p className="text-[10px] text-[#20efe0] font-bold mt-0.5">{nextVid.show}</p>
                         </div>
                       </div>
                     ))}
