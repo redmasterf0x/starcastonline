@@ -410,7 +410,6 @@ const [portalTab, setPortalTab] = useState<"posts" | "links" | "studio" | "payme
 
 
 {portalTab === "studio" && (
-                {/* Bookings */}
                 <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -459,7 +458,6 @@ const [portalTab, setPortalTab] = useState<"posts" | "links" | "studio" | "payme
 
                 )}
 {portalTab === "payments" && (
-                {/* Payment history */}
                 <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
                   <CardHeader>
                     <CardTitle className="text-[#f5f7ff]">Payment History</CardTitle>

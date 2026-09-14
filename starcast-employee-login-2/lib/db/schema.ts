@@ -7,6 +7,8 @@ import {
   numeric,
   jsonb,
   uuid,
+  serial,
+  varchar,
 } from "drizzle-orm/pg-core"
 
 // --- Better Auth required tables -------------------------------------------

@@ -2,6 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Montserrat, Geist_Mono } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
+import { SpaceflightTransitionProvider } from "@/components/spaceflight/spaceflight-transition-provider"
+import { CelestialRadar } from "@/components/spaceflight/celestial-radar"
 import "./globals.css"
 
 // Montserrat is the closest free match to the brand kit's Proxima Nova Bold.
@@ -267,7 +269,10 @@ export default function RootLayout({
         />
       </head>
       <body className={`font-sans antialiased`}>
-        {children}
+        <SpaceflightTransitionProvider>
+          {children}
+          <CelestialRadar />
+        </SpaceflightTransitionProvider>
         <Toaster />
       </body>
     </html>

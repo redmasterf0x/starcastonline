@@ -1,4 +1,4 @@
-﻿import { drizzle } from "drizzle-orm/node-postgres"
+import { drizzle } from "drizzle-orm/node-postgres"
 import { Pool } from "pg"
 import * as schema from "./schema"
 
@@ -20,6 +20,7 @@ export function resolvePostgresUrl(): string {
     process.env.NEON_POSTGRES_URL,
     process.env.POSTGRES_URL,
     process.env.DATABASE_URL,
+    process.env.NETLIFY_DATABASE_URL,
   ]
   const valid = candidates.find((u) => u && /^postgres(ql)?:\/\//i.test(u))
   if (!valid) {

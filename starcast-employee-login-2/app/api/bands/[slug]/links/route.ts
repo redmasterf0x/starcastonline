@@ -1,71 +1,152 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { bandLinks, bands } from '@/lib/db/schema';
-import { getSession } from '@/app/actions/auth'; // assumes existing auth helper
+import { NextResponse } from "next/server"
+import { db } from "@/lib/db"
+import { bandLinks, bands } from "@/lib/db/schema"
+import { getViewerPermissions } from "@/lib/permissions"
+import { asc, eq } from "drizzle-orm"
 
 /** GET /api/bands/[slug]/links */
-export async function GET(request: Request, { params }: { params: { slug: string } }) {
-  const band = await db.select().from(bands).where(bands.slug.eq(params.slug)).limit(1).then(r=>r[0]);
-  if (!band) return NextResponse.json({ error: 'Band not found' }, { status: 404 });
-  const links = await db.select().from(bandLinks).where(bandLinks.bandId.eq(band.id));
-  return NextResponse.json(links);
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params
+  const band = await db
+    .select()
+    .from(bands)
+    .where(eq(bands.slug, slug))
+    .limit(1)
+    .then((r) => r[0])
+  if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 })
+
+  const links = await db
+    .select()
+    .from(bandLinks)
+    .where(eq(bandLinks.bandId, band.id))
+    .orderBy(asc(bandLinks.position))
+
+  return NextResponse.json(links)
 }
 
 /** POST /api/bands/[slug]/links */
-export async function POST(request: Request, { params }: { params: { slug: string } }) {
-  const session = await getSession();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const viewer = await getViewerPermissions()
+  if (!viewer) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
-  const band = await db.select().from(bands).where(bands.slug.eq(params.slug)).limit(1).then(r=>r[0]);
-  if (!band) return NextResponse.json({ error: 'Band not found' }, { status: 404 });
+  const { slug } = await params
+  const band = await db
+    .select()
+    .from(bands)
+    .where(eq(bands.slug, slug))
+    .limit(1)
+    .then((r) => r[0])
+  if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 })
 
-  // Permissions: owner, admin or employee
-  const profile = await db.select().from('profiles').where('userId', '=', session.user.id).limit(1).then(r=>r[0]);
-  const canEdit = band.ownerUserId === session.user.id || profile?.isAdmin || profile?.isEmployee;
-  if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  // Permissions: owner, admin or staff
+  const canEdit = band.ownerUserId === viewer.userId || viewer.isAdmin || viewer.isStaff
+  if (!canEdit) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const { label, url, icon, position } = await request.json();
-  const [newLink] = await db.insert(bandLinks).values({
-    bandId: band.id,
-    label,
-    url,
-    icon: icon ?? null,
-    position: position ?? 0,
-  }).returning();
-  return NextResponse.json(newLink, { status: 201 });
+  const body = await request.json()
+  const { label, url, icon, position } = body
+  const [newLink] = await db
+    .insert(bandLinks)
+    .values({
+      bandId: band.id,
+      label,
+      url,
+      icon: icon ?? null,
+      position: position ?? 0,
+    })
+    .returning()
+
+  return NextResponse.json(newLink, { status: 201 })
 }
 
-/** PUT /api/bands/[slug]/links/:id */
-export async function PUT(request: Request, { params }: { params: { slug: string; id: string } }) {
-  const session = await getSession();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+/** PUT /api/bands/[slug]/links */
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ slug: string; id?: string }> }
+) {
+  const viewer = await getViewerPermissions()
+  if (!viewer) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
-  const band = await db.select().from(bands).where(bands.slug.eq(params.slug)).limit(1).then(r=>r[0]);
-  if (!band) return NextResponse.json({ error: 'Band not found' }, { status: 404 });
+  const resolvedParams = await params
+  const { slug } = resolvedParams
+  const band = await db
+    .select()
+    .from(bands)
+    .where(eq(bands.slug, slug))
+    .limit(1)
+    .then((r) => r[0])
+  if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 })
 
-  const profile = await db.select().from('profiles').where('userId', '=', session.user.id).limit(1).then(r=>r[0]);
-  const canEdit = band.ownerUserId === session.user.id || profile?.isAdmin || profile?.isEmployee;
-  if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const canEdit = band.ownerUserId === viewer.userId || viewer.isAdmin || viewer.isStaff
+  if (!canEdit) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const { label, url, icon, position } = await request.json();
-  await db.update(bandLinks).set({ label, url, icon: icon ?? null, position: position ?? 0 }).where(bandLinks.id.eq(Number(params.id)));
-  const updated = await db.select().from(bandLinks).where(bandLinks.id.eq(Number(params.id))).limit(1).then(r=>r[0]);
-  return NextResponse.json(updated);
+  const body = await request.json()
+  const urlObj = new URL(request.url)
+  const linkId = Number(body.id ?? urlObj.searchParams.get("id") ?? resolvedParams.id)
+  if (!linkId || isNaN(linkId)) {
+    return NextResponse.json({ error: "Missing link id" }, { status: 400 })
+  }
+
+  const { label, url, icon, position } = body
+  await db
+    .update(bandLinks)
+    .set({
+      ...(label !== undefined ? { label } : {}),
+      ...(url !== undefined ? { url } : {}),
+      ...(icon !== undefined ? { icon } : {}),
+      ...(position !== undefined ? { position } : {}),
+    })
+    .where(eq(bandLinks.id, linkId))
+
+  const updated = await db
+    .select()
+    .from(bandLinks)
+    .where(eq(bandLinks.id, linkId))
+    .limit(1)
+    .then((r) => r[0])
+
+  return NextResponse.json(updated)
 }
 
-/** DELETE /api/bands/[slug]/links/:id */
-export async function DELETE(request: Request, { params }: { params: { slug: string; id: string } }) {
-  const session = await getSession();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+/** DELETE /api/bands/[slug]/links */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ slug: string; id?: string }> }
+) {
+  const viewer = await getViewerPermissions()
+  if (!viewer) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
-  const band = await db.select().from(bands).where(bands.slug.eq(params.slug)).limit(1).then(r=>r[0]);
-  if (!band) return NextResponse.json({ error: 'Band not found' }, { status: 404 });
+  const resolvedParams = await params
+  const { slug } = resolvedParams
+  const band = await db
+    .select()
+    .from(bands)
+    .where(eq(bands.slug, slug))
+    .limit(1)
+    .then((r) => r[0])
+  if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 })
 
-  const profile = await db.select().from('profiles').where('userId', '=', session.user.id).limit(1).then(r=>r[0]);
-  const canEdit = band.ownerUserId === session.user.id || profile?.isAdmin || profile?.isEmployee;
-  if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const canEdit = band.ownerUserId === viewer.userId || viewer.isAdmin || viewer.isStaff
+  if (!canEdit) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  await db.delete(bandLinks).where(bandLinks.id.eq(Number(params.id)));
-  return NextResponse.json({ success: true });
+  const urlObj = new URL(request.url)
+  let bodyId: any
+  try {
+    const body = await request.json()
+    bodyId = body?.id
+  } catch {
+    // Body can be empty on DELETE
+  }
+  const linkId = Number(bodyId ?? urlObj.searchParams.get("id") ?? resolvedParams.id)
+  if (!linkId || isNaN(linkId)) {
+    return NextResponse.json({ error: "Missing link id" }, { status: 400 })
+  }
+
+  await db.delete(bandLinks).where(eq(bandLinks.id, linkId))
+  return NextResponse.json({ success: true })
 }
-
