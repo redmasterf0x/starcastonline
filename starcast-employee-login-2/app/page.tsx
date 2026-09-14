@@ -183,7 +183,7 @@ export default async function HomePage() {
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">
                   Watch Series &amp; Shows
                 </h2>
-                <p className="text-base sm:text-lg text-[#dbe0fb] mt-2">
+                <p className="text-base sm:text-lg text-[#e8ecff] mt-2">
                   Catch the latest uploads, full episodes, and behind-the-scenes cuts right on StarCast.
                 </p>
               </div>
@@ -217,7 +217,7 @@ export default async function HomePage() {
                 </div>
                 <div>
                   <p className="text-base sm:text-lg font-bold text-[#f5f7ff]">StarCast Live Media on YouTube</p>
-                  <p className="text-sm text-[#dbe0fb] mt-0.5">Subscribe to @StarCastLiveMedia for live stream alerts and shorts.</p>
+                  <p className="text-sm text-[#e8ecff] mt-0.5">Subscribe to @StarCastLiveMedia for live stream alerts and shorts.</p>
                 </div>
               </div>
               <Button asChild variant="outline" className="border-white/20 text-[#f5f7ff] hover:bg-white/10 shrink-0 h-11 px-5 text-sm font-semibold rounded-xl">
@@ -239,7 +239,7 @@ export default async function HomePage() {
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">
                   Featured Bands &amp; Artists
                 </h2>
-                <p className="text-base sm:text-lg text-[#dbe0fb] mt-2">
+                <p className="text-base sm:text-lg text-[#e8ecff] mt-2">
                   Discover regional Kansas musicians and bands performing on the StarCast Soundstage.
                 </p>
               </div>
@@ -348,7 +348,7 @@ export default async function HomePage() {
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">
                   Articles, News &amp; Culture
                 </h2>
-                <p className="text-base sm:text-lg text-[#dbe0fb] mt-2">
+                <p className="text-base sm:text-lg text-[#e8ecff] mt-2">
                   Independent reporting, soundstage spotlights, and creative voices from Topeka and the Midwest.
                 </p>
               </div>
@@ -379,7 +379,7 @@ export default async function HomePage() {
                         {art.title}
                       </h3>
                       {art.excerpt && (
-                        <p className="text-sm sm:text-base text-[#dbe0fb] mt-3 line-clamp-3 leading-relaxed">
+                        <p className="text-sm sm:text-base text-[#e8ecff] mt-3 line-clamp-3 leading-relaxed">
                           {art.excerpt}
                         </p>
                       )}
@@ -398,10 +398,10 @@ export default async function HomePage() {
                     <FileText className="w-8 h-8" />
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">
-                    There are no articles for now
+                    There are none for now
                   </h3>
-                  <p className="text-sm sm:text-base text-[#dbe0fb] max-w-lg mx-auto mt-2 leading-relaxed">
-                    Our editorial team is preparing new spotlight interviews, studio features, and music stories. Check back soon!
+                  <p className="text-sm sm:text-base text-[#e8ecff] max-w-lg mx-auto mt-2 leading-relaxed">
+                    Check back soon for new articles!
                   </p>
                   <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
                     <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25">
@@ -426,7 +426,7 @@ export default async function HomePage() {
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">
                   The DECK Discussion Board
                 </h2>
-                <p className="text-base sm:text-lg text-[#dbe0fb] mt-2">
+                <p className="text-base sm:text-lg text-[#e8ecff] mt-2">
                   Connect live with creators, share reactions, discover music, and join Topeka talk.
                 </p>
               </div>
@@ -457,7 +457,7 @@ export default async function HomePage() {
                       <h3 className="text-lg sm:text-xl font-bold text-[#f5f7ff] group-hover:text-[#ffd166] transition-colors leading-snug">
                         {topic.title}
                       </h3>
-                      <p className="text-sm sm:text-base text-[#dbe0fb] mt-3 leading-relaxed line-clamp-3">
+                      <p className="text-sm sm:text-base text-[#e8ecff] mt-3 leading-relaxed line-clamp-3">
                         {topic.snippet}
                       </p>
                     </div>
@@ -478,10 +478,10 @@ export default async function HomePage() {
                     <MessageCircle className="w-8 h-8 text-[#ffd166]" />
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">
-                    There are no discussions for now
+                    There are none for now
                   </h3>
-                  <p className="text-sm sm:text-base text-[#dbe0fb] max-w-lg mx-auto mt-2 leading-relaxed">
-                    The conversation floor is open! Be the first to spark a conversation on The DECK or start a community thread.
+                  <p className="text-sm sm:text-base text-[#e8ecff] max-w-lg mx-auto mt-2 leading-relaxed">
+                    Be the first to spark a conversation on The DECK or start a community thread.
                   </p>
                   <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
                     <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25">

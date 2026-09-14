@@ -506,6 +506,7 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         currentPlanet,
         targetPlanet,
         isWarping,
+        transitPhase,
         audioEnabled,
         toggleAudio,
         transitTo,
