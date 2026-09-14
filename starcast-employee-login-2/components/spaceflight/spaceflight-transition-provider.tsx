@@ -322,9 +322,9 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
 
       playSpaceshipTransitionAudio(audioEnabled)
 
-      // Snappy spaceship flight timeline (580ms total)
+      // Snappy spaceship flight timeline
       const startTime = performance.now()
-      const DURATION = 580 // ms total flight
+      const DURATION = 640 // ms total flight
 
       const updateProgress = (now: number) => {
         const elapsed = now - startTime
@@ -337,23 +337,23 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
       }
       requestAnimationFrame(updateProgress)
 
-      // Stage 1: Quick push-away & doors sealed at 200ms. Push route into hyperspace.
+      // Stage 1: Quick push-away & doors sealed at 180ms. Push route into hyperspace.
       setTimeout(() => {
         setTransitPhase("warping")
         router.push(targetPath)
-      }, 200)
+      }, 180)
 
-      // Stage 2: Arrived! Doors slide open and new page modules push forward at 420ms.
+      // Stage 2: Arrived! Doors slide open and new page modules push forward at 380ms.
       setTimeout(() => {
         setTransitPhase("fading-in")
-      }, 420)
+      }, 380)
 
-      // Stage 3: Return to idle at 580ms.
+      // Stage 3: Return to idle at 660ms once doors have completely cleared the screen.
       setTimeout(() => {
         setTransitPhase("idle")
         setTargetPlanet(null)
         isNavigatingRef.current = false
-      }, 580)
+      }, 660)
     },
     [pathname, router, audioEnabled]
   )
@@ -519,12 +519,33 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         aria-hidden="true"
       />
 
+      {/* Atmospheric Entry Shockwave Burst (behind doors) */}
+      {transitPhase !== "idle" && (
+        <div
+          className={`fixed inset-0 z-[9985] pointer-events-none flex items-center justify-center transition-opacity duration-300 ${
+            transitPhase === "fading-in" ? "opacity-0" : "opacity-100"
+          }`}
+          aria-hidden="true"
+        >
+          <div
+            className="rounded-full pointer-events-none transition-transform duration-500"
+            style={{
+              width: "160vmax",
+              height: "160vmax",
+              background: `radial-gradient(circle, ${destination.glowColor} 0%, transparent 65%)`,
+              opacity: warpProgress > 0.4 ? (1 - warpProgress) * 1.5 : warpProgress * 2,
+              transform: `scale(${0.3 + warpProgress * 1.4})`,
+            }}
+          />
+        </div>
+      )}
+
       {/* Left Spaceship Bulkhead Airlock Door */}
       <div
-        className={`fixed top-0 bottom-0 left-0 w-1/2 z-[9990] pointer-events-none transition-transform ease-out ${
+        className={`fixed top-0 bottom-0 left-0 w-[calc(50%+1px)] z-[9990] pointer-events-none transition-transform ease-out ${
           transitPhase === "fading-out" || transitPhase === "warping"
-            ? "translate-x-0 duration-200"
-            : "-translate-x-full duration-240"
+            ? "translate-x-0 duration-180"
+            : "-translate-x-full duration-260"
         }`}
         style={{
           background: "linear-gradient(135deg, #050518 0%, #080825 50%, #0d0d38 100%)",
@@ -556,14 +577,25 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         {/* Airlock mechanical bolts */}
         <div className="absolute right-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
         <div className="absolute right-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+
+        {/* Left half of center airlock clamp */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-24 sm:w-14 sm:h-28 rounded-l-full border-2 border-r-0 border-[#20205a] bg-[#070722] flex items-center justify-end pr-1 shadow-[-4px_0_15px_rgba(0,0,0,0.8)]">
+          <div
+            className="w-4 h-8 sm:w-5 sm:h-10 rounded-l-full border border-r-0 border-white/80 shadow-md animate-pulse"
+            style={{
+              backgroundColor: destination.color,
+              boxShadow: `0 0 14px ${destination.color}`,
+            }}
+          />
+        </div>
       </div>
 
       {/* Right Spaceship Bulkhead Airlock Door */}
       <div
-        className={`fixed top-0 bottom-0 right-0 w-1/2 z-[9990] pointer-events-none transition-transform ease-out ${
+        className={`fixed top-0 bottom-0 right-0 w-[calc(50%+1px)] z-[9990] pointer-events-none transition-transform ease-out ${
           transitPhase === "fading-out" || transitPhase === "warping"
-            ? "translate-x-0 duration-200"
-            : "translate-x-full duration-240"
+            ? "translate-x-0 duration-180"
+            : "translate-x-full duration-260"
         }`}
         style={{
           background: "linear-gradient(225deg, #050518 0%, #080825 50%, #0d0d38 100%)",
@@ -595,118 +627,24 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         {/* Airlock mechanical bolts */}
         <div className="absolute left-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
         <div className="absolute left-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
-      </div>
 
-      {/* Spaceship Cockpit Viewport & StarCast Load Logo (No Text) */}
-      {transitPhase !== "idle" && (
-        <div
-          className={`fixed inset-0 z-[9995] pointer-events-none flex flex-col items-center justify-center transition-all duration-200 ${
-            transitPhase === "fading-in"
-              ? "opacity-0 scale-110 pointer-events-none"
-              : "opacity-100 scale-100"
-          }`}
-          aria-hidden="true"
-        >
-          {/* Cockpit Visor Canopy Glass Vignette */}
+        {/* Right half of center airlock clamp */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-24 sm:w-14 sm:h-28 rounded-r-full border-2 border-l-0 border-[#20205a] bg-[#070722] flex items-center justify-start pl-1 shadow-[4px_0_15px_rgba(0,0,0,0.8)]">
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="w-4 h-8 sm:w-5 sm:h-10 rounded-r-full border border-l-0 border-white/80 shadow-md animate-pulse"
             style={{
-              background: `radial-gradient(circle at center, transparent 35%, rgba(5, 5, 32, 0.7) 75%, #050518 100%)`,
+              backgroundColor: destination.color,
+              boxShadow: `0 0 14px ${destination.color}`,
             }}
           />
-
-          {/* Atmospheric Entry Shockwave */}
-          <div
-            className="absolute rounded-full pointer-events-none transition-transform"
-            style={{
-              width: "180vmax",
-              height: "180vmax",
-              background: `radial-gradient(circle, ${destination.glowColor} 0%, transparent 60%)`,
-              opacity: warpProgress > 0.4 ? (1 - warpProgress) * 1.5 : warpProgress * 2,
-              transform: `scale(${0.3 + warpProgress * 1.5})`,
-            }}
-          />
-
-          {/* Cockpit Canopy Corner Brackets */}
-          <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-[#20efe0]/50 rounded-tl-sm" />
-          <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-[#20efe0]/50 rounded-tr-sm" />
-          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-[#20efe0]/50 rounded-bl-sm" />
-          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-[#20efe0]/50 rounded-br-sm" />
-
-          {/* Center Viewport Stage - Pure Spaceship Navigation Reticle (Zero Logos, Zero Text) */}
-          <div className="relative z-10 flex flex-col items-center justify-center">
-            {/* Concentric Cockpit Gimbal & Target Reticle */}
-            <div className="relative flex items-center justify-center w-32 h-32 sm:w-40 sm:h-40 mb-3">
-              {/* Outer Dashed Rotating Reticle */}
-              <div
-                className="w-full h-full rounded-full border border-dashed animate-spin absolute inset-0"
-                style={{
-                  borderColor: destination.color,
-                  animationDuration: "6s",
-                }}
-              >
-                {/* Orbital Satellite Sensor Node */}
-                <div
-                  className="w-3.5 h-3.5 rounded-full absolute -top-1.5 left-1/2 -translate-x-1/2 border border-white shadow-lg"
-                  style={{
-                    backgroundColor: destination.color,
-                    boxShadow: `0 0 14px ${destination.color}`,
-                  }}
-                />
-              </div>
-
-              {/* Cockpit Viewport Crosshairs */}
-              <div className="absolute -top-3 w-0.5 h-4 bg-[#f5f7ff]/40" />
-              <div className="absolute -bottom-3 w-0.5 h-4 bg-[#f5f7ff]/40" />
-              <div className="absolute -left-3 w-4 h-0.5 bg-[#f5f7ff]/40" />
-              <div className="absolute -right-3 w-4 h-0.5 bg-[#f5f7ff]/40" />
-
-              {/* Inner Pulsing Planetary Reactor Halo */}
-              <div
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full animate-ping opacity-25 absolute inset-0 m-auto"
-                style={{ backgroundColor: destination.color }}
-              />
-
-              {/* Reinforced Viewport Glass Ring */}
-              <div
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 absolute inset-0 m-auto"
-                style={{ borderColor: `${destination.color}60` }}
-              />
-
-              {/* Center Core Reactor Node */}
-              <div
-                className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-white/90 shadow-2xl animate-pulse"
-                style={{
-                  backgroundColor: destination.color,
-                  boxShadow: `0 0 24px ${destination.color}, 0 0 48px ${destination.glowColor}`,
-                }}
-              />
-            </div>
-
-            {/* Bouncing Energy Reactor Nodes */}
-            <div className="flex items-center justify-center gap-2 relative z-10">
-              <div
-                className="w-2 h-2 rounded-full animate-bounce"
-                style={{ backgroundColor: destination.color, animationDelay: "0ms" }}
-              />
-              <div
-                className="w-2 h-2 rounded-full animate-bounce"
-                style={{ backgroundColor: destination.color, animationDelay: "150ms" }}
-              />
-              <div
-                className="w-2 h-2 rounded-full animate-bounce"
-                style={{ backgroundColor: destination.color, animationDelay: "300ms" }}
-              />
-            </div>
-          </div>
         </div>
-      )}
+      </div>
 
       {/* Content wrapper: modules quickly push away & fade out on exit, then cleanly push in on enter */}
       <div
         className={`relative z-10 transition-all ${
           transitPhase === "fading-out" || transitPhase === "warping"
-            ? "opacity-0 scale-[0.85] blur-[4px] pointer-events-none duration-200 ease-in"
+            ? "opacity-0 scale-[0.88] blur-[3px] pointer-events-none duration-180 ease-in"
             : "opacity-100 scale-100 blur-0 pointer-events-auto duration-300 ease-out"
         }`}
       >
