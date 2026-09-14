@@ -78,13 +78,9 @@ export function ResponsiveHeader({
     { href: "/articles", label: "Articles", show: true },
     { href: "/community", label: "Community", show: true },
     { href: "/bands", label: "Bands", show: true },
-    { href: "/portal", label: "Artist Portal", show: true },
     { href: "/information", label: "Information", show: true },
     { href: "https://shop.starcast.online", label: "Merch", show: true, external: true },
-    { href: "/production", label: "Production", show: isCrew || isAdmin },
-    { href: "/staff", label: "Staff", show: isCrew || isAdmin },
     { href: "/dashboard", label: "Dashboard", show: loggedIn },
-    { href: "/admin", label: "Admin", show: isAdmin },
   ]
 
   return (

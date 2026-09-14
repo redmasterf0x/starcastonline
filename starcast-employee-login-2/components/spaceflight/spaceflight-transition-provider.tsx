@@ -126,17 +126,6 @@ export const PLANETS: Record<string, PlanetInfo> = {
     description: "Flagship coordinating film crews, camera operators, and shoot calls.",
     distanceAu: "9.58 AU",
   },
-  "/staff": {
-    id: "command",
-    name: "Fleet Command",
-    designation: "STUDIO OPS // BRIDGE",
-    sector: "Staff & Studio Bookings",
-    color: "#ff4757",
-    secondaryColor: "#c0392b",
-    glowColor: "rgba(255, 71, 87, 0.45)",
-    description: "Operations deck overseeing calendar sessions and payments.",
-    distanceAu: "9.58 AU",
-  },
   "/admin": {
     id: "command",
     name: "Fleet Command",

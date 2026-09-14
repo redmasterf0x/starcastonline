@@ -15,7 +15,9 @@ import Link from "next/link"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { LoadingScreen } from "@/components/loading-screen"
-import { Music, ChevronRight } from "lucide-react"
+import { Music, ChevronRight, Video, ShieldAlert, Sparkles } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { getMyBands } from "@/app/actions/bands"
 
 interface UserProfile {
   id: string
@@ -42,6 +44,7 @@ interface SavedArticle {
 
 export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [userBand, setUserBand] = useState<any | null>(null)
   const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -69,15 +72,19 @@ export default function DashboardPage() {
 
   const fetchProfile = async () => {
     try {
-      const data = await getMyProfile()
+      const [data, saved, bandsData] = await Promise.all([
+        getMyProfile(),
+        getMySavedArticles(),
+        getMyBands(),
+      ])
       if (!data) {
         router.push("/login")
         return
       }
       setProfile(data as UserProfile)
-      setLoading(false)
-      const saved = await getMySavedArticles()
       setSavedArticles(saved as SavedArticle[])
+      setUserBand(bandsData?.[0] || null)
+      setLoading(false)
     } catch {
       router.push("/login")
     }
@@ -297,26 +304,117 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ── ARTIST PORTAL ── moved here from the main nav bar */}
+        {/* ── WORKSPACES & PORTALS ── */}
         <section>
-          <Link href="/portal" className="block group">
-            <Card className="border-[#20205a] bg-[#0c0c3f]/50 transition-colors group-hover:border-[#ea6f2a]/50">
-              <CardContent className="flex items-center gap-4 py-5">
-                <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 flex-shrink-0">
-                  <Music className="w-5 h-5 text-[#ea6f2a]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-semibold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors">
-                    Artist Portal
-                  </h2>
-                  <p className="text-sm text-[#9a9fc4] text-pretty">
-                    Manage your band, book studio time, and track your sessions.
-                  </p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-[#9a9fc4] group-hover:text-[#ea6f2a] transition-colors flex-shrink-0" />
-              </CardContent>
-            </Card>
-          </Link>
+          <div className="mb-3">
+            <h2 className="text-xl font-bold text-[#f5f7ff] tracking-tight flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#ea6f2a]" />
+              Workspaces & Portals
+            </h2>
+            <p className="text-sm text-[#9a9fc4]">
+              Access your soundstage, studio production controls, and administrative tools.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Artist Portal Card */}
+            <Link href="/portal" className="block group h-full">
+              <Card className="h-full border border-[#20205a] bg-[#0c0c3f]/60 transition-all hover:border-[#ea6f2a]/60 hover:shadow-[0_0_25px_rgba(234,111,42,0.15)] group-hover:bg-[#0c0c3f]/80">
+                <CardContent className="p-5 flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 text-[#ea6f2a]">
+                        <Music className="w-5 h-5" />
+                      </div>
+                      <Badge variant="outline" className="border-[#ea6f2a]/40 text-[#ea6f2a] bg-[#ea6f2a]/10 text-[11px]">
+                        Soundstage
+                      </Badge>
+                    </div>
+                    <h3 className="text-lg font-semibold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors flex items-center justify-between">
+                      Artist Portal
+                      <ChevronRight className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#ea6f2a] group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-sm text-[#9a9fc4] mt-1.5 leading-relaxed">
+                      Manage your band profile, upload songs, customize soundstage banners, and book studio time.
+                    </p>
+                  </div>
+                  {userBand ? (
+                    <div className="mt-4 pt-3 border-t border-[#20205a]/60 flex items-center justify-between text-xs">
+                      <span className="text-[#9a9fc4]">Active Band:</span>
+                      <span className="font-semibold text-[#f5f7ff] truncate max-w-[150px]">{userBand.name}</span>
+                    </div>
+                  ) : (
+                    <div className="mt-4 pt-3 border-t border-[#20205a]/60 text-xs text-[#ea6f2a] flex items-center justify-between">
+                      <span>Register your band</span>
+                      <span>&rarr;</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Production Suite Card (Staff & Crew only) */}
+            {(profile.isEmployee || profile.isAdmin) && (
+              <Link href="/production" className="block group h-full">
+                <Card className="h-full border border-[#20205a] bg-[#0c0c3f]/60 transition-all hover:border-[#20efe0]/60 hover:shadow-[0_0_25px_rgba(32,239,224,0.15)] group-hover:bg-[#0c0c3f]/80">
+                  <CardContent className="p-5 flex flex-col justify-between h-full">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#20efe0]/15 border border-[#20efe0]/30 text-[#20efe0]">
+                          <Video className="w-5 h-5" />
+                        </div>
+                        <Badge variant="outline" className="border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10 text-[11px]">
+                          Staff Only
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-semibold text-[#f5f7ff] group-hover:text-[#20efe0] transition-colors flex items-center justify-between">
+                        Live Production
+                        <ChevronRight className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#20efe0] group-hover:translate-x-1 transition-all" />
+                      </h3>
+                      <p className="text-sm text-[#9a9fc4] mt-1.5 leading-relaxed">
+                        Broadcast rundowns, live camera shoot schedules, teleprompter, and crew dispatch coordination.
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-[#20205a]/60 flex items-center justify-between text-xs">
+                      <span className="text-[#9a9fc4]">Access Level:</span>
+                      <span className="font-semibold text-[#20efe0]">Production Crew</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+
+            {/* Admin Console Card (Admins only) */}
+            {profile.isAdmin && (
+              <Link href="/admin" className="block group h-full">
+                <Card className="h-full border border-[#20205a] bg-[#0c0c3f]/60 transition-all hover:border-[#ff4757]/60 hover:shadow-[0_0_25px_rgba(255,71,87,0.15)] group-hover:bg-[#0c0c3f]/80">
+                  <CardContent className="p-5 flex flex-col justify-between h-full">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[#ff4757]/15 border border-[#ff4757]/30 text-[#ff4757]">
+                          <ShieldAlert className="w-5 h-5" />
+                        </div>
+                        <Badge variant="outline" className="border-[#ff4757]/40 text-[#ff4757] bg-[#ff4757]/10 text-[11px]">
+                          Admin Only
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-semibold text-[#f5f7ff] group-hover:text-[#ff4757] transition-colors flex items-center justify-between">
+                        Admin Console
+                        <ChevronRight className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#ff4757] group-hover:translate-x-1 transition-all" />
+                      </h3>
+                      <p className="text-sm text-[#9a9fc4] mt-1.5 leading-relaxed">
+                        Studio session booking management, revenue & payment logs, sponsor pipeline, and user accounts.
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-[#20205a]/60 flex items-center justify-between text-xs">
+                      <span className="text-[#9a9fc4]">Access Level:</span>
+                      <span className="font-semibold text-[#ff4757]">System Administrator</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+          </div>
         </section>
 
         {/* ── SAVED ARTICLES ── */}

@@ -18,13 +18,17 @@ export default async function ProductionLayout({
   }
 
   const rows = await db
-    .select({ isAdmin: profiles.isAdmin, isEmployee: profiles.isEmployee })
+    .select({ isAdmin: profiles.isAdmin, isEmployee: profiles.isEmployee, role: profiles.role })
     .from(profiles)
     .where(eq(profiles.userId, session.user.id))
     .limit(1)
 
-  if (!rows[0]?.isEmployee && !rows[0]?.isAdmin) {
-    redirect("/articles")
+  const isStaff = Boolean(
+    rows[0]?.isEmployee || rows[0]?.isAdmin || rows[0]?.role === "staff" || rows[0]?.role === "admin"
+  )
+
+  if (!isStaff) {
+    redirect("/dashboard")
   }
 
   return <>{children}</>
