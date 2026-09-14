@@ -226,15 +226,17 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
 
         {/* Band Cards Grid */}
         {filteredBands.length === 0 ? (
-          <div className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-16 text-center">
+          <div className="rounded-3xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-12 sm:p-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 flex items-center justify-center mx-auto mb-4">
               <Music className="w-8 h-8 text-[#ea6f2a]" />
             </div>
-            <h3 className="text-xl font-bold text-[#f5f7ff] mb-2">No Acts Found</h3>
-            <p className="text-sm text-[#9a9fc4] max-w-md mx-auto mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff] mb-2">
+              {search ? "No Acts Found" : "There are no bands for now"}
+            </h3>
+            <p className="text-sm sm:text-base text-[#dbe0fb] max-w-md mx-auto mb-6 leading-relaxed">
               {search
                 ? `No bands or artists matched "${search}". Try adjusting your search query or filter.`
-                : "No bands registered yet. Be the first to take the stage!"}
+                : "No bands registered yet. Be the first to launch your stage pass and take the stage!"}
             </p>
             <div className="flex justify-center gap-3">
               {search && (
@@ -244,25 +246,25 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
                     setTypeFilter("all")
                   }}
                   variant="outline"
-                  className="border-[#20205a] text-[#9a9fc4] hover:text-white"
+                  className="border-[#20205a] text-[#dbe0fb] hover:text-white h-11 px-5 rounded-xl"
                 >
                   Clear Filters
                 </Button>
               )}
-              <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white">
+              <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white h-11 px-6 rounded-xl font-semibold">
                 <Link href="/portal">Register Your Band</Link>
               </Button>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
             {filteredBands.map((band) => (
               <div
                 key={band.id}
-                className="group relative rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50 overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/50 transition-all hover:shadow-[0_0_30px_rgba(234,111,42,0.14)]"
+                className="group relative rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/60 overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/50 transition-all hover:shadow-[0_0_35px_rgba(234,111,42,0.18)]"
               >
                 {/* Soundstage Banner Header */}
-                <div className="relative w-full h-24 bg-[#05052d] overflow-hidden">
+                <div className="relative w-full h-28 sm:h-32 bg-[#05052d] overflow-hidden">
                   {band.banner_url ? (
                     <img
                       src={band.banner_url}
@@ -275,7 +277,7 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#0c0c3f]/50 to-transparent" />
                 </div>
 
-                <div className="p-6 pt-0 flex-1 flex flex-col justify-between -mt-9 relative z-10">
+                <div className="p-6 pt-0 flex-1 flex flex-col justify-between -mt-10 relative z-10">
                   <div>
                     {/* Card Header: Avatar & Info */}
                     <div className="flex items-start gap-4 mb-4">
@@ -283,98 +285,96 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
                         <img
                           src={band.logo_url}
                           alt={band.name}
-                          className="w-16 h-16 rounded-2xl object-cover border-2 border-[#0c0c3f] flex-shrink-0 bg-[#05052d] shadow-lg"
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-[#0c0c3f] flex-shrink-0 bg-[#05052d] shadow-lg"
                         />
                       ) : (
-                        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ea6f2a]/15 border-2 border-[#0c0c3f] flex-shrink-0 shadow-lg">
-                          <Music className="w-8 h-8 text-[#ea6f2a]" />
+                        <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#ea6f2a]/15 border-2 border-[#0c0c3f] flex-shrink-0 shadow-lg">
+                          <Music className="w-8 h-8 sm:w-9 sm:h-9 text-[#ea6f2a]" />
                         </div>
                       )}
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <Badge
-                          variant="outline"
-                          className="border-[#20efe0]/30 text-[#20efe0] bg-[#20efe0]/10 text-[10px] uppercase font-bold"
-                        >
-                          {band.type === "artist"
-                            ? "Solo Artist"
-                            : band.type === "producer"
-                            ? "Producer"
-                            : band.type === "dj"
-                            ? "DJ / Electronic"
-                            : "Band"}
-                        </Badge>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <Badge
+                            variant="outline"
+                            className="border-[#20efe0]/30 text-[#20efe0] bg-[#20efe0]/10 text-[10px] uppercase font-bold"
+                          >
+                            {band.type === "artist"
+                              ? "Solo Artist"
+                              : band.type === "producer"
+                              ? "Producer"
+                              : band.type === "dj"
+                              ? "DJ / Electronic"
+                              : "Band"}
+                          </Badge>
 
-                        {band.genre && (
-                          <span className="text-xs text-[#9a9fc4] truncate">· {band.genre}</span>
-                        )}
+                          {band.genre && (
+                            <span className="text-xs text-[#20efe0] font-medium truncate">· {band.genre}</span>
+                          )}
+                        </div>
+
+                        <Link href={`/bands/${band.slug}`} className="block group-hover:text-[#ea6f2a] transition-colors">
+                          <h3 className="font-bold text-lg sm:text-xl text-[#f5f7ff] truncate group-hover:text-[#ea6f2a]">
+                            {band.name}
+                          </h3>
+                        </Link>
+
+                        <p className="text-xs sm:text-sm text-[#dbe0fb] flex items-center gap-1.5 mt-1">
+                          <Users className="w-4 h-4 text-[#20efe0]" />
+                          <span>
+                            <strong className="text-[#f5f7ff]">{band.follower_count}</strong> {band.follower_count === 1 ? "follower" : "followers"}
+                          </span>
+                        </p>
                       </div>
-
-                      <Link href={`/bands/${band.slug}`} className="block group-hover:text-[#ea6f2a] transition-colors">
-                        <h3 className="font-bold text-lg text-[#f5f7ff] truncate group-hover:text-[#ea6f2a]">
-                          {band.name}
-                        </h3>
-                      </Link>
-
-                      <p className="text-xs text-[#9a9fc4] flex items-center gap-1.5 mt-1">
-                        <Users className="w-3.5 h-3.5 text-[#38bdf8]" />
-                        <span>
-                          {band.follower_count} {band.follower_count === 1 ? "follower" : "followers"}
-                        </span>
-                      </p>
                     </div>
+
+                    {/* Bio snippet */}
+                    {band.bio && (
+                      <p className="text-sm text-[#dbe0fb] leading-relaxed line-clamp-3 mb-4">
+                        {band.bio}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Bio snippet */}
-                  {band.bio && (
-                    <p className="text-xs text-[#9a9fc4] leading-relaxed line-clamp-3 mb-4">
-                      {band.bio}
-                    </p>
-                  )}
-                </div>
-
-                {/* Card Actions */}
-                <div className="pt-4 border-t border-[#20205a]/40 flex items-center justify-between gap-3 mt-2">
-                  <Button
-                    asChild
-                    size="sm"
-                    className="flex-1 bg-[#20efe0]/15 hover:bg-[#20efe0]/25 text-[#c9fbf7] border border-[#20efe0]/35 hover:text-white rounded-xl text-xs font-semibold"
-                  >
-                    <Link href={`/bands/${band.slug}`}>
-                      <Disc className="w-3.5 h-3.5 mr-1.5 text-[#20efe0]" />
-                      View Soundstage
-                    </Link>
-                  </Button>
-
-                  {!band.is_owner && (
+                  {/* Card Actions */}
+                  <div className="pt-4 border-t border-[#20205a]/50 flex items-center justify-between gap-3 mt-2">
                     <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleToggleFollow(band)}
-                      className={`text-xs rounded-xl font-medium transition-all ${
-                        band.is_following
-                          ? "border-green-700/50 bg-green-950/30 text-green-400 hover:bg-green-950/60"
-                          : "border-[#20205a] text-[#9a9fc4] hover:text-white hover:border-[#ea6f2a]/50"
-                      }`}
+                      asChild
+                      className="flex-1 bg-[#20efe0]/15 hover:bg-[#20efe0]/25 text-[#c9fbf7] border border-[#20efe0]/35 hover:text-white rounded-xl text-xs sm:text-sm font-semibold h-11"
                     >
-                      {band.is_following ? (
-                        <>
-                          <UserCheck className="w-3.5 h-3.5 mr-1 text-green-400" />
-                          Following
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="w-3.5 h-3.5 mr-1" />
-                          Follow
-                        </>
-                      )}
+                      <Link href={`/bands/${band.slug}`}>
+                        <Disc className="w-4 h-4 mr-1.5 text-[#20efe0]" />
+                        View Soundstage
+                      </Link>
                     </Button>
-                  )}
+
+                    {!band.is_owner && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleToggleFollow(band)}
+                        className={`text-xs sm:text-sm h-11 rounded-xl font-medium transition-all px-4 ${
+                          band.is_following
+                            ? "border-green-700/50 bg-green-950/30 text-green-400 hover:bg-green-950/60"
+                            : "border-[#20205a] text-[#dbe0fb] hover:text-white hover:border-[#ea6f2a]/50"
+                        }`}
+                      >
+                        {band.is_following ? (
+                          <>
+                            <UserCheck className="w-4 h-4 mr-1.5 text-green-400" />
+                            Following
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="w-4 h-4 mr-1.5" />
+                            Follow
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         )}
       </main>

@@ -87,7 +87,7 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
           <DialogTitle className="text-xl sm:text-2xl font-black text-[#f5f7ff] tracking-tight">
             Soundstage Stage Pass
           </DialogTitle>
-          <DialogDescription className="text-xs text-[#9a9fc4]">
+          <DialogDescription className="text-xs sm:text-sm text-[#dbe0fb] leading-relaxed">
             Instant QR Code for <span className="text-[#f5f7ff] font-semibold">{band.name}</span>. Print on posters, merch tables, or share on social stories.
           </DialogDescription>
         </DialogHeader>
@@ -117,15 +117,15 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
           </div>
 
           {/* URL Chip */}
-          <div className="w-full mt-6 p-2.5 rounded-xl bg-[#05052d]/90 border border-[#20205a]/80 flex items-center justify-between gap-2">
-            <span className="text-xs font-mono text-[#9a9fc4] truncate pl-1">
+          <div className="w-full mt-6 p-3 rounded-xl bg-[#05052d]/90 border border-[#20205a]/80 flex items-center justify-between gap-2">
+            <span className="text-xs sm:text-sm font-mono text-[#dbe0fb] truncate pl-1">
               {publicUrl}
             </span>
             <Button
               onClick={handleCopyLink}
               size="sm"
               variant="ghost"
-              className="h-7 px-2.5 rounded-lg text-xs text-[#20efe0] hover:text-white hover:bg-[#20205a]/50 flex items-center gap-1 shrink-0"
+              className="h-8 px-3 rounded-lg text-xs text-[#20efe0] hover:text-white hover:bg-[#20205a]/50 flex items-center gap-1.5 shrink-0 font-semibold"
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? "Copied" : "Copy"}

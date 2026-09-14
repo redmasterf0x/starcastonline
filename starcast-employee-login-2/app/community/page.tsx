@@ -502,23 +502,27 @@ export default function CommunityPage() {
         onLogin={() => router.push("/login")}
       />
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6 md:py-10">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 md:py-12">
         {/* Hero Section */}
         <div className="mb-8 md:mb-12">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ea6f2a] to-[#bc3f00] flex items-center justify-center">
-              <Users className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-3.5 mb-2.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ea6f2a] to-[#20efe0] p-0.5 flex items-center justify-center shadow-lg shadow-[#ea6f2a]/20">
+              <div className="w-full h-full bg-[#05052d] rounded-[14px] flex items-center justify-center">
+                <Users className="w-6 h-6 text-[#20efe0]" />
+              </div>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#f5f7ff]">Community</h1>
+            <h1 className="text-3xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">Community Hub</h1>
           </div>
-          <p className="text-[#9a9fc4] max-w-lg">Connect with fellow fans, share your thoughts, and be part of the conversation.</p>
-  </div>
+          <p className="text-[#dbe0fb] text-base sm:text-lg max-w-xl leading-relaxed">
+            Connect with fellow Kansas music fans, share reactions, support local bands, and join the conversation.
+          </p>
+        </div>
 
-  {/* Explains missing interactions to socially banned members */}
-  <SocialBanBanner className="mb-6" />
+        {/* Explains missing interactions to socially banned members */}
+        <SocialBanBanner className="mb-6" />
 
-  {/* Navigation Pills */}
-        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none">
+        {/* Navigation Pills (Enlarged for Mobile Thumbs) */}
+        <div className="flex items-center gap-2.5 mb-8 overflow-x-auto pb-2 scrollbar-none">
           {[
             { id: "deck", label: "The DECK", icon: Sparkles },
             { id: "feed", label: "Discussions", icon: MessageSquare },
@@ -532,13 +536,13 @@ export default function CommunityPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm sm:text-base font-semibold whitespace-nowrap transition-all ${
                 activeTab === tab.id
-                  ? "bg-[#ea6f2a] text-white shadow-lg shadow-[#ea6f2a]/20"
-                  : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/50"
+                  ? "bg-[#ea6f2a] text-white shadow-lg shadow-[#ea6f2a]/25"
+                  : "bg-[#0c0c3f]/70 text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/60"
               }`}
             >
-              <tab.icon className="w-4 h-4" />
+              <tab.icon className="w-4 h-4 text-[#20efe0]" />
               {tab.label}
               {tab.badge ? (
                 <span className="min-w-5 h-5 px-1.5 rounded-full bg-white/20 text-xs flex items-center justify-center font-bold">
@@ -552,9 +556,9 @@ export default function CommunityPage() {
           {currentUserId && (
             <Link
               href={`/profile/${currentUserId}`}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-[#0c0c3f]/60 text-[#9a9fc4] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/50 ml-auto"
+              className="flex items-center gap-2 px-6 py-3 rounded-full text-sm sm:text-base font-semibold whitespace-nowrap transition-all bg-[#0c0c3f]/70 text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/60 ml-auto"
             >
-              <User className="w-4 h-4" />
+              <User className="w-4 h-4 text-[#20efe0]" />
               My Profile
             </Link>
           )}
@@ -569,16 +573,16 @@ export default function CommunityPage() {
         {activeTab === "feed" && (
           <div className="space-y-6">
             {/* Header / Intro Banner */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-[#0c0c3f]/90 via-[#05052d]/90 to-[#121248]/90 border border-[#20205a]/80 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#0c0c3f]/90 via-[#05052d]/95 to-[#121248]/90 border border-[#20205a]/80 shadow-2xl">
               <div>
-                <div className="flex items-center gap-2 text-[#ea6f2a] text-xs font-mono font-bold tracking-widest uppercase mb-1">
-                  <MessageSquare className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 text-[#20efe0] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-1.5">
+                  <MessageSquare className="w-4 h-4 text-[#ea6f2a]" />
                   <span>OPEN FORUM // NO DAILY POST LIMITS</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-[#f5f7ff] tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#f5f7ff] tracking-tight">
                   Community Discussions &amp; General Posting
                 </h2>
-                <p className="text-xs sm:text-sm text-[#9a9fc4] mt-1">
+                <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-2xl leading-relaxed">
                   Open discussion for everyone. Start threads, share stories, react to shows, and discuss music — post and comment freely!
                 </p>
               </div>
@@ -595,15 +599,15 @@ export default function CommunityPage() {
                         setCategory(categories[0].slug)
                       }
                     }}
-                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-5 shadow-lg shadow-[#ea6f2a]/25"
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25"
                   >
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-5 h-5 mr-2" />
                     New Discussion Post
                   </Button>
                 ) : (
                   <Button
                     onClick={() => router.push("/login")}
-                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-5 shadow-lg shadow-[#ea6f2a]/25"
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25"
                   >
                     Sign In To Post
                   </Button>
@@ -611,14 +615,14 @@ export default function CommunityPage() {
               </div>
             </div>
 
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {/* Category Filter Pills (Enlarged Mobile Touch Targets) */}
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
               <button
                 onClick={() => setSelectedCategory("all")}
-                className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
                   selectedCategory === "all"
                     ? "bg-[#ea6f2a] text-white shadow-md shadow-[#ea6f2a]/25"
-                    : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:text-[#f5f7ff] border border-[#20205a]/50"
+                    : "bg-[#0c0c3f]/70 text-[#cbd0f2] hover:text-[#f5f7ff] border border-[#20205a]/60"
                 }`}
               >
                 All Discussions
@@ -627,10 +631,10 @@ export default function CommunityPage() {
                 <button
                   key={cat.slug}
                   onClick={() => setSelectedCategory(cat.slug)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
                     selectedCategory === cat.slug
                       ? "bg-[#ea6f2a] text-white shadow-md shadow-[#ea6f2a]/25"
-                      : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:text-[#f5f7ff] border border-[#20205a]/50"
+                      : "bg-[#0c0c3f]/70 text-[#cbd0f2] hover:text-[#f5f7ff] border border-[#20205a]/60"
                   }`}
                 >
                   <span>{cat.icon}</span>
@@ -645,12 +649,12 @@ export default function CommunityPage() {
                 <div className="w-8 h-8 border-2 border-[#ea6f2a]/30 border-t-[#ea6f2a] rounded-full animate-spin" />
               </div>
             ) : posts.length === 0 ? (
-              <div className="text-center py-16 px-4 rounded-2xl bg-[#0c0c3f]/40 border border-[#20205a]/50">
-                <div className="w-16 h-16 rounded-full bg-[#ea6f2a]/10 border border-[#ea6f2a]/20 flex items-center justify-center mx-auto mb-4 text-[#ea6f2a]">
+              <div className="text-center py-16 px-6 rounded-3xl bg-[#0c0c3f]/50 border border-[#20205a]/60 shadow-xl">
+                <div className="w-16 h-16 rounded-2xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 flex items-center justify-center mx-auto mb-4 text-[#ea6f2a]">
                   <MessageSquare className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-[#f5f7ff] mb-1">No discussion posts yet</h3>
-                <p className="text-sm text-[#9a9fc4] max-w-md mx-auto mb-6">
+                <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff] mb-2">There are no discussions for now</h3>
+                <p className="text-sm sm:text-base text-[#dbe0fb] max-w-md mx-auto mb-6 leading-relaxed">
                   {selectedCategory === "all"
                     ? "Be the first to kick off the conversation! Share an idea, ask a question, or introduce yourself."
                     : `No posts yet in this channel. Be the first to start a thread!`}
@@ -663,34 +667,34 @@ export default function CommunityPage() {
                       if (selectedCategory !== "all") setCategory(selectedCategory)
                       else if (categories.length > 0) setCategory(categories[0].slug)
                     }}
-                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-6"
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Start Discussion
                   </Button>
                 ) : (
                   <Button
                     onClick={() => router.push("/login")}
-                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-6"
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25"
                   >
                     Sign In To Start Discussion
                   </Button>
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {posts.map((post) => (
-                  <article key={post.id} className="media-card overflow-hidden rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/50">
-                    <div className="p-5 sm:p-6">
+                  <article key={post.id} className="media-card overflow-hidden rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/60 shadow-xl">
+                    <div className="p-6 sm:p-8">
                       {/* Author & Meta */}
                       <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3.5">
                           <Link href={post.employee_id ? `/profile/${post.employee_id}` : "#"}>
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ea6f2a] to-[#20205a] p-0.5 cursor-pointer">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#ea6f2a] to-[#20efe0] p-0.5 cursor-pointer">
                               <div className="w-full h-full rounded-full bg-[#05052d] flex items-center justify-center overflow-hidden">
                                 {post.employee?.profile_pic ? (
                                   <img src={post.employee.profile_pic} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                  <span className="text-xs font-bold text-[#f5f7ff]">
+                                  <span className="text-sm font-bold text-[#f5f7ff]">
                                     {post.employee?.first_name?.[0]}{post.employee?.last_name?.[0] || "U"}
                                   </span>
                                 )}
@@ -698,17 +702,17 @@ export default function CommunityPage() {
                             </div>
                           </Link>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-[#f5f7ff] text-sm">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-bold text-[#f5f7ff] text-base sm:text-lg">
                                 {post.employee?.first_name} {post.employee?.last_name || "Community Member"}
                               </p>
                               {post.category && (
-                                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#20205a]/60 text-[#ffd166] border border-[#20205a]">
+                                <span className="text-xs uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#20205a]/80 text-[#ffd166] border border-[#20205a]">
                                   {categories.find((c) => c.slug === post.category)?.name || post.category}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-[#7f84ad]">
+                            <p className="text-xs text-[#20efe0] font-medium mt-0.5">
                               {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </p>
                           </div>
@@ -716,88 +720,88 @@ export default function CommunityPage() {
                       </div>
 
                       {/* Content */}
-                      <h3 className="text-lg font-bold text-[#f5f7ff] mb-2 leading-snug">{post.title}</h3>
-                      <p className="text-[#9a9fc4] text-sm leading-relaxed whitespace-pre-wrap mb-4">{post.content}</p>
+                      <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff] mb-3 leading-snug">{post.title}</h3>
+                      <p className="text-[#dbe0fb] text-base sm:text-lg leading-relaxed whitespace-pre-wrap mb-5">{post.content}</p>
 
                       {/* Images */}
                       {post.images && post.images.length > 0 && (
-                        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                        <div className="flex gap-3 mb-5 overflow-x-auto pb-2">
                           {post.images.map((img, idx) => (
                             <img 
                               key={idx} 
                               src={img.url} 
                               alt="" 
-                              className="h-48 w-auto rounded-xl object-cover flex-shrink-0 border border-[#20205a]" 
+                              className="h-52 w-auto rounded-2xl object-cover flex-shrink-0 border border-[#20205a] shadow-md" 
                             />
                           ))}
                         </div>
                       )}
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 pt-3 border-t border-[#20205a]/50">
+                      <div className="flex items-center gap-2.5 pt-4 border-t border-[#20205a]/60">
                         <button
                           onClick={() => handleToggleStar(post.id, post.user_starred || false)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                             post.user_starred 
-                              ? "bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/30" 
-                              : "text-[#9a9fc4] hover:bg-[#20205a]/50 hover:text-[#f5f7ff] border border-transparent"
+                              ? "bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40" 
+                              : "text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-transparent"
                           }`}
                         >
-                          <Heart className="w-3.5 h-3.5" fill={post.user_starred ? "currentColor" : "none"} />
+                          <Heart className="w-4 h-4" fill={post.user_starred ? "currentColor" : "none"} />
                           <span>{post.star_count || 0}</span>
                         </button>
                         <button
                           onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                             showComments[post.id]
-                              ? "bg-[#20efe0]/15 text-[#20efe0] border border-[#20efe0]/30"
-                              : "text-[#9a9fc4] hover:bg-[#20205a]/50 hover:text-[#f5f7ff] border border-transparent"
+                              ? "bg-[#20efe0]/20 text-[#20efe0] border border-[#20efe0]/40" 
+                              : "text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-transparent"
                           }`}
                         >
-                          <MessageCircle className="w-3.5 h-3.5" />
+                          <MessageCircle className="w-4 h-4 text-[#20efe0]" />
                           <span>{post.comments?.length || 0} comments</span>
                         </button>
                       </div>
 
                       {/* Comment section */}
                       {showComments[post.id] && (
-                        <div className="mt-4 pt-4 border-t border-[#20205a]/50 space-y-3">
+                        <div className="mt-5 pt-5 border-t border-[#20205a]/60 space-y-4">
                           {post.comments && post.comments.length > 0 && (
-                            <div className="space-y-3 mb-4">
+                            <div className="space-y-3.5 mb-4">
                               {post.comments.map((comment) => (
                                 <div key={comment.id} className="flex gap-3 text-sm">
-                                  <div className="w-7 h-7 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                  <div className="w-8 h-8 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden border border-[#20205a]">
                                     {comment.user?.profile_pic ? (
                                       <img src={comment.user.profile_pic} alt="" className="w-full h-full object-cover" />
                                     ) : (
-                                      <span className="text-[10px] text-[#f5f7ff]">
+                                      <span className="text-xs font-bold text-[#f5f7ff]">
                                         {comment.user?.first_name?.[0]}{comment.user?.last_name?.[0]}
                                       </span>
                                     )}
                                   </div>
                                   <div className="flex-1">
-                                    <div className="bg-[#05052d] border border-[#20205a]/60 rounded-2xl px-4 py-2.5">
+                                    <div className="bg-[#05052d]/90 border border-[#20205a]/70 rounded-2xl px-4 py-3">
                                       <div className="flex items-center justify-between">
-                                        <p className="text-xs font-bold text-[#f5f7ff]">
+                                        <p className="text-xs sm:text-sm font-bold text-[#f5f7ff]">
                                           {comment.user?.first_name} {comment.user?.last_name}
                                         </p>
-                                        <span className="text-[10px] text-[#7f84ad]">
+                                        <span className="text-[11px] text-[#20efe0] font-medium">
                                           {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                         </span>
                                       </div>
-                                      <p className="text-xs text-[#c5caea] mt-1">{comment.comment}</p>
+                                      <p className="text-sm sm:text-base text-[#dbe0fb] mt-1.5 leading-relaxed">{comment.comment}</p>
                                     </div>
-                                    <div className="flex items-center gap-3 mt-1 ml-2 text-[11px] text-[#7f84ad]">
+                                    <div className="flex items-center gap-4 mt-1.5 ml-2 text-xs text-[#cbd0f2]">
                                       <button
                                         onClick={() => handleToggleCommentStar(comment.id, comment.user_starred || false)}
-                                        className="hover:text-[#ea6f2a] flex items-center gap-1"
+                                        className="hover:text-[#ea6f2a] flex items-center gap-1 font-semibold"
                                       >
-                                        <Heart className="w-3 h-3" fill={comment.user_starred ? "currentColor" : "none"} />
+                                        <Heart className="w-3.5 h-3.5" fill={comment.user_starred ? "currentColor" : "none"} />
                                         {comment.star_count || 0}
                                       </button>
                                       <button
                                         onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                                        className="hover:text-[#f5f7ff]"
+                                        className="text-[#20efe0] hover:underline font-semibold"
                                       >
                                         Reply
                                       </button>
@@ -805,12 +809,12 @@ export default function CommunityPage() {
 
                                     {/* Threaded reply input */}
                                     {replyingTo === comment.id && (
-                                      <div className="flex gap-2 mt-2">
+                                      <div className="flex gap-2 mt-2.5">
                                         <Input
                                           value={replyText[comment.id] || ""}
                                           onChange={(e) => setReplyText({ ...replyText, [comment.id]: e.target.value })}
                                           placeholder="Write a reply..."
-                                          className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] text-xs h-8 rounded-full"
+                                          className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] text-sm h-10 rounded-full px-4"
                                           onKeyDown={(e) => {
                                             if (e.key === "Enter") {
                                               e.preventDefault()
@@ -821,7 +825,7 @@ export default function CommunityPage() {
                                         <Button
                                           onClick={() => handleAddReply(post.id, comment.id)}
                                           size="sm"
-                                          className="bg-[#ea6f2a] hover:bg-[#bc3f00] h-8 px-3 rounded-full text-xs"
+                                          className="bg-[#ea6f2a] hover:bg-[#bc3f00] h-10 px-4 rounded-full text-xs font-semibold"
                                           disabled={!replyText[comment.id]?.trim()}
                                         >
                                           Reply
@@ -831,23 +835,23 @@ export default function CommunityPage() {
 
                                     {/* Nested replies */}
                                     {comment.replies && comment.replies.length > 0 && (
-                                      <div className="mt-2 space-y-2 ml-4 border-l-2 border-[#20205a] pl-3">
+                                      <div className="mt-2.5 space-y-2.5 ml-4 border-l-2 border-[#20205a]/80 pl-3.5">
                                         {comment.replies.map((reply) => (
-                                          <div key={reply.id} className="flex gap-2">
-                                            <div className="w-5 h-5 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                          <div key={reply.id} className="flex gap-2.5">
+                                            <div className="w-6 h-6 rounded-full bg-[#20205a] flex-shrink-0 flex items-center justify-center overflow-hidden">
                                               {reply.user?.profile_pic ? (
                                                 <img src={reply.user.profile_pic} alt="" className="w-full h-full object-cover" />
                                               ) : (
-                                                <span className="text-[9px] text-[#f5f7ff]">
+                                                <span className="text-[10px] font-bold text-[#f5f7ff]">
                                                   {reply.user?.first_name?.[0]}
                                                 </span>
                                               )}
                                             </div>
-                                            <div className="flex-1 bg-[#05052d] border border-[#20205a]/40 rounded-xl px-3 py-1.5">
-                                              <p className="text-[11px] font-bold text-[#f5f7ff]">
+                                            <div className="flex-1 bg-[#05052d]/90 border border-[#20205a]/50 rounded-2xl px-3.5 py-2">
+                                              <p className="text-xs font-bold text-[#f5f7ff]">
                                                 {reply.user?.first_name} {reply.user?.last_name}
                                               </p>
-                                              <p className="text-xs text-[#9a9fc4] mt-0.5">{reply.comment}</p>
+                                              <p className="text-xs sm:text-sm text-[#dbe0fb] mt-0.5 leading-relaxed">{reply.comment}</p>
                                             </div>
                                           </div>
                                         ))}
@@ -902,24 +906,24 @@ export default function CommunityPage() {
             )}
 
             {/* Soundstage Dispatch Banner */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-[#0c0c3f]/90 via-[#05052d]/95 to-[#101048]/90 border border-[#20205a]/80 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#0c0c3f]/90 via-[#05052d]/95 to-[#101048]/90 border border-[#20205a]/80 shadow-2xl">
               <div>
-                <div className="flex items-center gap-2 text-[#20efe0] text-xs font-mono font-bold tracking-widest uppercase mb-1">
-                  <Radio className="w-3.5 h-3.5 text-[#ea6f2a] animate-pulse" />
+                <div className="flex items-center gap-2 text-[#20efe0] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-1.5">
+                  <Radio className="w-4 h-4 text-[#ea6f2a] animate-pulse" />
                   <span>STARCAST SOUNDSTAGE // TOPEKA RESIDENTS &amp; ACTS</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-[#f5f7ff] tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#f5f7ff] tracking-tight">
                   Soundstage Bands &amp; Artist Roster
                 </h2>
-                <p className="text-xs sm:text-sm text-[#9a9fc4] mt-1">
+                <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-2xl leading-relaxed">
                   Discover regional Kansas musicians, follow their soundstage updates, catch live set alerts, and grab direct QR code passes.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <div className="flex items-center gap-3 shrink-0 flex-wrap">
                 <Button
                   asChild
-                  className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full px-5 shadow-lg shadow-[#ea6f2a]/25 text-xs sm:text-sm h-10"
+                  className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-5 shadow-lg shadow-[#ea6f2a]/25 text-sm sm:text-base h-11"
                 >
                   <Link href="/portal">
                     <Plus className="w-4 h-4 mr-1.5" />
@@ -930,10 +934,10 @@ export default function CommunityPage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="border-[#20efe0]/40 bg-[#0c0c3f]/60 text-[#c9fbf7] hover:bg-[#20efe0]/15 hover:text-white rounded-full px-4 text-xs sm:text-sm h-10"
+                  className="border-[#20efe0]/50 bg-[#0c0c3f]/70 text-[#c9fbf7] hover:bg-[#20efe0]/20 hover:text-white rounded-xl px-5 text-sm sm:text-base h-11"
                 >
                   <Link href="/bands">
-                    <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                    <ExternalLink className="w-4 h-4 mr-1.5" />
                     Full Directory
                   </Link>
                 </Button>
@@ -941,8 +945,8 @@ export default function CommunityPage() {
             </div>
 
             {/* Sub-Navigation & Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5">
+              <div className="flex items-center gap-2.5">
                 {(
                   [
                     { id: "discover", label: `Discover Acts (${bandsList.length})` },
@@ -952,10 +956,10 @@ export default function CommunityPage() {
                   <button
                     key={sub.id}
                     onClick={() => setBandsView(sub.id)}
-                    className={`px-5 py-2.5 rounded-full text-xs font-semibold tracking-wide transition-all ${
+                    className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-wide transition-all ${
                       bandsView === sub.id
                         ? "bg-[#ea6f2a] text-white shadow-md shadow-[#ea6f2a]/25"
-                        : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:text-[#f5f7ff] border border-[#20205a]/50"
+                        : "bg-[#0c0c3f]/70 text-[#cbd0f2] hover:text-[#f5f7ff] border border-[#20205a]/60"
                     }`}
                   >
                     {sub.label}
@@ -964,48 +968,48 @@ export default function CommunityPage() {
               </div>
 
               {bandsView === "discover" && (
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9fc4]" />
+                <div className="relative w-full sm:w-80">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#20efe0]" />
                   <Input
                     value={bandSearch}
                     onChange={(e) => setBandSearch(e.target.value)}
                     placeholder="Search act or genre..."
-                    className="bg-[#0c0c3f]/80 border-[#20205a] text-[#f5f7ff] pl-10 h-10 text-xs rounded-full focus:border-[#20efe0]"
+                    className="bg-[#0c0c3f]/90 border-[#20205a] text-[#f5f7ff] pl-11 h-11 text-sm rounded-2xl focus:border-[#20efe0]"
                   />
                 </div>
               )}
             </div>
 
             {bandsLoading ? (
-              <div className="text-center py-16 text-[#9a9fc4] space-y-3">
-                <div className="w-8 h-8 border-2 border-[#ea6f2a] border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-xs font-mono">TUNING SOUNDSTAGE FREQUENCIES...</p>
+              <div className="text-center py-20 text-[#dbe0fb] space-y-3">
+                <div className="w-9 h-9 border-2 border-[#ea6f2a] border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-mono tracking-wider text-[#20efe0]">TUNING SOUNDSTAGE FREQUENCIES...</p>
               </div>
             ) : bandsView === "discover" ? (
               <>
                 {filteredBands.length === 0 ? (
-                  <div className="text-center py-16 text-[#9a9fc4] rounded-2xl border border-[#20205a]/40 bg-[#0c0c3f]/30 p-8">
-                    <Music className="w-10 h-10 mx-auto mb-3 opacity-40 text-[#ea6f2a]" />
-                    <p className="text-sm font-semibold text-[#f5f7ff]">
+                  <div className="text-center py-16 text-[#dbe0fb] rounded-3xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-8 shadow-xl">
+                    <Music className="w-12 h-12 mx-auto mb-3 opacity-40 text-[#ea6f2a]" />
+                    <p className="text-base sm:text-lg font-bold text-[#f5f7ff]">
                       {bandsList.length === 0
                         ? "No registered soundstage acts yet."
                         : "No acts match your search."}
                     </p>
-                    <p className="text-xs text-[#9a9fc4] mt-1">
+                    <p className="text-sm text-[#dbe0fb] mt-2 max-w-md mx-auto leading-relaxed">
                       {bandsList.length === 0
                         ? "Register your band or solo project through the Artist Portal to be featured here."
                         : "Try a different artist name or genre filter."}
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredBands.map((b) => (
                       <div
                         key={b.id}
-                        className="group relative rounded-2xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 via-[#070725]/80 to-[#05051f] overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/60 transition-all duration-300 hover:shadow-[0_0_25px_rgba(234,111,42,0.18)]"
+                        className="group relative rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 via-[#070725]/80 to-[#05051f] overflow-hidden flex flex-col justify-between hover:border-[#20efe0]/60 transition-all duration-300 hover:shadow-[0_0_30px_rgba(32,239,224,0.18)]"
                       >
                         {/* Soundstage Banner Header */}
-                        <div className="relative w-full h-24 bg-[#05052d] overflow-hidden">
+                        <div className="relative w-full h-28 sm:h-36 bg-[#05052d] overflow-hidden">
                           {b.banner_url ? (
                             <img
                               src={b.banner_url}
@@ -1016,10 +1020,10 @@ export default function CommunityPage() {
                             <div className="w-full h-full bg-gradient-to-r from-[#ea6f2a]/25 via-[#10104a] to-[#20efe0]/20" />
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#0c0c3f]/50 to-transparent" />
-                          <div className="absolute top-2 right-2">
+                          <div className="absolute top-3 right-3">
                             <Badge
                               variant="outline"
-                              className="border-[#20efe0]/40 text-[#20efe0] bg-[#05051f]/80 text-[9px] uppercase font-mono tracking-wider backdrop-blur-sm"
+                              className="border-[#20efe0]/40 text-[#20efe0] bg-[#05051f]/85 text-[10px] uppercase font-mono tracking-wider backdrop-blur-sm"
                             >
                               {b.type === "artist"
                                 ? "Solo Artist"
@@ -1032,40 +1036,40 @@ export default function CommunityPage() {
                           </div>
                         </div>
 
-                        <div className="p-5 pt-0 flex-1 flex flex-col justify-between -mt-8 relative z-10">
+                        <div className="p-6 pt-0 flex-1 flex flex-col justify-between -mt-9 relative z-10">
                           <div>
                             {/* Avatar & Title Row */}
-                            <div className="flex items-start gap-3.5 mb-3">
+                            <div className="flex items-start gap-3.5 mb-3.5">
                               <div className="relative shrink-0">
                                 {b.logo_url ? (
                                   <img
                                     src={b.logo_url}
                                     alt={b.name}
-                                    className="w-14 h-14 rounded-xl object-cover border-2 border-[#20efe0]/40 bg-[#05052d] shadow-lg group-hover:border-[#20efe0] transition-colors"
+                                    className="w-16 h-16 rounded-2xl object-cover border-2 border-[#20efe0]/50 bg-[#05052d] shadow-xl group-hover:border-[#20efe0] transition-colors"
                                   />
                                 ) : (
-                                  <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-[#ea6f2a]/20 border-2 border-[#ea6f2a]/50 shadow-lg">
-                                    <Music className="w-7 h-7 text-[#ea6f2a]" />
+                                  <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ea6f2a]/20 border-2 border-[#ea6f2a]/50 shadow-xl">
+                                    <Music className="w-8 h-8 text-[#ea6f2a]" />
                                   </div>
                                 )}
                               </div>
 
                               <div className="flex-1 min-w-0 pt-1">
-                                <Link href={`/bands/${b.slug}`} className="block group-hover:text-[#ea6f2a] transition-colors">
-                                  <h3 className="font-bold text-base text-[#f5f7ff] truncate group-hover:text-[#ea6f2a]">
+                                <Link href={`/bands/${b.slug}`} className="block group-hover:text-[#20efe0] transition-colors">
+                                  <h3 className="font-bold text-lg sm:text-xl text-[#f5f7ff] truncate group-hover:text-[#20efe0]">
                                     {b.name}
                                   </h3>
                                 </Link>
 
-                                <div className="flex items-center gap-2 text-xs text-[#9a9fc4] mt-0.5 flex-wrap">
+                                <div className="flex items-center gap-2 text-xs sm:text-sm text-[#cbd0f2] mt-1 flex-wrap">
                                   {b.genre && (
-                                    <span className="text-[#20efe0] font-medium text-[11px] truncate">
+                                    <span className="text-[#20efe0] font-semibold text-xs truncate">
                                       {b.genre}
                                     </span>
                                   )}
                                   <span>·</span>
-                                  <span className="flex items-center gap-1 text-[11px]">
-                                    <Users className="w-3 h-3 text-[#38bdf8]" />
+                                  <span className="flex items-center gap-1 text-xs">
+                                    <Users className="w-3.5 h-3.5 text-[#38bdf8]" />
                                     {b.follower_count} {b.follower_count === 1 ? "fan" : "fans"}
                                   </span>
                                 </div>
@@ -1074,22 +1078,22 @@ export default function CommunityPage() {
 
                             {/* Bio Preview */}
                             {b.bio && (
-                              <p className="text-xs text-[#9a9fc4] line-clamp-2 leading-relaxed mb-3">
+                              <p className="text-xs sm:text-sm text-[#dbe0fb] line-clamp-2 leading-relaxed mb-4">
                                 {b.bio}
                               </p>
                             )}
                           </div>
 
-                          {/* Card Action Strip */}
-                          <div className="pt-3 border-t border-[#20205a]/50 flex items-center justify-between gap-2 mt-2">
+                          {/* Card Action Strip (Enlarged Mobile Tap Area) */}
+                          <div className="pt-3.5 border-t border-[#20205a]/60 flex items-center justify-between gap-2.5 mt-2">
                             <Button
                               asChild
                               size="sm"
-                              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-xs font-semibold rounded-lg h-8 px-3 shadow-md shadow-[#ea6f2a]/20 flex-1"
+                              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-xs sm:text-sm font-bold rounded-xl h-10 px-4 shadow-md shadow-[#ea6f2a]/20 flex-1"
                             >
                               <Link href={`/bands/${b.slug}`}>
                                 View Act
-                                <ArrowRight className="w-3 h-3 ml-1" />
+                                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                               </Link>
                             </Button>
 
@@ -1097,11 +1101,11 @@ export default function CommunityPage() {
                               onClick={() => setQrBandTarget(b)}
                               size="sm"
                               variant="outline"
-                              className="border-[#20efe0]/40 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white text-xs rounded-lg h-8 px-2.5 shrink-0"
+                              className="border-[#20efe0]/50 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white text-xs sm:text-sm font-semibold rounded-xl h-10 px-3 shrink-0"
                               title="Get Band QR Code"
                             >
-                              <QrCode className="w-3.5 h-3.5 mr-1" />
-                              QR
+                              <QrCode className="w-4 h-4 mr-1.5" />
+                              QR Pass
                             </Button>
 
                             {!b.is_owner && currentUserId && (
@@ -1109,16 +1113,16 @@ export default function CommunityPage() {
                                 onClick={() => handleToggleBandFollow(b)}
                                 size="sm"
                                 variant="outline"
-                                className={`text-xs rounded-lg h-8 px-2.5 shrink-0 ${
+                                className={`text-xs sm:text-sm rounded-xl h-10 px-3 shrink-0 font-semibold ${
                                   b.is_following
-                                    ? "border-[#20205a] text-[#9a9fc4] hover:text-white"
-                                    : "border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/15"
+                                    ? "border-[#20205a] text-[#cbd0f2] hover:text-white"
+                                    : "border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/20"
                                 }`}
                               >
                                 {b.is_following ? (
-                                  <UserMinus className="w-3 h-3" />
+                                  <UserMinus className="w-4 h-4" />
                                 ) : (
-                                  <UserPlus className="w-3 h-3" />
+                                  <UserPlus className="w-4 h-4" />
                                 )}
                               </Button>
                             )}

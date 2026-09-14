@@ -439,11 +439,13 @@ export default function ArticlesPage() {
           })
 
           return filteredArticles.length === 0 ? (
-          <div className="py-20 text-center">
-            <p className="text-[#9a9fc4] text-lg">
-              {myArticlesOnly ? "You haven&apos;t created any articles yet." : "No articles yet."}
+          <div className="py-20 text-center rounded-3xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-8 sm:p-12">
+            <p className="text-[#f5f7ff] font-bold text-xl sm:text-2xl">
+              {myArticlesOnly ? "You haven&apos;t created any articles yet." : "There are no articles for now"}
             </p>
-            <p className="text-sm text-[#9a9fc4]/60 mt-2">Check back soon for new content.</p>
+            <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-md mx-auto leading-relaxed">
+              Check back soon for new editorial features, artist spotlights, and community broadcasts.
+            </p>
           </div>
         ) : (
           <div>
@@ -463,34 +465,34 @@ export default function ArticlesPage() {
                   <div className="flex items-start gap-6">
                     {/* Date column */}
                     <div className="hidden sm:block w-28 flex-shrink-0 pt-1">
-                      <span className="text-xs font-medium tracking-wider text-[#9a9fc4]">{dateFormatted}</span>
+                      <span className="text-xs font-mono font-medium tracking-wider text-[#20efe0]">{dateFormatted}</span>
                     </div>
                     
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 sm:hidden">
-                        <span className="text-xs font-medium tracking-wider text-[#9a9fc4]">{dateFormatted}</span>
+                        <span className="text-xs font-mono font-medium tracking-wider text-[#20efe0]">{dateFormatted}</span>
                         {!article.approved && (
                           <span className="px-2 py-0.5 bg-yellow-900/30 border border-yellow-700/50 rounded text-[10px] text-yellow-500 font-semibold uppercase">Pending</span>
                         )}
                       </div>
                       
-                      <h3 className="text-xl md:text-2xl font-semibold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors mb-2 leading-tight text-balance">
+                      <h3 className="text-xl md:text-2xl font-bold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors mb-2 leading-tight text-balance">
                         {article.title}
                       </h3>
                       
                       {article.subtitle && (
-                        <p className="text-base text-[#9a9fc4]/80 mb-2 line-clamp-1">{article.subtitle}</p>
+                        <p className="text-base text-[#dbe0fb] mb-2 line-clamp-1 leading-relaxed">{article.subtitle}</p>
                       )}
                       
-                      <div className="flex items-center gap-2 text-sm text-[#9a9fc4]/70">
-                        <span>{article.employee?.first_name} {article.employee?.last_name}</span>
+                      <div className="flex items-center gap-2 text-sm text-[#dbe0fb]">
+                        <span className="font-medium text-[#f5f7ff]">{article.employee?.first_name} {article.employee?.last_name}</span>
                         {article.tags && article.tags.length > 0 && (
                           <>
-                            <span className="text-[#20205a]">&bull;</span>
+                            <span className="text-[#20efe0]/50">&bull;</span>
                             <div className="flex gap-1.5">
                               {article.tags.slice(0, 3).map((tag, i) => (
-                                <span key={i} className="text-[#ea6f2a]/80">#{tag}</span>
+                                <span key={i} className="text-[#20efe0]">#{tag}</span>
                               ))}
                             </div>
                           </>

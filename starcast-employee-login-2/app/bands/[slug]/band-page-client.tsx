@@ -182,11 +182,11 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
 
       <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {/* Navigation Breadcrumb Bar */}
-        <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
           <Button
             asChild
             variant="outline"
-            className="border-[#20efe0]/35 bg-[#0c0c3f]/55 text-[#c9fbf7] shadow-[0_0_20px_rgba(32,239,224,0.08)] hover:border-[#20efe0]/60 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff] rounded-xl"
+            className="border-[#20efe0]/35 bg-[#0c0c3f]/55 text-[#c9fbf7] shadow-[0_0_20px_rgba(32,239,224,0.08)] hover:border-[#20efe0]/60 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff] rounded-xl h-10 sm:h-11 px-4 text-xs sm:text-sm font-semibold"
           >
             <Link href="/bands">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -198,18 +198,18 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
             <Button
               onClick={() => setQrModalOpen(true)}
               variant="outline"
-              className="border-[#20efe0]/40 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white rounded-xl text-xs font-semibold h-9 shadow-md shadow-[#20efe0]/10"
+              className="border-[#20efe0]/40 bg-[#0c0c3f]/80 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white rounded-xl text-xs sm:text-sm font-semibold h-10 sm:h-11 px-4 shadow-md shadow-[#20efe0]/10"
             >
-              <QrCode className="w-3.5 h-3.5 mr-1.5" />
+              <QrCode className="w-4 h-4 mr-1.5 text-[#20efe0]" />
               Get QR Code
             </Button>
 
             <Button
               onClick={handleShare}
               variant="outline"
-              className="border-[#20205a] bg-[#0c0c3f]/80 text-[#9a9fc4] hover:text-[#f5f7ff] hover:bg-[#20205a]/40 rounded-xl text-xs h-9"
+              className="border-[#20205a] bg-[#0c0c3f]/80 text-[#dbe0fb] hover:text-[#f5f7ff] hover:bg-[#20205a]/40 rounded-xl text-xs sm:text-sm font-semibold h-10 sm:h-11 px-4"
             >
-              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? <Check className="w-4 h-4 mr-1.5 text-emerald-400" /> : <Share2 className="w-4 h-4 mr-1.5" />}
               {copied ? "Link Copied!" : "Share"}
             </Button>
           </div>
@@ -294,9 +294,9 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 text-xs sm:text-sm text-[#9a9fc4] mt-2.5 flex-wrap">
+                <div className="flex items-center gap-4 text-xs sm:text-sm text-[#dbe0fb] mt-2.5 flex-wrap">
                   <span className="flex items-center gap-1.5 font-medium">
-                    <Users className="w-4 h-4 text-[#38bdf8]" />
+                    <Users className="w-4 h-4 text-[#20efe0]" />
                     <strong className="text-[#f5f7ff] font-bold">{followerCount}</strong> {followerCount === 1 ? "follower" : "followers"}
                   </span>
                   <span>·</span>
@@ -310,23 +310,23 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
 
             {/* Bio Description */}
             {band.bio && (
-              <div className="mt-5 pt-5 border-t border-[#20205a]/50">
-                <p className="text-sm sm:text-base text-[#c4c8e8] leading-relaxed text-pretty max-w-3xl">
+              <div className="mt-6 pt-6 border-t border-[#20205a]/50">
+                <p className="text-base sm:text-lg text-[#dbe0fb] leading-relaxed text-pretty max-w-3xl">
                   {band.bio}
                 </p>
               </div>
             )}
 
             {/* Interactive Action Ribbon */}
-            <div className="flex items-center gap-3 mt-6 pt-5 border-t border-[#20205a]/50 flex-wrap">
+            <div className="flex items-center gap-3 mt-6 pt-6 border-t border-[#20205a]/50 flex-wrap">
               {!band.is_owner && band.is_authenticated && (
                 <Button
                   onClick={handleToggleFollow}
                   disabled={followBusy}
                   className={
                     isFollowing
-                      ? "border border-[#20205a] bg-transparent text-[#f5f7ff] hover:bg-[#20205a]/40 rounded-xl"
-                      : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-xl shadow-lg shadow-[#ea6f2a]/25"
+                      ? "border border-[#20205a] bg-transparent text-[#f5f7ff] hover:bg-[#20205a]/40 rounded-xl h-11 sm:h-12 px-6 text-sm font-semibold"
+                      : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-xl h-11 sm:h-12 px-6 text-sm font-semibold shadow-lg shadow-[#ea6f2a]/25"
                   }
                 >
                   {isFollowing ? (
@@ -340,7 +340,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
 
               <Button
                 onClick={() => setQrModalOpen(true)}
-                className="bg-gradient-to-r from-[#20efe0]/20 to-[#0c0c3f] border border-[#20efe0]/50 text-[#20efe0] hover:bg-[#20efe0]/30 hover:text-white rounded-xl font-semibold shadow-md"
+                className="bg-gradient-to-r from-[#20efe0]/20 to-[#0c0c3f] border border-[#20efe0]/50 text-[#20efe0] hover:bg-[#20efe0]/30 hover:text-white rounded-xl font-semibold shadow-md h-11 sm:h-12 px-5 text-sm"
               >
                 <QrCode className="w-4 h-4 mr-2 text-[#20efe0]" />
                 Get QR Code
@@ -349,7 +349,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
               <Button
                 onClick={handleShare}
                 variant="outline"
-                className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-[#20205a]/40 rounded-xl"
+                className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-[#20205a]/40 rounded-xl h-11 sm:h-12 px-5 text-sm font-medium"
               >
                 {copied ? <Check className="w-4 h-4 mr-2 text-emerald-400" /> : <Share2 className="w-4 h-4 mr-2" />}
                 {copied ? "Link Copied" : "Share Page"}
@@ -360,7 +360,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                   <Button
                     variant="outline"
                     onClick={handleTogglePublic}
-                    className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-[#20205a]/40 rounded-xl"
+                    className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-[#20205a]/40 rounded-xl h-11 sm:h-12 px-5 text-sm font-medium"
                   >
                     {isPublic ? <Globe className="w-4 h-4 mr-2 text-emerald-400" /> : <Lock className="w-4 h-4 mr-2 text-yellow-400" />}
                     {isPublic ? "Public Page" : "Private Page"}
@@ -369,7 +369,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                   <Button
                     asChild
                     variant="outline"
-                    className="border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/15 rounded-xl ml-auto"
+                    className="border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/15 rounded-xl ml-auto h-11 sm:h-12 px-5 text-sm font-semibold"
                   >
                     <Link href="/portal">
                       <Settings className="w-4 h-4 mr-2" />
@@ -391,18 +391,18 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
         <section className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-[#ea6f2a]" />
-            <h2 className="text-base sm:text-lg font-bold text-[#f5f7ff] tracking-tight">
+            <h2 className="text-lg sm:text-xl font-black text-[#f5f7ff] tracking-tight">
               Soundstage Discussion &amp; Fan Wall
             </h2>
           </div>
-          <span className="text-xs font-mono text-[#9a9fc4]">
+          <span className="text-xs sm:text-sm font-mono text-[#20efe0] font-semibold">
             {posts.length} {posts.length === 1 ? "thread" : "threads"}
           </span>
         </section>
 
         {/* Composer for signed-in users */}
         {band.is_authenticated && (
-          <section className="rounded-2xl border border-[#20205a]/80 bg-[#0c0c3f]/60 p-5 mb-8 shadow-xl">
+          <section className="rounded-3xl border border-[#20205a]/80 bg-[#0c0c3f]/60 p-6 sm:p-7 mb-8 shadow-xl">
             <Textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -411,11 +411,11 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                   ? `Broadcast an official announcement to your ${followerCount} followers...`
                   : `Start a conversation or shout out ${band.name}...`
               }
-              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[100px] resize-none rounded-xl"
+              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] placeholder:text-[#9a9fc4]/70 min-h-[110px] resize-none rounded-2xl text-base p-4"
             />
 
             {draftImages.length > 0 && (
-              <div className="flex gap-2 flex-wrap mt-3">
+              <div className="flex gap-2.5 flex-wrap mt-3.5">
                 {draftImages.map((img, idx) => (
                   <div key={idx} className="relative group">
                     <Image
@@ -440,7 +440,7 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
               </div>
             )}
 
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#20205a]/50">
+            <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[#20205a]/50">
               <input
                 ref={fileRef}
                 type="file"
@@ -453,17 +453,17 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
                 variant="ghost"
                 size="sm"
                 onClick={() => fileRef.current?.click()}
-                className="text-[#9a9fc4] hover:text-[#20efe0] hover:bg-transparent text-xs"
+                className="text-[#dbe0fb] hover:text-[#20efe0] hover:bg-transparent text-xs sm:text-sm font-medium"
               >
-                <ImageIcon className="w-4 h-4 mr-1.5" /> Attach Photos
+                <ImageIcon className="w-4 h-4 mr-1.5 text-[#20efe0]" /> Attach Photos
               </Button>
 
               <Button
                 onClick={handlePost}
                 disabled={posting || (!draft.trim() && draftImages.length === 0)}
-                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-5 shadow-md shadow-[#ea6f2a]/20 text-xs sm:text-sm"
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold rounded-xl px-6 h-11 sm:h-12 shadow-md shadow-[#ea6f2a]/20 text-xs sm:text-sm"
               >
-                <Send className="w-4 h-4 mr-1.5" /> {posting ? "Posting..." : "Publish Post"}
+                <Send className="w-4 h-4 mr-2" /> {posting ? "Posting..." : "Publish Post"}
               </Button>
             </div>
           </section>
@@ -471,11 +471,11 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
 
         {/* Posts Feed */}
         {posts.length === 0 ? (
-          <div className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-12 text-center text-[#9a9fc4]">
-            <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30 text-[#ea6f2a]" />
-            <p className="text-base font-medium text-[#f5f7ff]">No discussions yet</p>
-            <p className="text-xs text-[#9a9fc4] mt-1">
-              {band.is_authenticated ? "Be the first to share an update or start a thread above!" : "Sign in to start the discussion."}
+          <div className="rounded-3xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-8 sm:p-14 text-center">
+            <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-40 text-[#ea6f2a]" />
+            <p className="text-base sm:text-lg font-bold text-[#f5f7ff]">There are no discussions for now</p>
+            <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-md mx-auto leading-relaxed">
+              {band.is_authenticated ? "Be the first to share an update, announce a gig, or spark a conversation above!" : "Sign in to join the conversation and support the band."}
             </p>
           </div>
         ) : (
@@ -494,10 +494,10 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
         )}
 
         {!band.is_authenticated && (
-          <div className="mt-8 p-6 rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/40 text-center">
-            <p className="text-sm text-[#9a9fc4]">
+          <div className="mt-8 p-6 sm:p-8 rounded-3xl border border-[#20205a]/60 bg-[#0c0c3f]/40 text-center">
+            <p className="text-sm sm:text-base text-[#dbe0fb]">
               Want to join the conversation?{" "}
-              <Link href="/login" className="text-[#ea6f2a] hover:underline font-semibold">
+              <Link href="/login" className="text-[#ea6f2a] hover:text-[#ffd166] hover:underline font-bold ml-1">
                 Sign in to your StarCast account
               </Link>
             </p>
@@ -564,21 +564,21 @@ function PostCard({
   }
 
   return (
-    <article className="rounded-2xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 to-[#070725]/80 p-5 sm:p-6 shadow-xl hover:border-[#ea6f2a]/40 transition-colors">
-      <div className="flex items-start gap-3.5">
+    <article className="rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 to-[#070725]/80 p-6 sm:p-7 shadow-xl hover:border-[#ea6f2a]/40 transition-colors">
+      <div className="flex items-start gap-4">
         <Avatar name={post.author_name} src={post.author_avatar} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="font-bold text-[#f5f7ff] leading-tight flex items-center gap-1.5 flex-wrap">
+              <p className="font-bold text-base sm:text-lg text-[#f5f7ff] leading-tight flex items-center gap-2 flex-wrap">
                 {post.author_name}
                 {post.author_is_owner && (
-                  <Badge className="bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40 text-[10px] px-2 py-0 h-4 uppercase font-mono font-bold">
+                  <Badge className="bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40 text-[10px] px-2 py-0.5 uppercase font-mono font-bold">
                     {band.type === "artist" ? "Artist" : "Band"}
                   </Badge>
                 )}
               </p>
-              <p className="text-xs text-[#9a9fc4] mt-0.5">{timeAgo(post.created_at)}</p>
+              <p className="text-xs text-[#20efe0] font-mono mt-1">{timeAgo(post.created_at)}</p>
             </div>
             {post.can_delete && (
               <button
@@ -592,13 +592,13 @@ function PostCard({
           </div>
 
           {post.content && (
-            <p className="text-[#f5f7ff]/95 mt-3 whitespace-pre-wrap leading-relaxed text-pretty text-sm sm:text-base">
+            <p className="text-[#f5f7ff] mt-3.5 whitespace-pre-wrap leading-relaxed text-pretty text-base sm:text-lg">
               {post.content}
             </p>
           )}
 
           {post.images.length > 0 && (
-            <div className={`grid gap-2.5 mt-3.5 ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`grid gap-2.5 mt-4 ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
               {post.images.map((src, idx) => (
                 <Image
                   key={idx}
@@ -606,7 +606,7 @@ function PostCard({
                   alt={`Post attachment ${idx + 1}`}
                   width={600}
                   height={400}
-                  className="w-full rounded-xl object-cover border border-[#20205a] max-h-96 shadow-md"
+                  className="w-full rounded-2xl object-cover border border-[#20205a] max-h-96 shadow-md"
                 />
               ))}
             </div>
@@ -615,33 +615,33 @@ function PostCard({
       </div>
 
       {/* Comments Section */}
-      <div className="mt-5 pl-3 border-l-2 border-[#20205a]/60 space-y-3">
+      <div className="mt-6 pl-4 border-l-2 border-[#20205a]/60 space-y-3.5">
         {post.comments.map((c) => (
-          <div key={c.id} className="flex items-start gap-2.5 group">
+          <div key={c.id} className="flex items-start gap-3 group">
             <Avatar name={c.author_name} src={c.author_avatar} />
             <div className="flex-1 min-w-0">
-              <div className="rounded-xl bg-[#05052d]/90 border border-[#20205a]/50 px-3.5 py-2.5 shadow-sm">
+              <div className="rounded-2xl bg-[#05052d]/95 border border-[#20205a]/60 px-4 py-3 sm:px-5 sm:py-3.5 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-[#f5f7ff]">{c.author_name}</p>
+                  <p className="text-xs sm:text-sm font-bold text-[#f5f7ff]">{c.author_name}</p>
                   {c.can_delete && (
                     <button
                       onClick={() => handleDeleteComment(c.id)}
                       className="text-[#9a9fc4] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                       aria-label="Delete comment"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-[#c4c8e8] mt-1 whitespace-pre-wrap">{c.content}</p>
+                <p className="text-xs sm:text-sm text-[#dbe0fb] mt-1.5 whitespace-pre-wrap leading-relaxed">{c.content}</p>
               </div>
-              <p className="text-[10px] text-[#9a9fc4] mt-1 ml-1">{timeAgo(c.created_at)}</p>
+              <p className="text-[11px] text-[#20efe0]/90 font-mono mt-1 ml-1">{timeAgo(c.created_at)}</p>
             </div>
           </div>
         ))}
 
         {band.is_authenticated ? (
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-2 pt-3">
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -652,14 +652,14 @@ function PostCard({
                 }
               }}
               placeholder="Write a reply..."
-              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[40px] max-h-24 resize-none py-2 text-xs rounded-xl"
+              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] placeholder:text-[#9a9fc4]/70 min-h-[44px] max-h-24 resize-none py-2.5 px-3.5 text-xs sm:text-sm rounded-xl"
               rows={1}
             />
             <Button
               onClick={handleComment}
               disabled={submitting || !comment.trim()}
               size="icon"
-              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white shrink-0 rounded-xl h-10 w-10 shadow-md shadow-[#ea6f2a]/20"
+              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white shrink-0 rounded-xl h-11 w-11 shadow-md shadow-[#ea6f2a]/20"
               aria-label="Send reply"
             >
               <Send className="w-4 h-4" />
