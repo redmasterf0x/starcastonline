@@ -509,7 +509,7 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
       {activeVideo && mounted && typeof document !== "undefined" && createPortal(
         <div
           ref={theaterScrollRef}
-          className="fixed inset-0 z-[100] bg-[#05051a] overflow-y-auto animate-in fade-in duration-200"
+          className="fixed left-0 right-0 bottom-0 top-16 sm:top-20 z-[100] bg-[#05051a] overflow-y-auto animate-in fade-in duration-200"
         >
           {/* Sticky top control bar */}
           <div className="sticky top-0 z-10 px-3 sm:px-6 h-12 sm:h-14 bg-[#05051a]/95 backdrop-blur-md border-b border-[#20205a]/60 flex items-center justify-between gap-3 shrink-0">
