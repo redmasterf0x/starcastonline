@@ -505,87 +505,84 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
         )}
       </main>
 
-      {/* 4. Full-Space Video Theater (Takes up the whole space below the header) */}
+      {/* 4. Full-Space Video Theater — scrollable page-style layout */}
       {activeVideo && mounted && typeof document !== "undefined" && createPortal(
         <div
           ref={theaterScrollRef}
-          className="fixed top-16 sm:top-20 inset-x-0 bottom-0 z-40 bg-black flex flex-col overflow-y-auto animate-in fade-in duration-200"
+          className="fixed top-16 sm:top-20 inset-x-0 bottom-0 z-40 bg-[#05051a] overflow-y-auto animate-in fade-in duration-200"
         >
-          {/* Main Full-Height Viewport Container (100% of the screen below the header) */}
-          <div className="w-full h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] flex flex-col shrink-0 bg-black relative">
-            {/* Top Control Bar */}
-            <div className="h-12 sm:h-14 px-3 sm:px-6 bg-[#05051a] border-b border-[#20205a]/60 flex items-center justify-between gap-3 shrink-0">
-              {/* Left: Back button + Show badge + Title */}
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
-                <button
-                  onClick={handleCloseVideo}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0c0c3f] hover:bg-[#ea6f2a] text-[#20efe0] hover:text-white text-xs sm:text-sm font-semibold transition-all shrink-0 border border-white/10"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span className="hidden xs:inline">Back to Browse</span>
-                </button>
-                <Badge
-                  variant="outline"
-                  className="border-[#20efe0]/50 text-[#20efe0] text-[10px] uppercase font-bold shrink-0 hidden sm:inline-flex"
-                >
-                  {activeVideo.show}
-                </Badge>
-                <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md lg:max-w-xl">
-                  {activeVideo.title}
-                </span>
-              </div>
-
-              {/* Right: Actions */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <button
-                  onClick={() => handleShareVideo(activeVideo)}
-                  title="Share Episode"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#0c0c3f] hover:bg-[#20205a] text-[#9a9fc4] hover:text-white text-xs font-semibold transition-colors border border-white/10"
-                >
-                  {copiedId === activeVideo.id ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-green-400" />
-                      <span className="text-green-400 hidden sm:inline">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Share</span>
-                    </>
-                  )}
-                </button>
-                <a
-                  href={`https://www.youtube.com/watch?v=${activeVideo.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors shadow-sm"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" /> YouTube
-                </a>
-                <button
-                  onClick={handleCloseVideo}
-                  title="Close Player"
-                  className="p-1.5 sm:p-2 rounded-lg bg-[#0c0c3f] hover:bg-red-950 text-[#9a9fc4] hover:text-red-300 transition-colors border border-white/10"
-                  aria-label="Close Player"
-                >
-                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-              </div>
+          {/* Sticky top control bar */}
+          <div className="sticky top-0 z-10 px-3 sm:px-6 h-12 sm:h-14 bg-[#05051a]/95 backdrop-blur-md border-b border-[#20205a]/60 flex items-center justify-between gap-3 shrink-0">
+            {/* Left: Back button + Show badge + Title */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
+              <button
+                onClick={handleCloseVideo}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0c0c3f] hover:bg-[#ea6f2a] text-[#20efe0] hover:text-white text-xs sm:text-sm font-semibold transition-all shrink-0 border border-white/10"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden xs:inline">Back to Browse</span>
+              </button>
+              <Badge
+                variant="outline"
+                className="border-[#20efe0]/50 text-[#20efe0] text-[10px] uppercase font-bold shrink-0 hidden sm:inline-flex"
+              >
+                {activeVideo.show}
+              </Badge>
+              <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md lg:max-w-xl">
+                {activeVideo.title}
+              </span>
             </div>
 
-            {/* Video Player Embed - Takes up 100% of the space */}
-            <div className="relative w-full flex-1 bg-black flex items-center justify-center overflow-hidden">
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}?autoplay=1&rel=0&modestbranding=1`}
-                title={activeVideo.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                className="w-full h-full border-0"
-              />
+            {/* Right: Actions */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button
+                onClick={() => handleShareVideo(activeVideo)}
+                title="Share Episode"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#0c0c3f] hover:bg-[#20205a] text-[#9a9fc4] hover:text-white text-xs font-semibold transition-colors border border-white/10"
+              >
+                {copiedId === activeVideo.id ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-green-400" />
+                    <span className="text-green-400 hidden sm:inline">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Share</span>
+                  </>
+                )}
+              </button>
+              <a
+                href={`https://www.youtube.com/watch?v=${activeVideo.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> YouTube
+              </a>
+              <button
+                onClick={handleCloseVideo}
+                title="Close Player"
+                className="p-1.5 sm:p-2 rounded-lg bg-[#0c0c3f] hover:bg-red-950 text-[#9a9fc4] hover:text-red-300 transition-colors border border-white/10"
+                aria-label="Close Player"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
             </div>
           </div>
 
-          {/* Details & Up Next Binge Tray (Accessible by scrolling down) */}
+          {/* Video — 16:9 aspect ratio, fills full width, scrollable */}
+          <div className="w-full aspect-video bg-black">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}?autoplay=1&rel=0&modestbranding=1`}
+              title={activeVideo.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="w-full h-full border-0"
+            />
+          </div>
+
+          {/* Details & Up Next Binge Tray (scroll down to see) */}
           <div className="w-full bg-gradient-to-b from-[#080825] to-[#040416] border-t border-[#20205a]/60 px-4 sm:px-8 py-6 space-y-6">
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
