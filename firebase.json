@@ -1,0 +1,6 @@
+{
+  "apphosting": {
+    "backendId": "starcast-backend",
+    "rootDir": "starcast-employee-login-2"
+  }
+}
