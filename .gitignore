@@ -1,2 +1,7 @@
 # Local Netlify folder
 .netlify
+
+# Database secrets & temp files
+.cloud_sql_env.json
+.db_password.txt
+.tmp_*
