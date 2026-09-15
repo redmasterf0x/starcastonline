@@ -1,6 +1,12 @@
 {
   "apphosting": {
     "backendId": "starcast-backend",
-    "rootDir": "starcast-employee-login-2"
+    "rootDir": "starcast-employee-login-2",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log"
+    ]
   }
 }
