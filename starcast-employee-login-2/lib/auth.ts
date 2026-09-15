@@ -97,6 +97,9 @@ export const auth = betterAuth({
     // regardless of which Vercel env var is present at runtime.
     "https://starcast.online",
     "https://www.starcast.online",
+    // Google Firebase App Hosting domains
+    "https://*.hosted.app",
+    "https://starcast-backend--starcastonline-live.us-central1.hosted.app",
     // Netlify domains & preview deploys
     "https://*.netlify.app",
     ...(process.env.URL ? [process.env.URL] : []),
