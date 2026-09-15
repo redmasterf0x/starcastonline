@@ -90,12 +90,12 @@ export function ShowSpotlightCard({ title, genre, color, showPageHref, playlistU
       )}
 
       <Dialog open={playing} onOpenChange={setPlaying}>
-        <DialogContent className="max-w-5xl w-[95vw] p-0 overflow-hidden bg-black border-[#20205a] rounded-2xl gap-0">
+        <DialogContent className="max-w-5xl w-[95vw] max-h-[92dvh] p-0 overflow-hidden bg-black border-[#20205a] rounded-2xl gap-0 flex flex-col">
           <DialogTitle className="sr-only">{video?.title ?? title}</DialogTitle>
           {video && (
             <>
               <div
-                className="flex items-center gap-2 px-4 py-3 border-b border-[#20205a]"
+                className="flex items-center gap-2 px-4 py-3 border-b border-[#20205a] shrink-0 pr-12"
                 style={{ backgroundColor: "#0a0a3d" }}
               >
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] shrink-0" style={{ color }}>
@@ -104,11 +104,11 @@ export function ShowSpotlightCard({ title, genre, color, showPageHref, playlistU
                 <span className="text-[#3d3f7a]">/</span>
                 <p className="text-sm text-[#e4e6fa] truncate">{video.title}</p>
               </div>
-              <div className="aspect-video w-full">
+              <div className="relative w-full aspect-video max-h-[calc(92dvh-3.25rem)] bg-black flex items-center justify-center">
                 <iframe
                   src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0&modestbranding=1`}
                   title={video.title}
-                  className="h-full w-full"
+                  className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                   allowFullScreen
                 />

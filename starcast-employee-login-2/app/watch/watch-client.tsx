@@ -107,10 +107,12 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
     }
   }, [activeVideo])
 
-  // Scroll theater to top AFTER React commits the new video to the DOM
+  // Scroll theater to top whenever a new activeVideo is loaded
   useEffect(() => {
     if (!activeVideo) return
-    // rAF ensures we run after the browser has painted the new content
+    if (theaterScrollRef.current) {
+      theaterScrollRef.current.scrollTop = 0
+    }
     const raf = requestAnimationFrame(() => {
       if (theaterScrollRef.current) {
         theaterScrollRef.current.scrollTo({ top: 0, behavior: "instant" })
@@ -120,27 +122,20 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
   }, [activeVideo?.id])
 
   const handleOpenVideo = (video: WatchVideo) => {
-    if (typeof window !== "undefined") {
-      previousScrollY.current = window.scrollY
-      window.scrollTo({ top: 0, behavior: "instant" })
-    }
     setActiveVideo(video)
-    const newUrl = new URL(window.location.href)
-    newUrl.searchParams.set("v", video.id)
-    window.history.pushState({}, "", newUrl.toString())
-    // NOTE: theater scroll-to-top is handled by the useEffect above
-    // (which fires after React commits the new video to the DOM)
+    if (typeof window !== "undefined") {
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.set("v", video.id)
+      window.history.pushState({}, "", newUrl.toString())
+    }
   }
 
   const handleCloseVideo = () => {
     setActiveVideo(null)
-    const newUrl = new URL(window.location.href)
-    newUrl.searchParams.delete("v")
-    window.history.pushState({}, "", newUrl.toString())
-    if (typeof window !== "undefined" && previousScrollY.current) {
-      setTimeout(() => {
-        window.scrollTo({ top: previousScrollY.current, behavior: "instant" })
-      }, 30)
+    if (typeof window !== "undefined") {
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete("v")
+      window.history.pushState({}, "", newUrl.toString())
     }
   }
 
@@ -509,10 +504,11 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
       {activeVideo && mounted && typeof document !== "undefined" && createPortal(
         <div
           ref={theaterScrollRef}
-          className="fixed left-0 right-0 bottom-0 top-16 sm:top-20 z-[100] bg-[#05051a] overflow-y-auto animate-in fade-in duration-200"
+          data-slot="theater-overlay"
+          className="fixed inset-0 z-[100] bg-[#05051a] overflow-y-auto overscroll-contain animate-in fade-in duration-200"
         >
           {/* Sticky top control bar */}
-          <div className="sticky top-0 z-10 px-3 sm:px-6 h-12 sm:h-14 bg-[#05051a]/95 backdrop-blur-md border-b border-[#20205a]/60 flex items-center justify-between gap-3 shrink-0">
+          <div className="sticky top-0 z-20 px-3 sm:px-6 h-12 sm:h-14 bg-[#05051a]/95 backdrop-blur-md border-b border-[#20205a]/60 flex items-center justify-between gap-3 shrink-0">
             {/* Left: Back button + Show badge + Title */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
               <button
@@ -571,15 +567,17 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
             </div>
           </div>
 
-          {/* Video — 16:9 aspect ratio, fills full width, scrollable */}
-          <div className="w-full aspect-video bg-black">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}?autoplay=1&rel=0&modestbranding=1`}
-              title={activeVideo.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              className="w-full h-full border-0"
-            />
+          {/* Video — centered with max height so it is 100% visible on all viewports without pushing controls off-screen */}
+          <div className="w-full bg-black/80 flex items-center justify-center py-2 sm:py-4 px-2 sm:px-4">
+            <div className="w-full max-w-6xl aspect-video max-h-[calc(100dvh-4.5rem)] sm:max-h-[calc(100dvh-5rem)] rounded-xl overflow-hidden shadow-2xl shadow-black/80 border border-white/5">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}?autoplay=1&rel=0&modestbranding=1`}
+                title={activeVideo.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="w-full h-full border-0"
+              />
+            </div>
           </div>
 
           {/* Details & Up Next Binge Tray (scroll down to see) */}
