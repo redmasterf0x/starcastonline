@@ -15,6 +15,11 @@ import * as schema from "./schema"
  * only ever accept real postgres(ql):// strings here.
  */
 export function resolvePostgresUrl(): string {
+  // Never attempt real database connections during static page pre-rendering in Cloud Build
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+  }
+
   const candidates = [
     process.env.NEON_DATABASE_URL,
     process.env.NEON_POSTGRES_URL,
@@ -33,10 +38,3 @@ export function resolvePostgresUrl(): string {
 const connectionUrl = resolvePostgresUrl()
 export const pool = new Pool({ connectionString: connectionUrl })
 export const db = drizzle(pool, { schema })
-
-// Non-blocking schema safeguard for runtime environments
-if (connectionUrl && !connectionUrl.includes("placeholder") && process.env.NODE_ENV === "production") {
-  import("./init").then(({ ensureDatabaseTables }) => {
-    ensureDatabaseTables().catch(() => {})
-  }).catch(() => {})
-}
