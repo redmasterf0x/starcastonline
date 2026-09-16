@@ -8,9 +8,9 @@ runConfig:
 
 env:
   - variable: BETTER_AUTH_URL
-    value: https://www.starcast.online
+    value: https://starcast.online
   - variable: NEXT_PUBLIC_BASE_URL
-    value: https://www.starcast.online
+    value: https://starcast.online
   - variable: DATABASE_URL
     secret: DATABASE_URL
   - variable: NEON_DATABASE_URL

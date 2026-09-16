@@ -78,7 +78,7 @@ export async function resendVerificationEmailAction(email: string): Promise<Rese
     const baseUrl =
       process.env.BETTER_AUTH_URL ||
       process.env.NEXT_PUBLIC_BASE_URL ||
-      "https://www.starcast.online"
+      "https://starcast.online"
 
     const verifyUrl = `${baseUrl.replace(/\/$/, "")}/api/auth/verify-email?token=${token}&callbackURL=/onboarding`
 
