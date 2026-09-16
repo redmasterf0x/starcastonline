@@ -26,7 +26,7 @@ env:
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY
   - variable: GOOGLE_CLIENT_ID
-    value: 815408657013-3tmce8kd7c5sm4naa9ak058l41e3o1a7.apps.googleusercontent.com
+    value: "815408657013-3tmce8kd7c5sm4naa9ak058l41e3o1a7.apps.googleusercontent.com"
   - variable: GOOGLE_CLIENT_SECRET
     secret: GOOGLE_CLIENT_SECRET
 
