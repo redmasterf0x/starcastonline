@@ -3,6 +3,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  output: 'standalone',
   compress: true,
   poweredByHeader: false,
   images: {
