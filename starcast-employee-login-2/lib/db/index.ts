@@ -15,11 +15,6 @@ import * as schema from "./schema"
  * only ever accept real postgres(ql):// strings here.
  */
 export function resolvePostgresUrl(): string {
-  // Never attempt real database connections during static page pre-rendering in Cloud Build
-  if (process.env.NEXT_PHASE === "phase-production-build") {
-    return "postgresql://placeholder:placeholder@localhost:5432/placeholder"
-  }
-
   const candidates = [
     process.env.NEON_DATABASE_URL,
     process.env.NEON_POSTGRES_URL,
