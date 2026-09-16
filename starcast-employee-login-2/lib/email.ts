@@ -86,12 +86,22 @@ export async function sendVerificationEmail(to: string, url: string): Promise<vo
     })
 
     if (error) {
-      console.error("[EMAIL] Resend send error:", error)
-      console.error(
-        `[EMAIL] Note: If your Squarespace DNS records are still propagating, Resend might reject sending from '${FROM}'. ` +
-        `Direct link: ${url}`
-      )
-      // Do not crash the entire request if Resend is still propagating; log clearly
+      console.error("[EMAIL] Resend send error with primary domain:", error)
+      // If domain verification is pending/failed on Resend, fallback to onboarding@resend.dev
+      if (error.statusCode === 403 || error.message?.includes("domain is not verified")) {
+        console.warn("[EMAIL] Attempting fallback delivery via onboarding@resend.dev...")
+        const fallbackRes = await resend.emails.send({
+          from: "StarCast Media <onboarding@resend.dev>",
+          to,
+          subject: "Verify your StarCast Media account",
+          html: shell("Confirm your email", body),
+        })
+        if (fallbackRes.error) {
+          console.error("[EMAIL] Fallback sender error:", fallbackRes.error)
+        } else {
+          console.log("[EMAIL] Fallback verification email sent via onboarding@resend.dev ID:", fallbackRes.data?.id)
+        }
+      }
     } else {
       console.log("[EMAIL] Verification email sent successfully via Resend. ID:", data?.id)
     }
