@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,25 @@ export default function LoginPage() {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const [resending, setResending] = useState(false)
   const [resendMessage, setResendMessage] = useState("")
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      const err = params.get("error")
+      const errDesc = params.get("error_description")
+      if (err) {
+        if (err === "state_mismatch") {
+          setError("Sign-in session expired or mismatch. Please try clicking Continue with Google again.")
+        } else if (err === "account_not_linked") {
+          setError("An account with this email already exists. We've enabled linking—please try signing in with Google again.")
+        } else if (err === "access_denied") {
+          setError("Google sign-in was cancelled.")
+        } else {
+          setError(errDesc || `Sign-in error: ${err.replace(/_/g, " ")}`)
+        }
+      }
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -93,6 +112,7 @@ export default function LoginPage() {
                 await authClient.signIn.social({
                   provider: "google",
                   callbackURL: "/onboarding",
+                  errorCallbackURL: "/login",
                 })
               } catch (err: any) {
                 setError(err?.message ?? "Google sign-in failed")

@@ -27,6 +27,17 @@ export const auth = betterAuth({
         }
       : {}),
   },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+      requireLocalEmailVerified: false,
+    },
+  },
+  trustedProviders: ["google"],
+  onAPIError: {
+    errorURL: "/login",
+  },
   emailAndPassword: {
     enabled: true,
     // New users must confirm their email before they can sign in.
@@ -128,16 +139,17 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // 1 day
   },
-  ...(process.env.NODE_ENV === "development"
-    ? {
-        advanced: {
-          // In dev (v0 preview iframe), force cross-site cookies so the
-          // session cookie is stored by the browser.
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
+    },
+    ...(process.env.NODE_ENV === "development"
+      ? {
           defaultCookieAttributes: {
             sameSite: "none" as const,
             secure: true,
           },
-        },
-      }
-    : {}),
+        }
+      : {}),
+  },
 })
