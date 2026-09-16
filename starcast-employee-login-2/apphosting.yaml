@@ -8,9 +8,9 @@ runConfig:
 
 env:
   - variable: BETTER_AUTH_URL
-    value: https://starcast-backend--starcastonline-live.us-central1.hosted.app
+    value: https://www.starcast.online
   - variable: NEXT_PUBLIC_BASE_URL
-    value: https://starcast-backend--starcastonline-live.us-central1.hosted.app
+    value: https://www.starcast.online
   - variable: DATABASE_URL
     secret: DATABASE_URL
   - variable: NEON_DATABASE_URL
@@ -23,3 +23,6 @@ env:
     secret: STRIPE_SECRET_KEY
   - variable: PRINTIFY_API_TOKEN
     secret: PRINTIFY_API_TOKEN
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+

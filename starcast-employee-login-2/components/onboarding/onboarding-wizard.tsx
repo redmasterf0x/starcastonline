@@ -19,6 +19,14 @@ import {
   ArrowRight,
   ArrowLeft,
   PartyPopper,
+  Rocket,
+  Radio,
+  Newspaper,
+  ShoppingBag,
+  Users,
+  Mic2,
+  Tv,
+  CalendarDays,
 } from "lucide-react"
 import { INTEREST_OPTIONS } from "@/lib/onboarding-options"
 import {
@@ -45,7 +53,59 @@ type OnboardingState = {
   smsAvailable: boolean
 }
 
-const STEPS = ["Handle", "Photo", "About you", "Interests", "Phone"] as const
+const STEPS = ["Welcome", "Handle", "Photo", "About you", "Interests", "Phone"] as const
+
+/** Platform features highlighted on the Welcome step */
+const FEATURES = [
+  {
+    icon: Radio,
+    title: "Live Shows",
+    desc: "Tune in to Star Talk, Psyco G-Spot, Hollywood After Babylon & more.",
+    color: "#ea6f2a",
+  },
+  {
+    icon: Newspaper,
+    title: "Articles & News",
+    desc: "Read and publish music industry news, reviews, and editorials.",
+    color: "#4a9eff",
+  },
+  {
+    icon: Users,
+    title: "Community",
+    desc: "Connect with fellow musicians, producers, and creators worldwide.",
+    color: "#34d399",
+  },
+  {
+    icon: Mic2,
+    title: "Book Studio Sessions",
+    desc: "Reserve recording time and collaborate with the StarCast crew.",
+    color: "#f472b6",
+  },
+  {
+    icon: ShoppingBag,
+    title: "Merch Store",
+    desc: "Rep the brand with exclusive StarCast apparel and gear.",
+    color: "#facc15",
+  },
+  {
+    icon: Tv,
+    title: "Watch On Demand",
+    desc: "Catch up on past episodes, interviews, and behind-the-scenes content.",
+    color: "#a78bfa",
+  },
+  {
+    icon: CalendarDays,
+    title: "Production Portal",
+    desc: "Staff and artists manage schedules, assignments, and workflows.",
+    color: "#fb923c",
+  },
+  {
+    icon: AtSign,
+    title: "Your Public Profile",
+    desc: "Share your handle, showcase your bio, and build your network.",
+    color: "#38bdf8",
+  },
+] as const
 
 export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
   const router = useRouter()
@@ -53,7 +113,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Step 1 — handle
+  // Step 2 — handle
   const [username, setUsername] = useState(initial.username)
   const [handleState, setHandleState] = useState<{ checking: boolean; ok: boolean | null; reason: string | null }>({
     checking: false,
@@ -61,21 +121,21 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
     reason: null,
   })
 
-  // Step 2 — photo
+  // Step 3 — photo
   const [profilePic, setProfilePic] = useState(initial.profilePic)
   const [uploading, setUploading] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  // Step 3 — about
+  // Step 4 — about
   const [firstName, setFirstName] = useState(initial.firstName)
   const [lastName, setLastName] = useState(initial.lastName)
   const [bio, setBio] = useState(initial.bio)
   const [location, setLocation] = useState(initial.location)
 
-  // Step 4 — interests
+  // Step 5 — interests
   const [interests, setInterests] = useState<string[]>(initial.interests)
 
-  // Step 5 — phone
+  // Step 6 — phone
   const [phone, setPhone] = useState(initial.phone)
   const [codeSent, setCodeSent] = useState(false)
   const [code, setCode] = useState("")
@@ -122,15 +182,16 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
     setError(null)
     setSaving(true)
     try {
-      if (step === 0) {
+      // Welcome step (0) — no data to save, just advance
+      if (step === 1) {
         if (!handleState.ok) throw new Error(handleState.reason ?? "Choose an available handle to continue.")
         await saveOnboardingStep({ username })
-      } else if (step === 1) {
-        await saveOnboardingStep({ profilePic })
       } else if (step === 2) {
+        await saveOnboardingStep({ profilePic })
+      } else if (step === 3) {
         if (!firstName.trim()) throw new Error("Please enter your first name.")
         await saveOnboardingStep({ firstName, lastName, bio, location })
-      } else if (step === 3) {
+      } else if (step === 4) {
         await saveOnboardingStep({ interests })
       }
 
@@ -200,7 +261,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
             {STEPS.map((label, i) => (
               <div key={label} className="flex-1">
                 <div
-                  className={`h-1 rounded-full transition-colors ${
+                  className={`h-1 rounded-full transition-all duration-500 ${
                     i <= step ? "bg-[#ea6f2a]" : "bg-[#20205a]"
                   }`}
                 />
@@ -213,8 +274,63 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
         </div>
 
         <div className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/70 p-6 sm:p-8">
-          {/* STEP 1 — handle */}
+          {/* STEP 0 — Welcome */}
           {step === 0 && (
+            <div className="flex flex-col gap-6">
+              <header className="flex flex-col items-center gap-3 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ea6f2a] to-[#bc3f00] flex items-center justify-center shadow-lg shadow-[#ea6f2a]/20 animate-pulse">
+                  <Rocket className="w-8 h-8 text-white" />
+                </div>
+                <h1 className="text-3xl font-bold text-[#f5f7ff] text-balance">
+                  Welcome to StarCast Media
+                </h1>
+                <p className="text-sm leading-relaxed text-[#9a9fc4] max-w-md">
+                  You&apos;re about to join a community of musicians, producers, and creators. Here&apos;s what&apos;s waiting for you:
+                </p>
+              </header>
+
+              {/* Feature grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {FEATURES.map((feat, i) => {
+                  const Icon = feat.icon
+                  return (
+                    <div
+                      key={feat.title}
+                      className="group relative rounded-xl border border-[#20205a]/60 bg-[#05052d]/60 p-4 transition-all duration-300 hover:border-[#ea6f2a]/40 hover:bg-[#0c0c3f]"
+                      style={{
+                        animationDelay: `${i * 80}ms`,
+                        animation: "fadeInUp 0.5s ease-out both",
+                      }}
+                    >
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center mb-2"
+                        style={{ backgroundColor: `${feat.color}20` }}
+                      >
+                        <Icon className="w-5 h-5" style={{ color: feat.color }} />
+                      </div>
+                      <h3 className="text-sm font-semibold text-[#f5f7ff] mb-1">{feat.title}</h3>
+                      <p className="text-xs text-[#9a9fc4] leading-relaxed">{feat.desc}</p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <p className="text-center text-xs text-[#9a9fc4]">
+                Setup takes about 2 minutes. Let&apos;s get you set up!
+              </p>
+
+              {/* Inline keyframes for the card entrance animation */}
+              <style>{`
+                @keyframes fadeInUp {
+                  from { opacity: 0; transform: translateY(12px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
+            </div>
+          )}
+
+          {/* STEP 1 — handle */}
+          {step === 1 && (
             <div className="flex flex-col gap-5">
               <header className="flex flex-col gap-2">
                 <AtSign className="w-7 h-7 text-[#ea6f2a]" />
@@ -255,7 +371,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
           )}
 
           {/* STEP 2 — photo */}
-          {step === 1 && (
+          {step === 2 && (
             <div className="flex flex-col gap-5">
               <header className="flex flex-col gap-2">
                 <Camera className="w-7 h-7 text-[#ea6f2a]" />
@@ -315,7 +431,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
           )}
 
           {/* STEP 3 — about */}
-          {step === 2 && (
+          {step === 3 && (
             <div className="flex flex-col gap-5">
               <header className="flex flex-col gap-2">
                 <MapPin className="w-7 h-7 text-[#ea6f2a]" />
@@ -369,7 +485,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
           )}
 
           {/* STEP 4 — interests */}
-          {step === 3 && (
+          {step === 4 && (
             <div className="flex flex-col gap-5">
               <header className="flex flex-col gap-2">
                 <Music className="w-7 h-7 text-[#ea6f2a]" />
@@ -405,7 +521,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
           )}
 
           {/* STEP 5 — phone */}
-          {step === 4 && (
+          {step === 5 && (
             <div className="flex flex-col gap-5">
               <header className="flex flex-col gap-2">
                 {phoneVerified ? (
@@ -414,12 +530,12 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                   <Phone className="w-7 h-7 text-[#ea6f2a]" />
                 )}
                 <h1 className="text-2xl font-bold text-[#f5f7ff] text-balance">
-                  {phoneVerified ? "Phone verified" : "Verify your phone"}
+                  {phoneVerified ? "Phone verified ✓" : "Verify your phone"}
                 </h1>
                 <p className="text-sm leading-relaxed text-[#9a9fc4]">
                   {phoneVerified
                     ? "You're all set. We'll text you booking reminders and nothing else."
-                    : "We text a 6-digit code. Verified members get booking reminders and can be reached about sessions."}
+                    : "We'll text you a 6-digit code to verify your number. Verified members get booking reminders and can be reached about sessions."}
                 </p>
               </header>
 
@@ -429,9 +545,11 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                   <p className="text-sm text-[#f5f7ff]">{phone}</p>
                 </div>
               ) : !initial.smsAvailable ? (
-                <p className="rounded-lg border border-[#20205a] bg-[#05052d] p-4 text-sm text-[#9a9fc4]">
-                  SMS verification is not available right now. You can finish setup and verify later from your profile.
-                </p>
+                <div className="rounded-lg border border-[#20205a] bg-[#05052d] p-4">
+                  <p className="text-sm text-[#9a9fc4]">
+                    SMS verification is not available right now. You can finish setup and verify later from your profile settings.
+                  </p>
+                </div>
               ) : !codeSent ? (
                 <div className="flex flex-col gap-3">
                   <Label htmlFor="phone" className="text-[#f5f7ff]">Mobile number</Label>
@@ -450,12 +568,15 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                     className="bg-[#ea6f2a] hover:bg-[#d86224] text-[#05052d] font-semibold w-fit"
                   >
                     {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    Send code
+                    Text me a code
                   </Button>
+                  <p className="text-xs text-[#9a9fc4]">
+                    Standard messaging rates may apply. We&apos;ll send one text with your verification code.
+                  </p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  <Label className="text-[#f5f7ff]">Enter the 6-digit code sent to {phone}</Label>
+                  <Label className="text-[#f5f7ff]">Enter the 6-digit code we texted to {phone}</Label>
                   <InputOTP
                     maxLength={6}
                     value={code}
@@ -474,16 +595,29 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                       ))}
                     </InputOTPGroup>
                   </InputOTP>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCodeSent(false)
-                      setCode("")
-                    }}
-                    className="text-xs text-[#9a9fc4] hover:text-[#ea6f2a] transition-colors text-left"
-                  >
-                    Use a different number
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCodeSent(false)
+                        setCode("")
+                      }}
+                      className="text-xs text-[#9a9fc4] hover:text-[#ea6f2a] transition-colors text-left"
+                    >
+                      Use a different number
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCode("")
+                        handleSendCode()
+                      }}
+                      disabled={saving}
+                      className="text-xs text-[#9a9fc4] hover:text-[#ea6f2a] transition-colors text-left"
+                    >
+                      Resend code
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -522,16 +656,18 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
               <Button
                 type="button"
                 onClick={step === STEPS.length - 1 ? finish : next}
-                disabled={saving || (step === 0 && !handleState.ok)}
+                disabled={saving || (step === 1 && !handleState.ok)}
                 className="bg-[#ea6f2a] hover:bg-[#d86224] text-[#05052d] font-semibold"
               >
                 {saving ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : step === STEPS.length - 1 ? (
                   <PartyPopper className="w-4 h-4 mr-2" />
+                ) : step === 0 ? (
+                  <Rocket className="w-4 h-4 mr-2" />
                 ) : null}
-                {step === STEPS.length - 1 ? "Finish setup" : "Continue"}
-                {step < STEPS.length - 1 && <ArrowRight className="w-4 h-4 ml-2" />}
+                {step === 0 ? "Let's go!" : step === STEPS.length - 1 ? "Finish setup" : "Continue"}
+                {step > 0 && step < STEPS.length - 1 && <ArrowRight className="w-4 h-4 ml-2" />}
               </Button>
             </div>
           </div>

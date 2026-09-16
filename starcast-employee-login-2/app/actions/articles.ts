@@ -37,17 +37,17 @@ export async function getViewerContext() {
     .limit(1)
   const p = rows[0]
   if (!p) return null
-  // Admins implicitly have every granular permission.
+  // Admins and employees implicitly have permission to write/submit articles.
   return {
     ...p,
-    canWriteArticles: p.isAdmin || p.canWriteArticles,
+    canWriteArticles: p.isAdmin || p.isEmployee || p.canWriteArticles,
     canManageCalendar: p.isAdmin || p.canManageCalendar,
   }
 }
 
-/** List approved articles (or the viewer's own articles) with author names. */
-export async function listArticles(opts?: { mineOnly?: boolean }) {
-  const viewer = opts?.mineOnly ? await getViewerContext() : null
+/** List approved articles (or the viewer's own articles, or pending articles for admins) with author names. */
+export async function listArticles(opts?: { mineOnly?: boolean; pendingOnly?: boolean }) {
+  const viewer = await getViewerContext()
 
   const base = db
     .select({
@@ -62,6 +62,7 @@ export async function listArticles(opts?: { mineOnly?: boolean }) {
       featured: articles.featured,
       images: articles.images,
       approved: articles.approved,
+      approvedAt: articles.approvedAt,
       createdAt: articles.createdAt,
       authorFirstName: profiles.firstName,
       authorLastName: profiles.lastName,
@@ -70,15 +71,18 @@ export async function listArticles(opts?: { mineOnly?: boolean }) {
     .from(articles)
     .leftJoin(profiles, eq(articles.authorId, profiles.id))
 
-  const rows =
-    opts?.mineOnly && viewer
-      ? await base.where(eq(articles.authorId, viewer.profileId)).orderBy(desc(articles.createdAt)).limit(50)
-      : await base.where(eq(articles.approved, true)).orderBy(desc(articles.createdAt)).limit(50)
+  if (opts?.mineOnly && viewer) {
+    return base.where(eq(articles.authorId, viewer.profileId)).orderBy(desc(articles.createdAt)).limit(50)
+  }
 
-  return rows
+  if (opts?.pendingOnly && viewer?.isAdmin) {
+    return base.where(eq(articles.approved, false)).orderBy(desc(articles.createdAt)).limit(50)
+  }
+
+  return base.where(eq(articles.approved, true)).orderBy(desc(articles.createdAt)).limit(50)
 }
 
-/** Create a new (unapproved) article for the signed-in user. */
+/** Create a new article. If author is admin and publishImmediately is true, it is approved immediately. Otherwise, it is submitted for admin review. */
 export async function createArticle(input: {
   title: string
   subtitle?: string | null
@@ -87,6 +91,7 @@ export async function createArticle(input: {
   tags?: string[]
   content: string
   images?: { url: string; credit: string }[]
+  publishImmediately?: boolean
 }) {
   const userId = await requireUserId()
   const profileRows = await db
@@ -95,6 +100,7 @@ export async function createArticle(input: {
       firstName: profiles.firstName,
       lastName: profiles.lastName,
       isAdmin: profiles.isAdmin,
+      isEmployee: profiles.isEmployee,
       canWriteArticles: profiles.canWriteArticles,
     })
     .from(profiles)
@@ -102,17 +108,37 @@ export async function createArticle(input: {
     .limit(1)
   const profile = profileRows[0]
   if (!profile) throw new Error("Profile not found")
-  // Only staff who have been granted the article-writing permission (or admins)
-  // may create articles.
-  if (!profile.isAdmin && !profile.canWriteArticles) throw new Error("Forbidden")
 
-  const authorName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim()
-  const slug = `${authorName}-${input.title.trim()}`
+  // Admins, employees/crew, or staff with canWriteArticles may create articles.
+  if (!profile.isAdmin && !profile.isEmployee && !profile.canWriteArticles) {
+    throw new Error("Forbidden: You do not have permission to write articles.")
+  }
+
+  const isApproved = Boolean(profile.isAdmin && input.publishImmediately)
+
+  const authorName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "starcast"
+  let baseSlug = `${authorName}-${input.title.trim()}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+  if (!baseSlug) baseSlug = `article-${Date.now()}`
 
-  await db.insert(articles).values({
+  let slug = baseSlug
+  let counter = 1
+  while (true) {
+    const existing = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .where(eq(articles.slug, slug))
+      .limit(1)
+    if (existing.length === 0) break
+    counter++
+    slug = `${baseSlug}-${counter}`
+  }
+
+  const thumbnailUrl = input.images?.[0]?.url || null
+
+  const inserted = await db.insert(articles).values({
     userId,
     authorId: profile.id,
     title: input.title.trim(),
@@ -122,12 +148,20 @@ export async function createArticle(input: {
     tags: input.tags ?? [],
     content: input.content.trim(),
     images: input.images ?? [],
+    thumbnailUrl,
     slug,
-    approved: false,
+    approved: isApproved,
+    approvedAt: isApproved ? new Date() : null,
+  }).returning({
+    id: articles.id,
+    slug: articles.slug,
+    approved: articles.approved,
   })
+
+  return inserted[0]
 }
 
-/** Fetch a single article by slug, with author info. */
+/** Fetch a single article by slug, with author info. Also permits preview for authors and admins if unapproved. */
 export async function getArticleBySlug(slug: string) {
   const rows = await db
     .select({
@@ -143,6 +177,7 @@ export async function getArticleBySlug(slug: string) {
       images: articles.images,
       content: articles.content,
       approved: articles.approved,
+      approvedAt: articles.approvedAt,
       createdAt: articles.createdAt,
       authorFirstName: profiles.firstName,
       authorLastName: profiles.lastName,
@@ -155,7 +190,69 @@ export async function getArticleBySlug(slug: string) {
     .leftJoin(profiles, eq(articles.authorId, profiles.id))
     .where(eq(articles.slug, slug))
     .limit(1)
-  return rows[0] ?? null
+
+  const article = rows[0] ?? null
+  if (!article) return null
+
+  // If already approved, it's public for everyone
+  if (article.approved) {
+    return { ...article, isPendingPreview: false, isViewerAdmin: false }
+  }
+
+  // If not approved, only author or an admin may view/preview it
+  const user = await getSessionUser()
+  if (!user) return null
+
+  const profileRows = await db
+    .select({ id: profiles.id, isAdmin: profiles.isAdmin })
+    .from(profiles)
+    .where(eq(profiles.userId, user.id))
+    .limit(1)
+  const viewerProfile = profileRows[0]
+  const isAuthor = article.userId === user.id || (viewerProfile && article.authorId === viewerProfile.id)
+  const isAdmin = viewerProfile?.isAdmin === true
+
+  if (!isAuthor && !isAdmin) {
+    return null
+  }
+
+  return { ...article, isPendingPreview: true, isViewerAdmin: isAdmin }
+}
+
+/** Quick approve action for an article (admin only). */
+export async function approveArticle(articleId: string) {
+  const user = await getSessionUser()
+  if (!user) throw new Error("Unauthorized")
+  const profileRows = await db
+    .select({ isAdmin: profiles.isAdmin })
+    .from(profiles)
+    .where(eq(profiles.userId, user.id))
+    .limit(1)
+  if (!profileRows[0]?.isAdmin) throw new Error("Forbidden: Admin access required")
+
+  await db
+    .update(articles)
+    .set({ approved: true, approvedAt: new Date() })
+    .where(eq(articles.id, articleId))
+  return { success: true }
+}
+
+/** Unpublish an article back to draft/pending (admin only). */
+export async function unpublishArticle(articleId: string) {
+  const user = await getSessionUser()
+  if (!user) throw new Error("Unauthorized")
+  const profileRows = await db
+    .select({ isAdmin: profiles.isAdmin })
+    .from(profiles)
+    .where(eq(profiles.userId, user.id))
+    .limit(1)
+  if (!profileRows[0]?.isAdmin) throw new Error("Forbidden: Admin access required")
+
+  await db
+    .update(articles)
+    .set({ approved: false, approvedAt: null })
+    .where(eq(articles.id, articleId))
+  return { success: true }
 }
 
 /** Like state + count for an article for the current viewer. */

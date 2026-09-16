@@ -47,7 +47,7 @@ interface Article {
 export default function ArticlesPage() {
   const [articles, setArticles] = useState<Article[]>([])
 
-  const [myArticlesOnly, setMyArticlesOnly] = useState(false)
+  const [articleTab, setArticleTab] = useState<"all" | "mine" | "pending">("all")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -55,6 +55,7 @@ export default function ArticlesPage() {
   const [isCrew, setIsCrew] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [canWriteArticles, setCanWriteArticles] = useState(false)
+  const [publishDirectly, setPublishDirectly] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const router = useRouter()
@@ -73,7 +74,7 @@ export default function ArticlesPage() {
   useEffect(() => {
     void fetchArticles()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myArticlesOnly])
+  }, [articleTab])
 
   const fetchArticles = async () => {
     setLoading(true)
@@ -86,7 +87,10 @@ export default function ArticlesPage() {
         setCanWriteArticles(viewer.canWriteArticles)
       }
 
-      const rows = await listArticles({ mineOnly: myArticlesOnly && !!viewer })
+      const rows = await listArticles({
+        mineOnly: articleTab === "mine" && !!viewer,
+        pendingOnly: articleTab === "pending" && !!viewer?.isAdmin,
+      })
 
       // Map camelCase server rows into the shape the JSX expects
       const mapped: Article[] = rows.map((row) => ({
@@ -147,29 +151,46 @@ export default function ArticlesPage() {
     if (!title.trim() || !content.trim() || !currentEmployeeId || saving) return
 
     setSaving(true)
-    console.log("[v0] Saving article:", title)
 
-    const imageData = await Promise.all(
-      images.map(async (img) => {
-        const reader = new FileReader()
-        return new Promise<{ url: string; credit: string }>((resolve) => {
-          reader.onloadend = () => {
-            resolve({ url: reader.result as string, credit: img.credit })
+    // Upload images via /api/upload (with data URL fallback)
+    const uploadedImages: { url: string; credit: string }[] = []
+    for (const img of images) {
+      try {
+        const fd = new FormData()
+        fd.append("file", img.file)
+        fd.append("folder", "articles")
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd })
+        if (uploadRes.ok) {
+          const json = await uploadRes.json()
+          if (json.url) {
+            uploadedImages.push({ url: json.url, credit: img.credit })
+            continue
           }
-          reader.readAsDataURL(img.file)
-        })
-      }),
-    )
+        }
+      } catch (err) {
+        console.warn("Upload fallback:", err)
+      }
+
+      // Fallback to data URL
+      const reader = new FileReader()
+      const dataUrl = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(img.file)
+      })
+      uploadedImages.push({ url: dataUrl, credit: img.credit })
+    }
 
     try {
-      await createArticle({
+      const willPublish = isAdmin && publishDirectly
+      const created = await createArticle({
         title,
         subtitle: subtitle.trim() || null,
         excerpt: excerpt.trim() || null,
         externalLink: externalLink.trim() || null,
         tags: tags.length > 0 ? tags : [],
         content,
-        images: imageData,
+        images: uploadedImages,
+        publishImmediately: willPublish,
       })
 
       images.forEach((img) => URL.revokeObjectURL(img.preview))
@@ -182,6 +203,13 @@ export default function ArticlesPage() {
       setImages([])
       setCreateDialogOpen(false)
       setSaving(false)
+
+      if (willPublish) {
+        alert("Article published live to the public feed!")
+      } else {
+        alert("Article submitted for admin review! It will be posted publicly once approved.")
+      }
+
       await fetchArticles()
     } catch (err: any) {
       alert(`Failed to save article: ${err?.message || "Unknown error"}`)
@@ -374,12 +402,27 @@ export default function ArticlesPage() {
                         className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[300px] leading-relaxed"
                       />
                     </div>
+                    {isAdmin && (
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-[#05052d] border border-[#20205a]">
+                        <div>
+                          <p className="text-sm font-semibold text-[#f5f7ff]">Publish Immediately</p>
+                          <p className="text-xs text-[#9a9fc4]">Make article live on public feed immediately</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          id="publishDirectly"
+                          checked={publishDirectly}
+                          onChange={(e) => setPublishDirectly(e.target.checked)}
+                          className="w-5 h-5 accent-[#ea6f2a] rounded cursor-pointer"
+                        />
+                      </div>
+                    )}
                     <Button
                       onClick={handleSaveArticle}
                       disabled={!title.trim() || !content.trim() || saving}
-                      className="w-full bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:from-[#bc3f00] hover:to-[#bc3f00] text-[#f5f7ff]"
+                      className="w-full bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:from-[#bc3f00] hover:to-[#bc3f00] text-[#f5f7ff] font-semibold py-3"
                     >
-                      {saving ? "Saving..." : "Save Article"}
+                      {saving ? "Processing..." : isAdmin && publishDirectly ? "Publish Article Now" : "Submit for Admin Review"}
                     </Button>
                   </div>
                 </DialogContent>
@@ -399,6 +442,47 @@ export default function ArticlesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-12 bg-[#0c0c3f]/60 border-[#20205a]/50 text-[#f5f7ff] placeholder:text-[#9a9fc4]/70 pl-11 pr-4 rounded-xl focus:border-[#ea6f2a]/50 focus-visible:ring-[#ea6f2a]/20"
             />
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-2 mt-6">
+            <button
+              type="button"
+              onClick={() => setArticleTab("all")}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                articleTab === "all"
+                  ? "bg-[#ea6f2a] text-white shadow-[0_0_12px_rgba(234,111,42,0.4)]"
+                  : "bg-[#0c0c3f]/80 text-[#9a9fc4] border border-[#20205a]/60 hover:text-[#f5f7ff]"
+              }`}
+            >
+              All Published
+            </button>
+            {currentEmployeeId && (
+              <button
+                type="button"
+                onClick={() => setArticleTab("mine")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  articleTab === "mine"
+                    ? "bg-[#ea6f2a] text-white shadow-[0_0_12px_rgba(234,111,42,0.4)]"
+                    : "bg-[#0c0c3f]/80 text-[#9a9fc4] border border-[#20205a]/60 hover:text-[#f5f7ff]"
+                }`}
+              >
+                My Articles
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setArticleTab("pending")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  articleTab === "pending"
+                    ? "bg-yellow-600 text-white shadow-[0_0_12px_rgba(202,138,4,0.4)]"
+                    : "bg-[#0c0c3f]/80 text-yellow-400 border border-yellow-600/40 hover:text-yellow-300"
+                }`}
+              >
+                Pending Review
+              </button>
+            )}
           </div>
         </div>
         
@@ -441,7 +525,11 @@ export default function ArticlesPage() {
           return filteredArticles.length === 0 ? (
           <div className="py-20 text-center rounded-3xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-8 sm:p-12">
             <p className="text-[#f5f7ff] font-bold text-xl sm:text-2xl">
-              {myArticlesOnly ? "You haven&apos;t created any articles yet." : "There are no articles for now"}
+              {articleTab === "mine"
+                ? "You haven't created any articles yet."
+                : articleTab === "pending"
+                ? "No pending articles to review."
+                : "There are no articles for now"}
             </p>
             <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-md mx-auto leading-relaxed">
               Check back soon for new editorial features, artist spotlights, and community broadcasts.
@@ -459,8 +547,8 @@ export default function ArticlesPage() {
                 return (
                 <Link
                   key={article.id}
-                  href={article.approved ? `/articles/${encodeURIComponent(slug)}` : '#'}
-                  className={`group block py-6 first:pt-0 last:pb-0 ${article.approved ? 'cursor-pointer' : 'opacity-60 pointer-events-none'}`}
+                  href={`/articles/${encodeURIComponent(slug)}`}
+                  className="group block py-6 first:pt-0 last:pb-0 cursor-pointer"
                 >
                   <div className="flex items-start gap-6">
                     {/* Date column */}
@@ -470,10 +558,18 @@ export default function ArticlesPage() {
                     
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2 sm:hidden">
-                        <span className="text-xs font-mono font-medium tracking-wider text-[#20efe0]">{dateFormatted}</span>
-                        {!article.approved && (
-                          <span className="px-2 py-0.5 bg-yellow-900/30 border border-yellow-700/50 rounded text-[10px] text-yellow-500 font-semibold uppercase">Pending</span>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-xs font-mono font-medium tracking-wider text-[#20efe0] sm:hidden">{dateFormatted}</span>
+                        {!article.approved ? (
+                          <span className="px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/40 rounded-full text-[10px] text-yellow-400 font-bold uppercase tracking-wider">
+                            Pending Approval
+                          </span>
+                        ) : (
+                          articleTab !== "all" && (
+                            <span className="px-2 py-0.5 bg-green-500/20 border border-green-500/40 rounded-full text-[10px] text-green-400 font-bold uppercase tracking-wider">
+                              Published
+                            </span>
+                          )
                         )}
                       </div>
                       

@@ -7,8 +7,8 @@ import { CelestialRadar } from "@/components/spaceflight/celestial-radar"
 import "./globals.css"
 
 // Montserrat is the closest free match to the brand kit's Proxima Nova Bold.
-const _montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat" })
-const _geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
+const _montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat", display: "swap" })
+const _geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" })
 
 export const metadata: Metadata = {
   title: {
@@ -255,6 +255,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark bg-background ${_montserrat.variable} ${_geistMono.variable}`}>
       <head>
+        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://i.ytimg.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

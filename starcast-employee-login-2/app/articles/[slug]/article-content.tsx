@@ -12,10 +12,11 @@ import {
   toggleArticleSave,
   updateArticle,
   deleteArticle,
+  approveArticle,
 } from "@/app/actions/articles"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Edit, Trash2, Share2, LinkIcon, Twitter, Facebook, Bookmark } from "lucide-react"
+import { ArrowLeft, Edit, Trash2, Share2, LinkIcon, Twitter, Facebook, Bookmark, Check, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -87,13 +88,15 @@ export default function ArticleContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
+  const [approving, setApproving] = useState(false)
+
   const fetchArticle = async () => {
     if (!slug) return
     try {
       const decodedSlug = decodeURIComponent(slug)
       const found = await getArticleBySlug(decodedSlug)
 
-      if (found && found.approved) {
+      if (found) {
         // Map camelCase server row to the shape the JSX expects
         setArticle({
           id: found.id,
@@ -111,11 +114,36 @@ export default function ArticleContent() {
             profile_pic: found.authorProfilePic ?? undefined,
           },
         })
-        refreshLikeState(found.id)
+        if (found.approved) {
+          refreshLikeState(found.id)
+        }
+      } else {
+        setArticle(null)
       }
       setLoading(false)
     } catch {
       setLoading(false)
+    }
+  }
+
+  const handleApproveThisArticle = async () => {
+    if (!article) return
+    setApproving(true)
+    try {
+      await approveArticle(article.id)
+      toast({
+        title: "Article Approved & Published",
+        description: "This article is now live and visible to the public.",
+      })
+      setArticle({ ...article, approved: true })
+    } catch (err: any) {
+      toast({
+        title: "Failed to approve",
+        description: err?.message || "Something went wrong.",
+        variant: "destructive",
+      })
+    } finally {
+      setApproving(false)
     }
   }
 
@@ -275,6 +303,30 @@ export default function ArticleContent() {
       <ResponsiveHeader isLoggedIn={isLoggedIn} isAdmin={isAdmin} isCrew={false} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
+        {/* Pending Approval Banner (for authors and admins) */}
+        {!article.approved && (
+          <div className="mb-6 p-4 rounded-xl bg-yellow-950/40 border border-yellow-600/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-yellow-500/20 text-yellow-400 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-yellow-300 text-sm">Preview Mode: Pending Admin Approval</p>
+                <p className="text-xs text-[#9a9fc4]">This article is currently unapproved and only visible to the author and administrators.</p>
+              </div>
+            </div>
+            {isAdmin && (
+              <Button
+                onClick={handleApproveThisArticle}
+                disabled={approving}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold text-xs flex-shrink-0 px-4 py-2"
+              >
+                <Check className="w-4 h-4 mr-1.5" /> {approving ? "Approving..." : "Approve & Publish Now"}
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Back Button & Share */}
         <div className="flex items-center justify-between mb-6">
           <Button

@@ -5,7 +5,7 @@ import { authClient } from "@/lib/auth-client"
 import {
   adminListUsers, adminPromoteUser, adminDemoteUser, adminSetPermission,
   adminListPendingArticles, adminListApprovedArticles,
-  adminApproveArticle, adminDeleteArticle,
+  adminApproveArticle, adminUnpublishArticle, adminDeleteArticle,
   adminListCommunityPosts, adminPinPost, adminDeletePost,
   adminListCategories, adminCreateCategory, adminDeleteCategory,
   adminListInbox, adminMarkRead, adminMarkReplied, adminGetMessage,
@@ -140,6 +140,7 @@ export default function AdminPage() {
   const [newCategoryName, setNewCategoryName] = useState("")
   const [newCategoryIcon, setNewCategoryIcon] = useState("")
   const [memberSearch, setMemberSearch] = useState("")
+  const [previewArticle, setPreviewArticle] = useState<Article | null>(null)
   const router = useRouter()
 
   // Derived data
@@ -198,6 +199,10 @@ export default function AdminPage() {
   // Action handlers
   const handleApproveArticle = async (articleId: string) => {
     await adminApproveArticle(articleId)
+    fetchPendingArticles(); fetchApprovedArticles()
+  }
+  const handleUnpublishArticle = async (articleId: string) => {
+    await adminUnpublishArticle(articleId)
     fetchPendingArticles(); fetchApprovedArticles()
   }
   const handleRejectArticle = async (articleId: string) => {
@@ -780,21 +785,43 @@ export default function AdminPage() {
                       <div key={article.id} className="p-4 bg-[#05052d]/50 rounded-xl border border-yellow-600/30">
                         <div className="flex items-start justify-between gap-4 mb-2">
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-[#f5f7ff]">{article.title}</h3>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                                Pending Approval
+                              </span>
+                              <p className="text-xs text-[#9a9fc4]">
+                                by {article.employee?.first_name} {article.employee?.last_name} • {new Date(article.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <h3 className="font-semibold text-[#f5f7ff] text-base">{article.title}</h3>
                             {article.subtitle && <p className="text-sm text-[#9a9fc4]/80">{article.subtitle}</p>}
-                            <p className="text-xs text-[#9a9fc4] mt-1">
-                              by {article.employee?.first_name} {article.employee?.last_name} • {new Date(article.created_at).toLocaleDateString()}
-                            </p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            <Button size="sm" onClick={() => router.push(`/articles/${article.slug}`)} variant="outline" className="border-[#20205a] text-[#ea6f2a] hover:bg-[#ea6f2a]/20 bg-transparent">
-                              <Eye className="w-4 h-4" />
+                            <Button
+                              size="sm"
+                              onClick={() => setPreviewArticle(article)}
+                              variant="outline"
+                              className="border-[#20205a] text-[#ea6f2a] hover:bg-[#ea6f2a]/20 bg-transparent text-xs"
+                              title="Preview Article"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" /> Preview
                             </Button>
-                            <Button size="sm" onClick={() => handleApproveArticle(article.id)} className="bg-green-600 hover:bg-green-700">
-                              <Check className="w-4 h-4" />
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveArticle(article.id)}
+                              className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3"
+                              title="Approve & Publish Publicly"
+                            >
+                              <Check className="w-3.5 h-3.5 mr-1" /> Approve & Publish
                             </Button>
-                            <Button size="sm" onClick={() => handleRejectArticle(article.id)} variant="outline" className="border-red-800 text-red-400 hover:bg-red-950/50 bg-transparent">
-                              <Trash2 className="w-4 h-4" />
+                            <Button
+                              size="sm"
+                              onClick={() => handleRejectArticle(article.id)}
+                              variant="outline"
+                              className="border-red-800 text-red-400 hover:bg-red-950/50 bg-transparent text-xs"
+                              title="Reject & Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         </div>
@@ -810,27 +837,35 @@ export default function AdminPage() {
             <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
               <CardHeader>
                 <CardTitle className="text-[#f5f7ff]">Published Articles ({approvedArticles.length})</CardTitle>
-                <CardDescription className="text-[#9a9fc4]">Recently published articles</CardDescription>
+                <CardDescription className="text-[#9a9fc4]">Articles currently live and public on StarCast Online</CardDescription>
               </CardHeader>
               <CardContent>
                 {approvedArticles.length === 0 ? (
-                  <p className="text-[#9a9fc4] text-center py-8">No published articles</p>
+                  <p className="text-[#9a9fc4] text-center py-8">No published articles yet</p>
                 ) : (
                   <div className="space-y-3">
                     {approvedArticles.map((article) => (
                       <div key={article.id} className="flex items-center justify-between p-3 bg-[#05052d]/50 rounded-xl border border-[#20205a]/30">
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-[#f5f7ff] truncate">{article.title}</h3>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                              Live
+                            </span>
+                            <h3 className="font-medium text-[#f5f7ff] truncate">{article.title}</h3>
+                          </div>
                           <p className="text-xs text-[#9a9fc4]">
                             by {article.employee?.first_name} {article.employee?.last_name} • {new Date(article.created_at).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="flex gap-2 ml-3">
-                          <Button size="sm" onClick={() => router.push(`/articles/${article.slug}`)} variant="outline" className="border-[#20205a] text-[#ea6f2a] hover:bg-[#ea6f2a]/20 bg-transparent">
-                            View
+                        <div className="flex items-center gap-2 ml-3">
+                          <Button size="sm" onClick={() => router.push(`/articles/${article.slug}`)} variant="outline" className="border-[#20205a] text-[#ea6f2a] hover:bg-[#ea6f2a]/20 bg-transparent text-xs">
+                            <ExternalLink className="w-3.5 h-3.5 mr-1" /> View
                           </Button>
-                          <Button size="sm" onClick={() => handleDeleteArticle(article.id)} variant="outline" className="border-red-800 text-red-400 hover:bg-red-950/50 bg-transparent">
-                            Delete
+                          <Button size="sm" onClick={() => handleUnpublishArticle(article.id)} variant="outline" className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-950/30 bg-transparent text-xs">
+                            Unpublish
+                          </Button>
+                          <Button size="sm" onClick={() => handleDeleteArticle(article.id)} variant="outline" className="border-red-800 text-red-400 hover:bg-red-950/50 bg-transparent text-xs">
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -839,6 +874,80 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* ARTICLE PREVIEW MODAL */}
+            <Dialog open={!!previewArticle} onOpenChange={(o) => !o && setPreviewArticle(null)}>
+              <DialogContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold ${previewArticle?.approved ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"}`}>
+                      {previewArticle?.approved ? "Published" : "Pending Review"}
+                    </span>
+                    <span className="text-xs text-[#9a9fc4]">
+                      by {previewArticle?.employee?.first_name} {previewArticle?.employee?.last_name} • {previewArticle?.created_at ? new Date(previewArticle.created_at).toLocaleDateString() : ""}
+                    </span>
+                  </div>
+                  <DialogTitle className="text-2xl font-bold text-[#f5f7ff]">{previewArticle?.title}</DialogTitle>
+                  {previewArticle?.subtitle && (
+                    <DialogDescription className="text-[#9a9fc4] text-base">{previewArticle.subtitle}</DialogDescription>
+                  )}
+                </DialogHeader>
+                <div className="space-y-4 my-3 text-sm text-[#d0d5ec] leading-relaxed whitespace-pre-line">
+                  {previewArticle?.excerpt && (
+                    <p className="p-3 rounded-lg bg-[#05052d] border border-[#20205a] text-xs italic text-[#ea6f2a]">
+                      {previewArticle.excerpt}
+                    </p>
+                  )}
+                  <div className="bg-[#05052d]/60 p-4 rounded-xl border border-[#20205a]/50">
+                    {previewArticle?.content}
+                  </div>
+                </div>
+                <DialogFooter className="flex items-center justify-between sm:justify-between gap-2 border-t border-[#20205a] pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => previewArticle?.slug && window.open(`/articles/${previewArticle.slug}`, "_blank")}
+                    className="border-[#20205a] text-[#ea6f2a] hover:bg-[#ea6f2a]/10 bg-transparent text-xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open Page
+                  </Button>
+                  <div className="flex gap-2">
+                    {!previewArticle?.approved ? (
+                      <Button
+                        onClick={() => {
+                          if (previewArticle) {
+                            handleApproveArticle(previewArticle.id)
+                            setPreviewArticle(null)
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold"
+                      >
+                        <Check className="w-4 h-4 mr-1" /> Approve & Publish
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          if (previewArticle) {
+                            handleUnpublishArticle(previewArticle.id)
+                            setPreviewArticle(null)
+                          }
+                        }}
+                        variant="outline"
+                        className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-950/30 bg-transparent text-xs font-semibold"
+                      >
+                        Unpublish
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      onClick={() => setPreviewArticle(null)}
+                      className="text-[#9a9fc4] hover:text-[#f5f7ff] text-xs"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* Community Posts */}
             <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">

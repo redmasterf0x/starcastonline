@@ -17,10 +17,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     article = null
   }
 
-  if (!article || !article.approved) {
+  if (!article) {
     return {
-      title: "Article | Starcast",
+      title: "Article Not Found | Starcast",
       description: "Read articles on Starcast",
+    }
+  }
+
+  if (!article.approved) {
+    return {
+      title: `[Preview] ${article.title} | Starcast`,
+      description: "Previewing unapproved draft article",
+      robots: { index: false, follow: false },
     }
   }
 

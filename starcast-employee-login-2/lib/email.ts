@@ -51,6 +51,24 @@ function button(href: string, label: string): string {
 
 /** Send the account email-verification link (used by Better Auth on signup + resend). */
 export async function sendVerificationEmail(to: string, url: string): Promise<void> {
+  // Always log the verification link for easy developer / admin access and debugging
+  console.log(
+    `\n=======================================================\n` +
+    `[EMAIL VERIFICATION]\n` +
+    `To: ${to}\n` +
+    `Verification Link: ${url}\n` +
+    `=======================================================\n`
+  )
+
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey || apiKey.startsWith("re_dummy")) {
+    console.warn(
+      `[EMAIL] RESEND_API_KEY is not configured or is a placeholder. ` +
+      `Skipping Resend dispatch. The account verification link has been printed to the server log above.`
+    )
+    return
+  }
+
   const body = `
     <p style="margin:0 0 16px 0;">Welcome to StarCast Media! Confirm this email address to activate your account and start booking sessions.</p>
     ${button(url, "Verify my email")}
@@ -58,14 +76,28 @@ export async function sendVerificationEmail(to: string, url: string): Promise<vo
     <p style="margin:0 0 16px 0;word-break:break-all;"><a href="${url}" target="_blank" style="color:${BRAND_ORANGE};">${url}</a></p>
     <p style="margin:0;font-size:13px;color:#5c6b7a;">If you didn&apos;t create this account, you can safely ignore this email.</p>
   `
-  const { error } = await resend.emails.send({
-    from: FROM,
-    to,
-    subject: "Verify your StarCast Media account",
-    html: shell("Confirm your email", body),
-  })
-  if (error) {
-    console.log("[v0] sendVerificationEmail error:", error)
-    throw new Error(typeof error === "string" ? error : (error as any).message ?? "Failed to send email")
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Verify your StarCast Media account",
+      html: shell("Confirm your email", body),
+    })
+
+    if (error) {
+      console.error("[EMAIL] Resend send error:", error)
+      console.error(
+        `[EMAIL] Note: If your Squarespace DNS records are still propagating, Resend might reject sending from '${FROM}'. ` +
+        `Direct link: ${url}`
+      )
+      // Do not crash the entire request if Resend is still propagating; log clearly
+    } else {
+      console.log("[EMAIL] Verification email sent successfully via Resend. ID:", data?.id)
+    }
+  } catch (err) {
+    console.error("[EMAIL] Unexpected error while sending email via Resend:", err)
+    console.log(`[EMAIL] Fallback verification link for ${to}: ${url}`)
   }
 }
+

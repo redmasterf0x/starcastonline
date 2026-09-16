@@ -403,12 +403,17 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
     }
   }, [pathname, transitTo])
 
-  // Canvas starfield simulation
+  // Canvas starfield simulation (optimized with visibility throttling & mobile scaling)
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
+
+    // Reduced motion preference: render single static starry background
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
     let width = (canvas.width = window.innerWidth)
     let height = (canvas.height = window.innerHeight)
@@ -418,10 +423,11 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
       width = canvas.width = window.innerWidth
       height = canvas.height = window.innerHeight
     }
-    window.addEventListener("resize", handleResize)
+    window.addEventListener("resize", handleResize, { passive: true })
 
-    // Generate stars
-    const STAR_COUNT = 420
+    // Scale star count by screen size: 140 on mobile, 260 on desktop for 60fps smoothness & battery efficiency
+    const isMobile = width < 768
+    const STAR_COUNT = isMobile ? 140 : 260
     const stars = Array.from({ length: STAR_COUNT }, () => ({
       x: (Math.random() - 0.5) * width * 2,
       y: (Math.random() - 0.5) * height * 2,
@@ -431,8 +437,9 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
     starsRef.current = stars
 
     let currentSpeed = 1.0
+    let isTabActive = typeof document !== "undefined" ? document.visibilityState === "visible" : true
 
-    const render = () => {
+    const drawFrame = () => {
       ctx.clearRect(0, 0, width, height)
 
       // Target warp speed
@@ -486,14 +493,38 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
           }
         }
       }
+    }
 
+    if (prefersReducedMotion) {
+      drawFrame()
+      return () => {
+        window.removeEventListener("resize", handleResize)
+      }
+    }
+
+    const render = () => {
+      if (!isTabActive) return
+      drawFrame()
       animFrameRef.current = requestAnimationFrame(render)
     }
+
+    // Stop CPU/GPU cycles when tab is backgrounded
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isTabActive = false
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+      } else {
+        isTabActive = true
+        animFrameRef.current = requestAnimationFrame(render)
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
 
     render()
 
     return () => {
       window.removeEventListener("resize", handleResize)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
     }
   }, [isWarping, targetPlanet])

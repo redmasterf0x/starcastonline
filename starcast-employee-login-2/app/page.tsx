@@ -114,10 +114,11 @@ export default async function HomePage() {
         {/* ── MODULE 1: STARCAST HERO (MOBILE-ENLARGED & HIGH CONTRAST) ── */}
         <section className="relative w-full overflow-hidden border-b border-[#20205a]/60">
           <Image
-            src="/images/starcast-online-hero.png"
+            src="/images/starcast-online-hero.webp"
             alt="StarCast Online"
             fill
             priority
+            sizes="100vw"
             className="object-cover object-center opacity-85"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#05051f] via-[#05051f]/85 to-[#05052d]/60" />

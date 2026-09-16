@@ -231,8 +231,11 @@ async function articlesWithAuthor(approved: boolean, limit?: number) {
     subtitle: a.subtitle ?? undefined,
     excerpt: a.excerpt ?? undefined,
     tags: (a.tags as string[]) ?? [],
+    images: (a.images as any[]) ?? [],
+    thumbnail_url: a.thumbnailUrl ?? undefined,
     approved: a.approved,
     created_at: a.createdAt.toISOString(),
+    approved_at: a.approvedAt ? a.approvedAt.toISOString() : null,
     employee_id: a.authorId ?? "",
     slug: a.slug ?? undefined,
     employee: a.authorId ? authorMap.get(a.authorId) : undefined,
@@ -244,12 +247,18 @@ export async function adminListPendingArticles() {
 }
 
 export async function adminListApprovedArticles() {
-  return articlesWithAuthor(true, 10)
+  return articlesWithAuthor(true, 25)
 }
 
 export async function adminApproveArticle(articleId: string) {
   await requireAdmin()
-  await db.update(articles).set({ approved: true }).where(eq(articles.id, articleId))
+  await db.update(articles).set({ approved: true, approvedAt: new Date() }).where(eq(articles.id, articleId))
+  return { success: true }
+}
+
+export async function adminUnpublishArticle(articleId: string) {
+  await requireAdmin()
+  await db.update(articles).set({ approved: false, approvedAt: null }).where(eq(articles.id, articleId))
   return { success: true }
 }
 
