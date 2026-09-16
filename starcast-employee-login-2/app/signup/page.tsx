@@ -70,11 +70,9 @@ export default function SignupPage() {
     setResending(true)
     setResendMessage("")
     try {
-      const { error: resendError } = await authClient.sendVerificationEmail({
-        email: submittedEmail,
-        callbackURL: "/onboarding",
-      })
-      setResendMessage(resendError ? resendError.message ?? "Failed to resend email" : "Verification email sent!")
+      const { resendVerificationEmailAction } = await import("@/app/actions/auth-actions")
+      const result = await resendVerificationEmailAction(submittedEmail)
+      setResendMessage(result.message)
     } catch (err: any) {
       setResendMessage(err?.message ?? "Failed to resend email")
     } finally {
