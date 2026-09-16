@@ -3,7 +3,7 @@ import { phoneNumber } from "better-auth/plugins"
 import { eq, sql } from "drizzle-orm"
 import { db, pool } from "@/lib/db"
 import { profiles } from "@/lib/db/schema"
-import { sendVerificationEmail } from "@/lib/email"
+import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email"
 import { sendSms } from "@/lib/sms"
 
 export const auth = betterAuth({
@@ -43,6 +43,9 @@ export const auth = betterAuth({
     // New users must confirm their email before they can sign in.
     requireEmailVerification: true,
     autoSignIn: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail(user.email, url)
+    },
   },
   emailVerification: {
     // Automatically email the verification link when an account is created.

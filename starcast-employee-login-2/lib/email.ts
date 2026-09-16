@@ -108,3 +108,54 @@ export async function sendVerificationEmail(to: string, url: string): Promise<vo
   }
 }
 
+/** Send the password reset link (used by Better Auth forgetPassword). */
+export async function sendPasswordResetEmail(to: string, url: string): Promise<void> {
+  console.log(
+    `\n=======================================================\n` +
+    `[PASSWORD RESET]\n` +
+    `To: ${to}\n` +
+    `Reset Link: ${url}\n` +
+    `=======================================================\n`
+  )
+
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey || apiKey.startsWith("re_dummy")) {
+    console.warn(`[EMAIL] RESEND_API_KEY not configured. Reset link printed above.`)
+    return
+  }
+
+  const body = `
+    <p style="margin:0 0 16px 0;">We received a request to reset your StarCast Media password.</p>
+    ${button(url, "Reset password")}
+    <p style="margin:0 0 8px 0;font-size:13px;">Or paste this link into your browser:</p>
+    <p style="margin:0 0 16px 0;word-break:break-all;"><a href="${url}" target="_blank" style="color:${BRAND_ORANGE};">${url}</a></p>
+    <p style="margin:0;font-size:13px;color:#5c6b7a;">If you didn&apos;t request this, you can safely ignore this email.</p>
+  `
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Reset your StarCast Media password",
+      html: shell("Reset your password", body),
+    })
+
+    if (error) {
+      console.error("[EMAIL] Resend reset error:", error)
+      const fallbackRes = await resend.emails.send({
+        from: "StarCast Media <onboarding@resend.dev>",
+        to,
+        subject: "Reset your StarCast Media password",
+        html: shell("Reset your password", body),
+      })
+      if (!fallbackRes.error) {
+        console.log("[EMAIL] Fallback password reset sent ID:", fallbackRes.data?.id)
+      }
+    } else {
+      console.log("[EMAIL] Password reset sent successfully ID:", data?.id)
+    }
+  } catch (err) {
+    console.error("[EMAIL] Unexpected error in sendPasswordResetEmail:", err)
+  }
+}
+
