@@ -197,22 +197,32 @@ export async function saveOnboardingStep(fields: {
 
   return { success: true }
 }
-
 /** Send a 6-digit SMS code to verify the member's phone number. */
 export async function sendPhoneCode(phone: string) {
   const user = await requireSession()
   const clean = phone.replace(/[^\d+]/g, "")
   if (clean.replace(/\D/g, "").length < 10) throw new Error("Enter a valid phone number.")
 
+  const { isSmsConfigured, isVerifyConfigured, sendTwilioVerification, sendSms } = await import("@/lib/sms")
   if (!isSmsConfigured()) throw new Error("SMS is not configured. You can skip this step.")
 
-  // Basic throttle: at most 3 codes per 15 minutes.
+  // Basic throttle: at most 5 codes per 15 minutes.
   const since = new Date(Date.now() - 15 * 60 * 1000)
   const recent = await db
     .select({ id: phoneVerifications.id })
     .from(phoneVerifications)
     .where(and(eq(phoneVerifications.userId, user.id), sql`${phoneVerifications.createdAt} > ${since}`))
-  if (recent.length >= 3) throw new Error("Too many codes requested. Please wait a few minutes.")
+  if (recent.length >= 5) throw new Error("Too many codes requested. Please wait a few minutes.")
+
+  // Try Twilio Verify V2 API first if service is configured
+  if (isVerifyConfigured()) {
+    const vRes = await sendTwilioVerification(clean)
+    if (vRes.ok) {
+      await db.update(profiles).set({ phone: clean }).where(eq(profiles.userId, user.id))
+      return { sent: true }
+    }
+    console.warn("[Onboarding] Twilio Verify failed, falling back to direct SMS:", vRes.error)
+  }
 
   const code = String(Math.floor(100000 + Math.random() * 900000))
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
@@ -233,31 +243,53 @@ export async function verifyPhoneCode(code: string) {
   const user = await requireSession()
   const entered = code.replace(/\D/g, "")
 
-  const rows = await db
-    .select()
-    .from(phoneVerifications)
-    .where(and(eq(phoneVerifications.userId, user.id), eq(phoneVerifications.consumed, false)))
-    .orderBy(desc(phoneVerifications.createdAt))
-    .limit(1)
+  const { isVerifyConfigured, checkTwilioVerification } = await import("@/lib/sms")
+  const pRows = await db.select({ phone: profiles.phone }).from(profiles).where(eq(profiles.userId, user.id)).limit(1)
+  const userPhone = pRows[0]?.phone
 
-  const record = rows[0]
-  if (!record) throw new Error("No code to verify. Request a new one.")
-  if (record.expiresAt.getTime() < Date.now()) throw new Error("That code expired. Request a new one.")
-  if (record.attempts >= 5) throw new Error("Too many incorrect attempts. Request a new code.")
+  let approved = false
 
-  if (record.code !== entered) {
-    await db
-      .update(phoneVerifications)
-      .set({ attempts: record.attempts + 1 })
-      .where(eq(phoneVerifications.id, record.id))
-    throw new Error("That code is incorrect.")
+  if (isVerifyConfigured() && userPhone) {
+    const vCheck = await checkTwilioVerification(userPhone, entered)
+    if (vCheck.ok && vCheck.approved) {
+      approved = true
+    }
   }
 
-  await db.update(phoneVerifications).set({ consumed: true }).where(eq(phoneVerifications.id, record.id))
-  await db
-    .update(profiles)
-    .set({ phone: record.phone, phoneVerified: true })
-    .where(eq(profiles.userId, user.id))
+  if (!approved) {
+    const rows = await db
+      .select()
+      .from(phoneVerifications)
+      .where(and(eq(phoneVerifications.userId, user.id), eq(phoneVerifications.consumed, false)))
+      .orderBy(desc(phoneVerifications.createdAt))
+      .limit(1)
+
+    const record = rows[0]
+    if (!record) throw new Error("No code to verify. Request a new one.")
+    if (record.expiresAt.getTime() < Date.now()) throw new Error("That code expired. Request a new one.")
+    if (record.attempts >= 5) throw new Error("Too many incorrect attempts. Request a new code.")
+
+    if (record.code !== entered) {
+      await db
+        .update(phoneVerifications)
+        .set({ attempts: record.attempts + 1 })
+        .where(eq(phoneVerifications.id, record.id))
+      throw new Error("That code is incorrect.")
+    }
+
+    await db.update(phoneVerifications).set({ consumed: true }).where(eq(phoneVerifications.id, record.id))
+    approved = true
+  }
+
+  if (approved) {
+    await db
+      .update(profiles)
+      .set({ phoneVerified: true })
+      .where(eq(profiles.userId, user.id))
+
+    const { user: userTable } = await import("@/lib/db/schema")
+    await db.update(userTable).set({ phoneNumberVerified: true }).where(eq(userTable.id, user.id))
+  }
 
   return { verified: true }
 }

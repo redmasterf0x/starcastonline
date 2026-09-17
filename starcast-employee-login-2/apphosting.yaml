@@ -35,3 +35,5 @@ env:
     secret: TWILIO_AUTH_TOKEN
   - variable: TWILIO_FROM_NUMBER
     secret: TWILIO_FROM_NUMBER
+  - variable: TWILIO_VERIFY_SERVICE_SID
+    secret: TWILIO_VERIFY_SERVICE_SID

@@ -107,9 +107,18 @@ export async function sendSmsOtpAction(phoneNumber: string): Promise<{ success: 
   }
 
   try {
-    const { sendSms, isSmsConfigured } = await import("@/lib/sms")
+    const { sendSms, sendTwilioVerification, isVerifyConfigured, isSmsConfigured } = await import("@/lib/sms")
     if (!isSmsConfigured()) {
       return { success: false, message: "SMS service is currently unavailable. Please use Google or Email to sign in." }
+    }
+
+    // Try Twilio Verify V2 API first if service SID is configured
+    if (isVerifyConfigured()) {
+      const vRes = await sendTwilioVerification(clean)
+      if (vRes.ok) {
+        return { success: true, message: `Verification code sent to ${clean}!` }
+      }
+      console.warn("[AUTH ACTION] Twilio Verify failed, falling back to direct SMS:", vRes.error)
     }
 
     const code = String(Math.floor(100000 + Math.random() * 900000))
@@ -147,29 +156,37 @@ export async function verifySmsOtpAction(phoneNumber: string, code: string): Pro
   }
 
   try {
-    const { desc, and } = await import("drizzle-orm")
-    const records = await db
-      .select()
-      .from(verification)
-      .where(and(eq(verification.identifier, `phone:${clean}`)))
-      .orderBy(desc(verification.createdAt))
-      .limit(1)
+    const { checkTwilioVerification, isVerifyConfigured } = await import("@/lib/sms")
+    let codeApproved = false
 
-    const record = records[0]
-    if (!record) {
-      return { success: false, message: "No verification code found. Please request a new one." }
+    // Check Twilio Verify V2 API first
+    if (isVerifyConfigured()) {
+      const vCheck = await checkTwilioVerification(clean, entered)
+      if (vCheck.ok && vCheck.approved) {
+        codeApproved = true
+      }
     }
 
-    if (record.expiresAt.getTime() < Date.now()) {
-      return { success: false, message: "That verification code has expired. Please request a new one." }
+    // Fallback to database verification record if Twilio Verify wasn't used or pending
+    if (!codeApproved) {
+      const { desc, and } = await import("drizzle-orm")
+      const records = await db
+        .select()
+        .from(verification)
+        .where(and(eq(verification.identifier, `phone:${clean}`)))
+        .orderBy(desc(verification.createdAt))
+        .limit(1)
+
+      const record = records[0]
+      if (record && record.expiresAt.getTime() >= Date.now() && record.value === entered) {
+        codeApproved = true
+        await db.delete(verification).where(eq(verification.id, record.id))
+      }
     }
 
-    if (record.value !== entered) {
-      return { success: false, message: "Incorrect verification code. Please try again." }
+    if (!codeApproved) {
+      return { success: false, message: "Invalid or expired verification code. Please try again." }
     }
-
-    // Code is valid! Clean up verification record
-    await db.delete(verification).where(eq(verification.id, record.id))
 
     // Check if user already exists with this phone number or temporary email
     const { profiles: profilesTable, session: sessionTable } = await import("@/lib/db/schema")
