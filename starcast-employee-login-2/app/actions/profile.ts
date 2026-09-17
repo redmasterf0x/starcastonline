@@ -93,3 +93,16 @@ export async function removeSavedArticle(savedId: string) {
     .delete(savedArticles)
     .where(and(eq(savedArticles.id, savedId), eq(savedArticles.userId, userId)))
 }
+
+/** Send 6-digit SMS verification code to link/verify phone on dashboard profile. */
+export async function sendProfilePhoneCode(phone: string) {
+  const { sendPhoneCode } = await import("@/app/actions/onboarding")
+  return sendPhoneCode(phone)
+}
+
+/** Verify SMS code and mark phone as verified on profile and user record. */
+export async function verifyProfilePhoneCode(code: string) {
+  const { verifyPhoneCode } = await import("@/app/actions/onboarding")
+  return verifyPhoneCode(code)
+}
+

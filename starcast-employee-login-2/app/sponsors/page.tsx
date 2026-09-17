@@ -344,7 +344,7 @@ export default function SponsorsPage() {
                 <p className="text-[#f5f7ff] font-semibold">Sponsorship Request Received!</p>
                 <p className="text-sm text-[#9a9fc4]">
                   Online credit card checkout is being configured. Our production team will contact you directly at{" "}
-                  <span className="text-[#ea6f2a]">{formData.contactEmail}</span> to finalize your package details and invoice.
+                  <span className="text-[#ea6f2a]">{formData.companyEmail}</span> to finalize your package details and invoice.
                 </p>
               </div>
             )}

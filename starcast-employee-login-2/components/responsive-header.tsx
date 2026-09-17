@@ -72,7 +72,7 @@ export function ResponsiveHeader({
     }
   }
 
-  const navLinks = [
+  const navLinks: { href: string; label: string; show: boolean; external?: boolean }[] = [
     { href: "/", label: "Home", show: true },
     { href: "/watch", label: "Watch", show: true },
     { href: "/articles", label: "Articles", show: true },

@@ -4,7 +4,7 @@ import React from "react"
 
 import { useEffect, useState } from "react"
 import { authClient } from "@/lib/auth-client"
-import { getMyProfile, updateMyProfile, getMySavedArticles, removeSavedArticle } from "@/app/actions/profile"
+import { getMyProfile, updateMyProfile, getMySavedArticles, removeSavedArticle, sendProfilePhoneCode, verifyProfilePhoneCode } from "@/app/actions/profile"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,7 @@ import Link from "next/link"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { LoadingScreen } from "@/components/loading-screen"
-import { Music, ChevronRight, Video, ShieldAlert, Sparkles } from "lucide-react"
+import { Music, ChevronRight, Video, ShieldAlert, Sparkles, Smartphone, CheckCircle2, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { getMyBands } from "@/app/actions/bands"
 
@@ -26,6 +26,7 @@ interface UserProfile {
   lastName: string
   email: string
   phone: string | null
+  phoneVerified?: boolean
   bio: string | null
   profilePic: string | null
   location: string | null
@@ -53,6 +54,16 @@ export default function DashboardPage() {
   const [pwMessage, setPwMessage] = useState("")
   const [changingPw, setChangingPw] = useState(false)
   const [justVerified, setJustVerified] = useState(false)
+  
+  // Phone verification state
+  const [phoneVal, setPhoneVal] = useState("")
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [showPhoneVerify, setShowPhoneVerify] = useState(false)
+  const [phoneOtp, setPhoneOtp] = useState("")
+  const [phoneSending, setPhoneSending] = useState(false)
+  const [phoneVerifying, setPhoneVerifying] = useState(false)
+  const [phoneMsg, setPhoneMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  
   const router = useRouter()
 
   useEffect(() => {
@@ -82,11 +93,53 @@ export default function DashboardPage() {
         return
       }
       setProfile(data as UserProfile)
+      setPhoneVal(data.phone || "")
+      setPhoneVerified(Boolean((data as any).phoneVerified))
       setSavedArticles(saved as SavedArticle[])
       setUserBand(bandsData?.[0] || null)
       setLoading(false)
     } catch {
       router.push("/login")
+    }
+  }
+
+  const handleSendPhoneCode = async () => {
+    const clean = phoneVal.trim()
+    if (!clean || clean.replace(/\D/g, "").length < 10) {
+      setPhoneMsg({ type: "error", text: "Please enter a valid phone number with country code (e.g. +1...)." })
+      return
+    }
+    setPhoneSending(true)
+    setPhoneMsg(null)
+    try {
+      await sendProfilePhoneCode(clean)
+      setShowPhoneVerify(true)
+      setPhoneMsg({ type: "success", text: "SMS verification code sent! Enter the 6-digit code below." })
+    } catch (err: any) {
+      setPhoneMsg({ type: "error", text: err?.message || "Could not send SMS code. Check the number and try again." })
+    } finally {
+      setPhoneSending(false)
+    }
+  }
+
+  const handleVerifyPhoneCode = async () => {
+    if (!phoneOtp || phoneOtp.trim().length < 6) {
+      setPhoneMsg({ type: "error", text: "Please enter the 6-digit verification code." })
+      return
+    }
+    setPhoneVerifying(true)
+    setPhoneMsg(null)
+    try {
+      await verifyProfilePhoneCode(phoneOtp.trim())
+      setPhoneVerified(true)
+      setShowPhoneVerify(false)
+      setPhoneOtp("")
+      setPhoneMsg({ type: "success", text: "Phone number verified and linked to your account successfully! ✓" })
+      fetchProfile()
+    } catch (err: any) {
+      setPhoneMsg({ type: "error", text: err?.message || "Invalid or expired code. Please try again." })
+    } finally {
+      setPhoneVerifying(false)
     }
   }
 
@@ -557,20 +610,109 @@ export default function DashboardPage() {
                   <p className="text-xs text-[#9a9fc4]">Email cannot be changed</p>
                 </div>
 
-                {/* Phone */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone" className="text-[#f5f7ff]">
-                    Phone
-                  </Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    defaultValue={profile.phone || ""}
-                    placeholder="+15551234567"
-                    className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                  />
-                  <p className="text-xs text-[#9a9fc4]">Used for production reminder texts. Include +1.</p>
+                {/* Phone & SMS Verification */}
+                <div className="space-y-2 p-3.5 bg-[#080838] border border-[#20205a] rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="phone" className="text-[#f5f7ff] font-medium flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-[#ea6f2a]" />
+                      Phone Number
+                      {phoneVerified && profile.phone ? (
+                        <Badge className="bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 text-xs px-2 py-0.5 flex items-center gap-1 font-semibold">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          Verified
+                        </Badge>
+                      ) : profile.phone ? (
+                        <Badge className="bg-amber-950/80 text-amber-400 border border-amber-500/50 text-xs px-2 py-0.5 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-amber-400" />
+                          Unverified
+                        </Badge>
+                      ) : null}
+                    </Label>
+                    {profile.phone && !phoneVerified && !showPhoneVerify && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleSendPhoneCode}
+                        disabled={phoneSending}
+                        className="h-7 text-xs border-[#ea6f2a]/40 text-[#ea6f2a] hover:bg-[#ea6f2a]/10 bg-transparent"
+                      >
+                        {phoneSending ? "Sending..." : "Verify via SMS"}
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={phoneVal}
+                      onChange={(e) => {
+                        setPhoneVal(e.target.value)
+                        if (e.target.value !== profile.phone) {
+                          setPhoneVerified(false)
+                        }
+                      }}
+                      placeholder="+15551234567"
+                      className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
+                    />
+                    {(!profile.phone || phoneVal !== profile.phone || !phoneVerified) && !showPhoneVerify && phoneVal.replace(/\D/g, "").length >= 10 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSendPhoneCode}
+                        disabled={phoneSending}
+                        className="bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] text-white shrink-0 text-xs"
+                      >
+                        {phoneSending ? "Sending..." : "Verify SMS"}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#9a9fc4]">Used for production reminder texts and mobile sign-in. Include +1 country code.</p>
+
+                  {/* SMS OTP verification panel */}
+                  {showPhoneVerify && (
+                    <div className="mt-3 p-3 bg-[#05052d] border border-[#ea6f2a]/40 rounded-md space-y-3 animate-in fade-in-50">
+                      <div className="text-sm text-[#f5f7ff]">
+                        We sent a 6-digit verification code to <span className="font-semibold text-[#ea6f2a]">{phoneVal}</span>.
+                      </div>
+                      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          placeholder="123456"
+                          value={phoneOtp}
+                          onChange={(e) => setPhoneOtp(e.target.value)}
+                          className="bg-[#080838] border-[#ea6f2a]/40 text-[#f5f7ff] text-center tracking-widest text-lg font-mono w-36"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleVerifyPhoneCode}
+                          disabled={phoneVerifying || phoneOtp.length < 6}
+                          className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-sm"
+                        >
+                          {phoneVerifying ? "Checking..." : "Confirm Code"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleSendPhoneCode}
+                          disabled={phoneSending}
+                          className="text-xs text-[#9a9fc4] hover:text-[#f5f7ff]"
+                        >
+                          Resend Code
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {phoneMsg && (
+                    <p className={`text-xs mt-1 ${phoneMsg.type === "success" ? "text-emerald-400" : "text-red-400"}`}>
+                      {phoneMsg.text}
+                    </p>
+                  )}
                 </div>
 
                 {/* Location */}

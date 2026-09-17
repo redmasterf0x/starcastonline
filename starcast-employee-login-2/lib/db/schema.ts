@@ -360,7 +360,7 @@ export const bandLinks = pgTable('band_links', {
     .notNull(),
   label: varchar('label', { length: 255 }).notNull(),
   url: varchar('url', { length: 1024 }).notNull(),
-  icon: varchar('icon', { length: 255 }).default(null), // optional icon name
+  icon: varchar('icon', { length: 255 }), // optional icon name
   position: integer('position').default(0), // ordering
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),

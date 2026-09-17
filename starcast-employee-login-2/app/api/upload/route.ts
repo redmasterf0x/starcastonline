@@ -15,11 +15,12 @@ export async function POST(request: NextRequest) {
 
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const pathname = `${folder}/${Date.now()}-${sanitizedName}`
-    const buffer = Buffer.from(await file.arrayBuffer())
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     try {
       const store = getStore("uploads")
-      await store.set(pathname, buffer, {
+      await store.set(pathname, arrayBuffer, {
         metadata: { contentType: file.type || "application/octet-stream" },
       })
       return NextResponse.json({ url: `/api/blobs/${pathname}` })

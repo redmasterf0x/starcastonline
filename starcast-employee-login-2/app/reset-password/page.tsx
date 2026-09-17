@@ -37,7 +37,7 @@ export default function ResetPasswordPage() {
     const email = (formData.get("email") as string).trim()
 
     try {
-      const { error: resetError } = await authClient.forgetPassword({
+      const { error: resetError } = await authClient.requestPasswordReset({
         email,
         redirectTo: "/reset-password",
       })

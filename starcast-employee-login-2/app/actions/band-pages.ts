@@ -57,6 +57,7 @@ export type PublicBand = {
   is_authenticated: boolean
   follower_count: number
   is_following: boolean
+  links?: Array<{ title?: string; label?: string; url: string }> | null
 }
 
 /** Number of followers for a set of bands, keyed by bandId. */
@@ -188,6 +189,7 @@ export async function getPublicBand(slug: string): Promise<PublicBand | null> {
           is_authenticated: false,
           follower_count: 42,
           is_following: false,
+          links: fallback.links.map((l) => ({ title: l.label, url: l.url })),
         }
       }
     }
@@ -217,6 +219,7 @@ export async function getPublicBand(slug: string): Promise<PublicBand | null> {
     is_authenticated: viewerId != null,
     follower_count: followerCounts.get(b.id) ?? 0,
     is_following: followed.has(b.id),
+    links: Array.isArray(b.links) ? (b.links as Array<{ title?: string; label?: string; url: string }>) : [],
   }
 }
 

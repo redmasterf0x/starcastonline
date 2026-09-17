@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Montserrat, Geist_Mono } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
 import { SpaceflightTransitionProvider } from "@/components/spaceflight/spaceflight-transition-provider"
@@ -9,6 +9,13 @@ import "./globals.css"
 // Montserrat is the closest free match to the brand kit's Proxima Nova Bold.
 const _montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat", display: "swap" })
 const _geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" })
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#06062e",
+}
 
 export const metadata: Metadata = {
   title: {

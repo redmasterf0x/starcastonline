@@ -279,7 +279,7 @@ export default function PortalPage() {
           return
         }
         await refreshBands()
-        const newId = res.id || (res as any).band?.id
+        const newId = (res as any).id || (res as any).band?.id
         if (newId) {
           setSelectedBandId(newId)
         }
@@ -977,15 +977,13 @@ export default function PortalPage() {
                   <BandPostsPanel
                     bandId={selectedBand.id}
                     bandName={selectedBand.name}
-                    slug={selectedBand.slug}
                   />
                 )}
 
                 {portalTab === "links" && (
                   <BandLinksPanel
-                    bandId={selectedBand.id}
-                    slug={selectedBand.slug}
-                    initialLinks={(selectedBand as any).links ?? []}
+                    band={selectedBand as any}
+                    onUpdated={refreshBands}
                   />
                 )}
 

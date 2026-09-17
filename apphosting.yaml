@@ -1,5 +1,36 @@
+runConfig:
+  cpu: 1
+  memoryMiB: 1024
+  minInstances: 0
+  maxInstances: 10
+  concurrency: 80
+
 env:
-  - variable: GOOGLE_CLIENT_SECRET
-    secret: GOOGLE_CLIENT_SECRET
+  - variable: BETTER_AUTH_URL
+    value: https://starcast.online
+  - variable: NEXT_PUBLIC_BASE_URL
+    value: https://starcast.online
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+  - variable: NEON_DATABASE_URL
+    secret: DATABASE_URL
+  - variable: BETTER_AUTH_SECRET
+    secret: BETTER_AUTH_SECRET
+  - variable: CRON_SECRET
+    secret: CRON_SECRET
+  - variable: STRIPE_SECRET_KEY
+    secret: STRIPE_SECRET_KEY
+  - variable: PRINTIFY_API_TOKEN
+    secret: PRINTIFY_API_TOKEN
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY
+  - variable: GOOGLE_CLIENT_ID
+    value: "713609005713-lrukavqtglgeis4asls1jluhbnn4fi0o.apps.googleusercontent.com"
+  - variable: GOOGLE_CLIENT_SECRET
+    secret: GOOGLE_CLIENT_SECRET
+  - variable: TWILIO_ACCOUNT_SID
+    secret: TWILIO_ACCOUNT_SID
+  - variable: TWILIO_AUTH_TOKEN
+    secret: TWILIO_AUTH_TOKEN
+  - variable: TWILIO_FROM_NUMBER
+    secret: TWILIO_FROM_NUMBER
