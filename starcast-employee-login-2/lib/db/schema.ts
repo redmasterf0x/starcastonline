@@ -431,3 +431,10 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const uploadedBlobs = pgTable("uploaded_blobs", {
+  pathname: text("pathname").primaryKey(),
+  contentType: text("content_type").notNull().default("application/octet-stream"),
+  data: text("data").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
