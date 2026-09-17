@@ -20,6 +20,8 @@ const siteLinks = [
   { label: "About", href: "/information" },
   { label: "Merch", href: "/merch" },
   { label: "Sponsor", href: "/sponsors" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
 ]
 
 export function Footer() {
