@@ -69,8 +69,18 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-2 border-t border-white/8 pt-5 text-xs text-[#777c9f] sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; 2026 Starcast Media. All rights reserved.</p>
+        <div className="mt-8 flex flex-col gap-3 border-t border-white/8 pt-5 text-xs text-[#777c9f] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
+            <p>&copy; 2026 Starcast Media. All rights reserved.</p>
+            <span className="hidden sm:inline text-white/20">&middot;</span>
+            <Link href="/privacy" className="text-[#aeb2ce] hover:text-[#ea6f2a] transition-colors underline-offset-2 hover:underline">
+              Privacy Policy
+            </Link>
+            <span className="text-white/20">&middot;</span>
+            <Link href="/terms" className="text-[#aeb2ce] hover:text-[#ffd166] transition-colors underline-offset-2 hover:underline">
+              Terms &amp; Conditions
+            </Link>
+          </div>
           <p className="font-medium uppercase tracking-[0.18em] text-[#d77a42]">To media and beyond</p>
         </div>
       </div>

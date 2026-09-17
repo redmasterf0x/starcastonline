@@ -15,8 +15,8 @@ import Link from "next/link"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { LoadingScreen } from "@/components/loading-screen"
-import { Music, ChevronRight, Video, ShieldAlert, Sparkles, Smartphone, CheckCircle2, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Music, ChevronRight, Video, ShieldAlert, Sparkles, Smartphone, CheckCircle2, AlertCircle, ShieldCheck, FileText, ExternalLink } from "lucide-react"
 import { getMyBands } from "@/app/actions/bands"
 
 interface UserProfile {
@@ -825,6 +825,59 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* ── LEGAL & POLICIES ── */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-[#f5f7ff] flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#20efe0]" />
+              Legal &amp; Privacy Policies
+            </h2>
+          </div>
+          <Card className="border-[#20205a] bg-[#0c0c3f]/50">
+            <CardContent className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="flex items-center justify-between p-4 rounded-xl border border-[#20205a] bg-[#05052d]/60 hover:border-[#ea6f2a]/50 hover:bg-[#05052d] transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#ea6f2a]/15 text-[#ea6f2a]">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors">
+                        Privacy Policy
+                      </p>
+                      <p className="text-xs text-[#9a9fc4]">SMS data protection &amp; privacy terms</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#ea6f2a] transition-colors" />
+                </Link>
+
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="flex items-center justify-between p-4 rounded-xl border border-[#20205a] bg-[#05052d]/60 hover:border-[#ffd166]/50 hover:bg-[#05052d] transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#ffd166]/15 text-[#ffd166]">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#f5f7ff] group-hover:text-[#ffd166] transition-colors">
+                        Terms &amp; Conditions
+                      </p>
+                      <p className="text-xs text-[#9a9fc4]">Service agreement &amp; broadcast terms</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#ffd166] transition-colors" />
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </section>
