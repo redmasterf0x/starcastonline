@@ -1592,7 +1592,7 @@ export default function CommunityPage() {
 
         {/* Create Discussion Post Modal */}
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] max-w-lg">
+          <DialogContent className="w-[95vw] max-w-xl sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-[#f5f7ff]">
                 <MessageSquare className="w-5 h-5 text-[#ea6f2a]" />

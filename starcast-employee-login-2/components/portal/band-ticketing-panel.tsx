@@ -660,7 +660,7 @@ export function BandTicketingPanel({
       {/* DIALOG: CREATE EVENT / POST A TICKET */}
       {/* ========================================================================= */}
       <Dialog open={createEventOpen} onOpenChange={setCreateEventOpen}>
-        <DialogContent className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl sm:max-w-3xl max-h-[92vh] overflow-y-auto border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Ticket className="w-5 h-5 text-[#ea6f2a]" />
@@ -866,10 +866,10 @@ export function BandTicketingPanel({
       </Dialog>
 
       {/* ========================================================================= */}
-      {/* DIALOG: DOOR CHECK-IN SCANNER & GUEST LIST */}
+      {/* DIALOG: SCANNER & GUEST LIST */}
       {/* ========================================================================= */}
       <Dialog open={!!scannerEvent} onOpenChange={(open) => !open && setScannerEvent(null)}>
-        <DialogContent className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] max-w-3xl lg:max-w-4xl max-h-[92vh] overflow-y-auto border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <QrCode className="w-5 h-5 text-[#20efe0]" />

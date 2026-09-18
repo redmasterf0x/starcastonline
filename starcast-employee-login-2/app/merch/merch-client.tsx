@@ -362,13 +362,13 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
       {/* ── QUICK VIEW / PRODUCT DETAIL MODAL ── */}
       <Dialog open={Boolean(selectedProduct)} onOpenChange={(open) => !open && setSelectedProduct(null)}>
         {selectedProduct && (
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border border-[#20205a] bg-[#0a0a28]/98 p-6 sm:p-8 text-[#f5f7ff] shadow-2xl backdrop-blur-2xl">
+          <DialogContent className="w-[96vw] max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[92vh] md:max-h-[88vh] overflow-y-auto border border-[#20205a] bg-[#0a0a28]/98 p-6 sm:p-8 md:p-10 text-[#f5f7ff] shadow-2xl backdrop-blur-2xl">
             <DialogHeader className="sr-only">
               <DialogTitle>{selectedProduct.title}</DialogTitle>
               <DialogDescription>Product details and direct ordering options</DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-12 items-start">
               {/* Left Column: Image Gallery */}
               <div className="space-y-4">
                 {/* Main Large Image */}

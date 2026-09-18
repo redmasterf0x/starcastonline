@@ -80,29 +80,42 @@ export default async function HomePage() {
   // Featured bands (up to 3)
   const featuredBands = publicBands.slice(0, 3)
 
-  // Real community discussions aggregated from DECK + forum
-  const allDiscussions = [
-    ...(deckData?.posts || []).map((p: any) => ({
-      id: p.id,
-      title: p.content.slice(0, 80) + (p.content.length > 80 ? "..." : ""),
-      snippet: p.content,
-      author: p.employee ? `${p.employee.first_name} ${p.employee.last_name || ""}`.trim() : "Community Member",
-      replies: p.comments?.length || 0,
-      category: "The DECK",
-      created_at: p.created_at,
-      href: "/community?tab=deck",
-    })),
-    ...(communityPosts || []).map((p: any) => ({
-      id: p.id,
-      title: p.title || p.content.slice(0, 80) + (p.content.length > 80 ? "..." : ""),
-      snippet: p.content,
-      author: p.employee ? `${p.employee.first_name} ${p.employee.last_name || ""}`.trim() : "Community Member",
-      replies: p.comments?.length || 0,
-      category: p.category ? p.category.toUpperCase() : "Discussion",
-      created_at: p.created_at,
-      href: "/community?tab=feed",
-    })),
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  // Real community discussions aggregated from DECK + forum (deduplicated by ID)
+  const discussionMap = new Map<string, any>()
+
+  for (const p of (deckData?.posts || [])) {
+    if (p?.id && !discussionMap.has(p.id)) {
+      discussionMap.set(p.id, {
+        id: p.id,
+        title: p.content.slice(0, 80) + (p.content.length > 80 ? "..." : ""),
+        snippet: p.content,
+        author: p.employee ? `${p.employee.first_name} ${p.employee.last_name || ""}`.trim() : "Community Member",
+        replies: p.comments?.length || 0,
+        category: "The DECK",
+        created_at: p.created_at,
+        href: "/community?tab=deck",
+      })
+    }
+  }
+
+  for (const p of (communityPosts || [])) {
+    if (p?.id && !discussionMap.has(p.id)) {
+      discussionMap.set(p.id, {
+        id: p.id,
+        title: p.title || p.content.slice(0, 80) + (p.content.length > 80 ? "..." : ""),
+        snippet: p.content,
+        author: p.employee ? `${p.employee.first_name} ${p.employee.last_name || ""}`.trim() : "Community Member",
+        replies: p.comments?.length || 0,
+        category: p.category ? p.category.toUpperCase() : "Discussion",
+        created_at: p.created_at,
+        href: "/community?tab=feed",
+      })
+    }
+  }
+
+  const allDiscussions = Array.from(discussionMap.values()).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
 
   const recentDiscussions = allDiscussions.slice(0, 3)
 

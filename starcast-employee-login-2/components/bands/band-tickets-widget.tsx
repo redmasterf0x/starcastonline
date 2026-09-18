@@ -209,7 +209,7 @@ export function BandTicketsWidget({
 
       {/* Checkout Dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-        <DialogContent className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] max-w-md">
+        <DialogContent className="w-[95vw] max-w-lg sm:max-w-xl max-h-[92vh] overflow-y-auto border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] shadow-2xl p-6 sm:p-7">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Ticket className="w-5 h-5 text-[#ea6f2a]" />

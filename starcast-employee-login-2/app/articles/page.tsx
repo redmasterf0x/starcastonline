@@ -251,7 +251,7 @@ export default function ArticlesPage() {
                 <DialogTrigger asChild>
                   <Button className="bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:from-[#bc3f00] hover:to-[#bc3f00] text-[#f5f7ff]">Create Article</Button>
                 </DialogTrigger>
-                <DialogContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[96vw] max-w-3xl lg:max-w-4xl max-h-[92vh] overflow-y-auto bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
                   <DialogHeader>
                     <DialogTitle className="text-2xl text-[#f5f7ff]">Create New Article</DialogTitle>
                     <DialogDescription className="text-[#9a9fc4]">

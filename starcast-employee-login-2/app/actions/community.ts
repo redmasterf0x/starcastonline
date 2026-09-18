@@ -12,10 +12,13 @@ import {
   friendships,
   messages,
 } from "@/lib/db/schema"
-import { and, asc, desc, eq, inArray, or, count, gte } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, or, count, gte, ne } from "drizzle-orm"
 import { headers } from "next/headers"
 import { SOCIAL_BAN_MESSAGE } from "@/lib/permissions"
 import { createNotification } from "@/app/actions/notifications"
+
+// Reserved category slug for the shared DECK wall.
+const DECK_SLUG = "the-deck"
 
 // All ids exposed to the client are profile ids (profiles.id), matching the
 // legacy Supabase shape where community rows referenced users.id.
@@ -351,6 +354,7 @@ export async function listCommunityPosts(categorySlug?: string | null) {
       : await db
           .select()
           .from(communityPosts)
+          .where(ne(communityPosts.category, DECK_SLUG))
           .orderBy(desc(communityPosts.createdAt))
 
   const authorIds = [...new Set(posts.map((p) => p.authorId).filter(Boolean))] as string[]
@@ -846,10 +850,6 @@ export async function sendChatMessage(receiverProfileId: string, content: string
 // but can reply (comment) as many times as they want. It reuses the community
 // posts/comments tables under a reserved category slug, so no dedicated tables
 // are needed and the existing star/comment actions work unchanged.
-
-// Reserved category slug for the shared DECK wall. Kept as a module-local
-// (not exported) because "use server" files may only export async functions.
-const DECK_SLUG = "the-deck"
 
 /**
  * All DECK posts, newest first, decorated with stars + threaded replies.

@@ -76,7 +76,7 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gradient-to-b from-[#0c0c3f] via-[#080829] to-[#05051f] border border-[#20205a] text-[#f5f7ff] max-w-sm sm:max-w-md shadow-2xl p-6 sm:p-7">
+      <DialogContent className="w-[95vw] max-w-md sm:max-w-lg md:max-w-xl max-h-[92vh] overflow-y-auto bg-gradient-to-b from-[#0c0c3f] via-[#080829] to-[#05051f] border border-[#20205a] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
         <DialogHeader className="text-center sm:text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#ea6f2a] to-[#20efe0] p-0.5 mx-auto shadow-lg shadow-[#ea6f2a]/20 flex items-center justify-center">
             <div className="w-full h-full bg-[#0c0c3f] rounded-[14px] flex items-center justify-center">
@@ -92,17 +92,17 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center my-4">
+        <div className="flex flex-col items-center my-3 sm:my-4">
           {/* QR Code Container */}
           <div className="relative p-4 sm:p-5 rounded-2xl bg-white shadow-2xl border-4 border-[#20205a]/60 group">
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
                 alt={`QR code for ${band.name}`}
-                className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-lg"
+                className="w-48 h-48 sm:w-60 sm:h-60 object-contain rounded-lg"
               />
             ) : (
-              <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center bg-white text-gray-400">
+              <div className="w-48 h-48 sm:w-60 sm:h-60 flex items-center justify-center bg-white text-gray-400">
                 <div className="w-8 h-8 border-2 border-[#ea6f2a] border-t-transparent rounded-full animate-spin" />
               </div>
             )}
@@ -134,7 +134,7 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
+        <div className="grid grid-cols-2 gap-3 pt-1">
           <Button
             onClick={handleDownload}
             disabled={!qrDataUrl}
