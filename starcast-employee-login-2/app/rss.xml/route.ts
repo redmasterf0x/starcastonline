@@ -11,7 +11,7 @@ export async function GET() {
     // Database unavailable — serve empty feed
   }
 
-  const baseUrl = "https://www.starcast.online"
+  const baseUrl = "https://starcast.online"
   const now = new Date().toUTCString()
 
   const items = articles

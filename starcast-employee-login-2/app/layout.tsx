@@ -42,11 +42,11 @@ export const metadata: Metadata = {
   creator: "Starcast Media",
   publisher: "Starcast Media",
   generator: "v0.app",
-  metadataBase: new URL("https://www.starcast.online"),
+  metadataBase: new URL("https://starcast.online"),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://www.starcast.online",
+    url: "https://starcast.online",
     siteName: "Starcast Media",
     title: "Starcast Media | Media & Advertising Company in Topeka, Kansas",
     description: "Topeka's premier media production and advertising company. Live media production, video production, sports broadcasting, and advertising services.",
@@ -86,9 +86,9 @@ export const metadata: Metadata = {
   },
   category: "Media Production",
   alternates: {
-    canonical: "https://www.starcast.online",
+    canonical: "/",
     types: {
-      "application/rss+xml": "https://www.starcast.online/rss.xml",
+      "application/rss+xml": "/rss.xml",
     },
   },
 }
@@ -102,13 +102,13 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "@id": "https://www.starcast.online",
+    "@id": "https://starcast.online",
     name: "Starcast Media",
     alternateName: "Starcast Live Media",
     description: "Topeka's premier media production and advertising company offering live media production, video production, sports broadcasting, event coverage, and advertising services.",
-    url: "https://www.starcast.online",
-    logo: "https://www.starcast.online/images/spacemanlogo.png",
-    image: "https://www.starcast.online/images/spacemanlogo.png",
+    url: "https://starcast.online",
+    logo: "https://starcast.online/images/spacemanlogo.png",
+    image: "https://starcast.online/images/spacemanlogo.png",
     address: {
       "@type": "PostalAddress",
       addressLocality: "Topeka",
@@ -124,51 +124,32 @@ export default function RootLayout({
       {
         "@type": "City",
         name: "Topeka",
-        "@id": "https://en.wikipedia.org/wiki/Topeka,_Kansas",
       },
       {
         "@type": "State",
         name: "Kansas",
       },
     ],
-    serviceArea: {
-      "@type": "GeoCircle",
-      geoMidpoint: {
-        "@type": "GeoCoordinates",
-        latitude: 39.0473,
-        longitude: -95.6752,
-      },
-      geoRadius: "50 mi",
-    },
-    priceRange: "$$",
-    openingHoursSpecification: {
-      "@type": "OpeningHoursSpecification",
-      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      opens: "09:00",
-      closes: "17:00",
-    },
-    sameAs: [
-      // Add social media URLs here when available
-    ],
     knowsAbout: [
       "Media Production",
-      "Advertising",
-      "Video Production", 
-      "Live Streaming",
+      "Video Production",
       "Sports Broadcasting",
       "Event Coverage",
+      "Live Streaming",
+      "Advertising",
+      "Digital Marketing",
       "Content Creation",
     ],
     hasOfferCatalog: {
       "@type": "OfferCatalog",
-      name: "Media Services",
+      name: "Media & Advertising Services",
       itemListElement: [
         {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
             name: "Live Media Production",
-            description: "Professional live media production services for events, sports, and broadcasts in Topeka and Kansas.",
+            description: "Professional multi-camera live broadcast production for sports, concerts, and events.",
           },
         },
         {
@@ -176,7 +157,7 @@ export default function RootLayout({
           itemOffered: {
             "@type": "Service",
             name: "Video Production",
-            description: "High-quality video production and content creation services.",
+            description: "High-quality video production for commercials, corporate videos, and promotional content.",
           },
         },
         {
@@ -184,7 +165,7 @@ export default function RootLayout({
           itemOffered: {
             "@type": "Service",
             name: "Advertising Services",
-            description: "Comprehensive advertising and media buying services for local Topeka businesses.",
+            description: "Targeted advertising and sponsorship packages across Starcast Media network platforms.",
           },
         },
         {
@@ -192,28 +173,43 @@ export default function RootLayout({
           itemOffered: {
             "@type": "Service",
             name: "Sports Broadcasting",
-            description: "Professional sports broadcasting and coverage services.",
+            description: "Live play-by-play and color commentary sports broadcasting for high school, college, and semi-pro sports.",
           },
         },
       ],
     },
+    priceRange: "$$",
+    openingHoursSpecification: [
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        opens: "08:00",
+        closes: "18:00",
+      },
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Saturday"],
+        opens: "09:00",
+        closes: "15:00",
+      },
+    ],
   }
 
   // WebSite schema with Sitelinks - this is what Google uses to generate sitelinks
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "@id": "https://www.starcast.online/#website",
+    "@id": "https://starcast.online/#website",
     name: "Starcast Media",
     alternateName: ["Starcast", "Starcast Live Media", "StarcastLiveMedia"],
-    url: "https://www.starcast.online",
+    url: "https://starcast.online",
     description: "Topeka's premier media production and advertising company. Articles, shows, community, and more.",
     inLanguage: "en-US",
     potentialAction: {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: "https://www.starcast.online/articles?q={search_term_string}",
+        urlTemplate: "https://starcast.online/articles?q={search_term_string}",
       },
       "query-input": "required name=search_term_string",
     },
@@ -226,35 +222,35 @@ export default function RootLayout({
     itemListElement: [
       {
         "@type": "SiteLinksSearchBox",
-        target: "https://www.starcast.online/articles?q={search_term_string}",
+        target: "https://starcast.online/articles?q={search_term_string}",
       },
       {
         "@type": "ListItem",
         position: 1,
         name: "Articles",
         description: "Sports coverage, analysis, and commentary from Starcast Media.",
-        url: "https://www.starcast.online/articles",
+        url: "https://starcast.online/articles",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Shows",
         description: "Watch The Observation Deck, Star Talk, and more Starcast original shows.",
-        url: "https://www.starcast.online/shows",
+        url: "https://starcast.online/shows",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: "Community",
         description: "Join the Starcast Media community. Discuss sports, media, and more.",
-        url: "https://www.starcast.online/community",
+        url: "https://starcast.online/community",
       },
       {
         "@type": "ListItem",
         position: 4,
         name: "Information",
         description: "Learn more about Starcast Media and our services.",
-        url: "https://www.starcast.online/information",
+        url: "https://starcast.online/information",
       },
     ],
   }

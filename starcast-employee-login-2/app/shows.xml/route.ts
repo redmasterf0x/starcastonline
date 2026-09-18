@@ -9,7 +9,7 @@ export async function GET() {
     // Database unavailable — serve empty feed
   }
 
-  const baseUrl = "https://www.starcast.online"
+  const baseUrl = "https://starcast.online"
   const items = articles.map((article) => {
     const author =
       `${article.authorFirstName || ""} ${article.authorLastName || ""}`.trim() || "Starcast Media"

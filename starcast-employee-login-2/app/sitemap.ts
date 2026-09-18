@@ -2,7 +2,7 @@ import { MetadataRoute } from "next"
 import { getApprovedArticlesForFeed } from "@/lib/articles-feed"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://www.starcast.online"
+  const baseUrl = "https://starcast.online"
 
   // Fetch approved articles for sitemap
   let articleUrls: MetadataRoute.Sitemap = []

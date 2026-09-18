@@ -5,10 +5,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: ["/admin", "/dashboard", "/api/"],
+        allow: ["/", "/api/og-card/", "/api/blobs/"],
+        disallow: ["/admin", "/dashboard", "/api/auth", "/api/stripe", "/api/cron"],
       },
     ],
-    sitemap: "https://www.starcast.online/sitemap.xml",
+    sitemap: "https://starcast.online/sitemap.xml",
   }
 }

@@ -6,7 +6,7 @@ import { profiles, user } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
 import { requireStaff } from "@/lib/permissions"
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.starcast.online"
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://starcast.online"
 const returnUrl = `${baseUrl}/production`
 
 type PayoutStatus = {

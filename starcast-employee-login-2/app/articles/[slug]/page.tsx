@@ -28,18 +28,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     article = null
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://starcast.online"
+  const encodedSlug = encodeURIComponent(slug)
+  const canonicalUrl = `${baseUrl}/articles/${encodedSlug}`
+
   if (!article) {
     return {
-      title: "Article Not Found | StarCast",
+      title: { absolute: "Article Not Found | StarCast Media" },
       description: "Read the latest news and spotlight articles on StarCast Online.",
+      alternates: { canonical: canonicalUrl },
     }
   }
 
   if (!article.approved) {
     return {
-      title: `[Preview] ${article.title} | StarCast`,
+      title: { absolute: `[Preview] ${article.title} | StarCast Media` },
       description: "Previewing unapproved draft article.",
       robots: { index: false, follow: false },
+      alternates: { canonical: canonicalUrl },
     }
   }
 
@@ -47,8 +53,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const rawExcerpt = cleanText(article.excerpt || article.content)
   const description = rawExcerpt.length > 180 ? rawExcerpt.slice(0, 177) + "..." : rawExcerpt || "Read this article on StarCast Online"
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://starcast.online"
-  const encodedSlug = encodeURIComponent(slug)
   const dynamicOgUrl = `${baseUrl}/api/og-card/${encodedSlug}`
 
   const directImageUrl = article.thumbnailUrl
@@ -76,14 +80,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   ]
 
   return {
-    title: `${article.title} | StarCast`,
+    title: { absolute: `${article.title} | StarCast` },
     description,
     authors: authorName ? [{ name: authorName }] : undefined,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: article.title,
       description,
       type: "article",
-      url: `${baseUrl}/articles/${encodedSlug}`,
+      url: canonicalUrl,
       publishedTime: article.createdAt ? new Date(article.createdAt).toISOString() : undefined,
       authors: authorName ? [authorName] : undefined,
       siteName: "StarCast Media",

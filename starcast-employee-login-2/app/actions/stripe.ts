@@ -21,7 +21,7 @@ export interface SponsorFormData {
   logoUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.starcast.online"
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://starcast.online"
 
 export async function createSponsorCheckout(formData: SponsorFormData) {
   const pkg = getPackageById(formData.packageId)
