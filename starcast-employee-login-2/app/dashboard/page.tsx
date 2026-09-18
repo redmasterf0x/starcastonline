@@ -52,8 +52,6 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
   const [uploading, setUploading] = useState(false)
-  const [pwMessage, setPwMessage] = useState("")
-  const [changingPw, setChangingPw] = useState(false)
   const [justVerified, setJustVerified] = useState(false)
   
   // Phone verification state
@@ -208,29 +206,6 @@ export default function DashboardPage() {
     setSaving(false)
   }
 
-  const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setChangingPw(true)
-    setPwMessage("")
-
-    const formData = new FormData(e.currentTarget)
-    const currentPassword = formData.get("current_password") as string
-    const newPassword = formData.get("new_password") as string
-
-    const { error } = await authClient.changePassword({
-      currentPassword,
-      newPassword,
-      revokeOtherSessions: true,
-    })
-
-    if (error) {
-      setPwMessage(error.message ?? "Failed to change password")
-    } else {
-      setPwMessage("Password changed successfully!")
-      ;(e.target as HTMLFormElement).reset()
-    }
-    setChangingPw(false)
-  }
 
   const handleSignOut = async () => {
     await authClient.signOut()
@@ -781,60 +756,7 @@ export default function DashboardPage() {
           </Card>
         </section>
 
-        {/* ── CHANGE PASSWORD ── */}
-        <section>
-          <h2 className="text-lg font-semibold text-[#f5f7ff] mb-3">Change Password</h2>
-          <Card className="border-[#20205a] bg-[#0c0c3f]/50">
-            <CardContent className="pt-6">
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="current_password" className="text-[#f5f7ff]">
-                    Current Password
-                  </Label>
-                  <Input
-                    id="current_password"
-                    name="current_password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="new_password" className="text-[#f5f7ff]">
-                    New Password
-                  </Label>
-                  <Input
-                    id="new_password"
-                    name="new_password"
-                    type="password"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    className="bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
-                  />
-                </div>
 
-                {pwMessage && (
-                  <p className={`text-sm ${pwMessage.includes("Failed") || pwMessage.includes("Invalid") ? "text-red-400" : "text-green-400"}`}>
-                    {pwMessage}
-                  </p>
-                )}
-
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    disabled={changingPw}
-                    variant="outline"
-                    className="border-[#ea6f2a] text-[#ea6f2a] hover:bg-[#ea6f2a]/10 bg-transparent"
-                  >
-                    {changingPw ? "Updating..." : "Update Password"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </section>
       </main>
 
       <Footer />
