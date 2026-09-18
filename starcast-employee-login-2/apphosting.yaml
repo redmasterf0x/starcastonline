@@ -11,6 +11,8 @@ env:
     value: https://starcast.online
   - variable: NEXT_PUBLIC_BASE_URL
     value: https://starcast.online
+  - variable: NEXT_PUBLIC_APP_URL
+    value: https://starcast.online
   - variable: DATABASE_URL
     secret: DATABASE_URL
   - variable: NEON_DATABASE_URL
