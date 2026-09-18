@@ -58,20 +58,20 @@ function timeAgo(iso: string) {
 }
 
 function Avatar({ name, src }: { name: string; src?: string }) {
-  if (src) {
+  const [hasError, setHasError] = useState(false)
+  if (src && !hasError) {
     return (
-      <Image
-        src={src || "/placeholder.svg"}
+      <img
+        src={src}
         alt={name}
-        width={40}
-        height={40}
-        className="w-10 h-10 rounded-full object-cover border border-[#20205a]"
+        onError={() => setHasError(true)}
+        className="w-10 h-10 rounded-full object-cover border border-[#20205a] shrink-0"
       />
     )
   }
   return (
-    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#ea6f2a]/20 border border-[#ea6f2a]/30 text-[#ea6f2a] font-semibold text-sm">
-      {name.charAt(0).toUpperCase()}
+    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#ea6f2a]/20 border border-[#ea6f2a]/30 text-[#ea6f2a] font-semibold text-sm shrink-0">
+      {name ? name.charAt(0).toUpperCase() : "★"}
     </div>
   )
 }
@@ -79,6 +79,8 @@ function Avatar({ name, src }: { name: string; src?: string }) {
 export function BandPageClient({ band, initialPosts }: { band: PublicBand; initialPosts: BandPost[] }) {
   const [posts, setPosts] = useState<BandPost[]>(initialPosts)
   const [isPublic, setIsPublic] = useState(band.is_public)
+  const [bannerError, setBannerError] = useState(false)
+  const [logoError, setLogoError] = useState(false)
   const [copied, setCopied] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [error, setError] = useState("")
@@ -224,19 +226,21 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
         {/* Soundstage Grand Hero */}
         <section className="relative rounded-3xl border border-[#20205a]/80 bg-gradient-to-b from-[#0c0c3f]/80 via-[#070725]/90 to-[#05051f] overflow-hidden mb-8 shadow-2xl shadow-black/60">
           {/* Banner Image Stage Rig */}
-          {band.banner_url ? (
-            <div className="relative h-52 sm:h-72 w-full overflow-hidden bg-[#05052d]">
+          {band.banner_url && !bannerError ? (
+            <div className="relative h-44 sm:h-72 w-full overflow-hidden bg-[#05052d]">
               <img
                 src={band.banner_url}
                 alt={`${band.name} banner`}
+                onError={() => setBannerError(true)}
                 className="w-full h-full object-cover object-center"
+                loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#05051f]/40 to-transparent pointer-events-none" />
               {/* Audio tracking grid overlay */}
               <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
             </div>
           ) : (
-            <div className="relative h-40 sm:h-52 w-full overflow-hidden bg-gradient-to-r from-[#ea6f2a]/25 via-[#121248] to-[#20efe0]/20">
+            <div className="relative h-36 sm:h-52 w-full overflow-hidden bg-gradient-to-r from-[#ea6f2a]/25 via-[#121248] to-[#20efe0]/20">
               <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] to-transparent pointer-events-none" />
               <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
             </div>
@@ -248,20 +252,22 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
             <span>SOUNDSTAGE LIVE // TOPEKA</span>
           </div>
 
-          <div className="relative z-10 px-6 sm:px-8 pb-8 pt-2 sm:pt-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
+          <div className="relative z-10 px-4 sm:px-8 pb-6 sm:pb-8 pt-2 sm:pt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 sm:gap-5">
               {/* Overlapping Avatar with Glow */}
-              <div className="-mt-16 sm:-mt-24 shrink-0 relative z-20">
+              <div className="-mt-12 sm:-mt-24 shrink-0 relative z-20">
                 <div className="relative p-1 rounded-2xl bg-gradient-to-tr from-[#ea6f2a] via-[#ffd166] to-[#20efe0] shadow-2xl shadow-[#ea6f2a]/20">
-                  {band.logo_url ? (
+                  {band.logo_url && !logoError ? (
                     <img
                       src={band.logo_url}
                       alt={band.name}
-                      className="w-28 h-28 sm:w-36 sm:h-36 rounded-xl object-cover bg-[#05052d] border-2 border-[#0c0c3f]"
+                      onError={() => setLogoError(true)}
+                      className="w-24 h-24 sm:w-36 sm:h-36 rounded-xl object-cover bg-[#05052d] border-2 border-[#0c0c3f]"
+                      loading="eager"
                     />
                   ) : (
-                    <div className="flex items-center justify-center w-28 h-28 sm:w-36 sm:h-36 rounded-xl bg-[#0c0c3f] border-2 border-[#0c0c3f]">
-                      <Music className="w-12 h-12 text-[#ea6f2a]" />
+                    <div className="flex items-center justify-center w-24 h-24 sm:w-36 sm:h-36 rounded-xl bg-[#0c0c3f] border-2 border-[#0c0c3f]">
+                      <Music className="w-10 h-10 sm:w-14 sm:h-14 text-[#ea6f2a]" />
                     </div>
                   )}
                 </div>
@@ -600,13 +606,12 @@ function PostCard({
           {post.images.length > 0 && (
             <div className={`grid gap-2.5 mt-4 ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
               {post.images.map((src, idx) => (
-                <Image
+                <img
                   key={idx}
                   src={src || "/placeholder.svg"}
                   alt={`Post attachment ${idx + 1}`}
-                  width={600}
-                  height={400}
                   className="w-full rounded-2xl object-cover border border-[#20205a] max-h-96 shadow-md"
+                  loading="lazy"
                 />
               ))}
             </div>
