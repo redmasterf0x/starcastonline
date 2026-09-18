@@ -82,31 +82,11 @@ export async function GET(
       // Netlify Blobs not active or not found
     }
 
-    // 3. Graceful SVG fallback for missing band images / avatars
-    const isBanner = rawKey.includes("banner")
-    const svgFallback = isBanner
-      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
-          <defs>
-            <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#06062e"/>
-              <stop offset="50%" stop-color="#121248"/>
-              <stop offset="100%" stop-color="#ea6f2a" stop-opacity="0.8"/>
-            </linearGradient>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#g)"/>
-          <text x="50%" y="50%" fill="#ffd166" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="36" text-anchor="middle" dy=".3em">STARCAST SOUNDSTAGE</text>
-        </svg>`
-      : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
-          <rect width="100%" height="100%" fill="#05052d"/>
-          <circle cx="150" cy="150" r="120" fill="#0c0c3f" stroke="#ea6f2a" stroke-width="4"/>
-          <text x="150" y="155" fill="#ffd166" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="70" text-anchor="middle" dy=".3em">★</text>
-        </svg>`
-
-    return new NextResponse(svgFallback, {
-      status: 200,
+    // 3. If blob not found, return 404 so browser onError triggers seamlessly
+    return new NextResponse("File Not Found", {
+      status: 404,
       headers: {
-        "Content-Type": "image/svg+xml",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "public, max-age=60",
       },
     })
   } catch (err) {
