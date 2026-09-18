@@ -16,8 +16,9 @@ import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { LoadingScreen } from "@/components/loading-screen"
 import { Badge } from "@/components/ui/badge"
-import { Music, ChevronRight, Video, ShieldAlert, Sparkles, Smartphone, CheckCircle2, AlertCircle, ShieldCheck, FileText, ExternalLink } from "lucide-react"
+import { Music, ChevronRight, Video, ShieldAlert, Sparkles, Smartphone, CheckCircle2, AlertCircle, ShieldCheck, FileText, ExternalLink, Bell } from "lucide-react"
 import { getMyBands } from "@/app/actions/bands"
+import { NotificationFeed } from "@/components/dashboard/notification-feed"
 
 interface UserProfile {
   id: string
@@ -267,6 +268,12 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
+
+        {/* ── NOTIFICATIONS & SOCIAL ACTIVITY ── */}
+        <section>
+          <NotificationFeed />
+        </section>
+
         {/* ── PUBLIC PROFILE PREVIEW ── */}
         <section>
           <div className="flex items-center justify-between mb-3">

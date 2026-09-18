@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react"
 import { brandAssets } from "@/lib/brand-assets"
 import { authClient } from "@/lib/auth-client"
 import { getMyProfile } from "@/app/actions/profile"
+import { getUnreadNotificationCount } from "@/app/actions/notifications"
 
 interface ResponsiveHeaderProps {
   currentPage?: string
@@ -29,12 +30,14 @@ export function ResponsiveHeader({
   const [loggedIn, setLoggedIn] = useState(isLoggedInProp ?? false)
   const [isAdmin, setIsAdmin] = useState(isAdminProp ?? false)
   const [isCrew, setIsCrew] = useState(isCrewProp ?? false)
+  const [unreadNotifs, setUnreadNotifs] = useState(0)
 
   const { data: session } = authClient.useSession()
 
   useEffect(() => {
     if (session?.user) {
       setLoggedIn(true)
+      getUnreadNotificationCount().then((count) => setUnreadNotifs(count)).catch(() => {})
       // Only fetch role details if props didn't already tell us
       if (!isAdminProp && !isCrewProp) {
         getMyProfile()
@@ -52,6 +55,7 @@ export function ResponsiveHeader({
       setLoggedIn(false)
       setIsAdmin(false)
       setIsCrew(false)
+      setUnreadNotifs(0)
     }
   }, [session, isAdminProp, isCrewProp])
 
@@ -123,7 +127,7 @@ export function ResponsiveHeader({
                     href={link.href}
                     target={link.external ? "_blank" : undefined}
                     rel={link.external ? "noopener noreferrer" : undefined}
-                    className={`rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`rounded-full px-3 py-2 text-sm font-medium transition-colors inline-flex items-center gap-1.5 ${
                       currentPage === link.href
                         ? "bg-[#ea6f2a] text-white shadow-sm"
                         : link.label === "Merch"
@@ -132,6 +136,11 @@ export function ResponsiveHeader({
                     }`}
                   >
                     {link.label}
+                    {link.href === "/dashboard" && unreadNotifs > 0 && (
+                      <span className="min-w-4 h-4 px-1 rounded-full bg-[#ea6f2a] text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                        {unreadNotifs}
+                      </span>
+                    )}
                   </Link>
                 )
             )}
@@ -161,10 +170,13 @@ export function ResponsiveHeader({
 
           {/* Mobile menu toggle */}
           <button
-            className="rounded-lg p-2 text-[#e4e7f5] transition-colors hover:bg-[#8796cb]/15 hover:text-[#f5f7ff] lg:hidden"
+            className="rounded-lg p-2 text-[#e4e7f5] transition-colors hover:bg-[#8796cb]/15 hover:text-[#f5f7ff] lg:hidden relative"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
           >
+            {unreadNotifs > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ea6f2a] animate-pulse" />
+            )}
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -182,13 +194,18 @@ export function ResponsiveHeader({
                   target={link.external ? "_blank" : undefined}
                   rel={link.external ? "noopener noreferrer" : undefined}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-sm font-medium py-2 transition-colors ${
+                  className={`text-sm font-medium py-2 transition-colors flex items-center justify-between ${
                     currentPage === link.href
                       ? "text-[#ea6f2a]"
                       : "text-[#d4d8ee] hover:text-[#f5f7ff]"
                   }`}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  {link.href === "/dashboard" && unreadNotifs > 0 && (
+                    <span className="min-w-4 h-4 px-1 rounded-full bg-[#ea6f2a] text-white text-[10px] font-bold flex items-center justify-center">
+                      {unreadNotifs}
+                    </span>
+                  )}
                 </Link>
               )
           )}

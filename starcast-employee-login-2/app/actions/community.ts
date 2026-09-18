@@ -15,6 +15,7 @@ import {
 import { and, asc, desc, eq, inArray, or, count, gte } from "drizzle-orm"
 import { headers } from "next/headers"
 import { SOCIAL_BAN_MESSAGE } from "@/lib/permissions"
+import { createNotification } from "@/app/actions/notifications"
 
 // All ids exposed to the client are profile ids (profiles.id), matching the
 // legacy Supabase shape where community rows referenced users.id.
@@ -421,18 +422,100 @@ export async function togglePostStar(postId: string) {
     return { starred: false }
   }
   await db.insert(postStars).values({ postId, userId: viewer.id })
+
+  // Trigger notification to post author
+  try {
+    const [post] = await db
+      .select({ authorId: communityPosts.authorId, title: communityPosts.title })
+      .from(communityPosts)
+      .where(eq(communityPosts.id, postId))
+      .limit(1)
+
+    if (post?.authorId && post.authorId !== viewer.id) {
+      await createNotification({
+        recipientProfileId: post.authorId,
+        actorProfileId: viewer.id,
+        type: "post_star",
+        postId,
+        postTitle: post.title,
+      })
+    }
+  } catch (err) {
+    console.error("Failed to trigger post_star notification:", err)
+  }
+
   return { starred: true }
 }
 
 /** Add a comment (or threaded reply) to a post. */
 export async function addPostComment(postId: string, comment: string, parentCommentId?: string | null) {
   const viewer = await requireSocialViewer()
-  await db.insert(postComments).values({
-    postId,
-    userId: viewer.id,
-    content: comment.trim(),
-    parentCommentId: parentCommentId ?? null,
-  })
+  const [newComment] = await db
+    .insert(postComments)
+    .values({
+      postId,
+      userId: viewer.id,
+      content: comment.trim(),
+      parentCommentId: parentCommentId ?? null,
+    })
+    .returning()
+
+  // Trigger notification to parent commenter or post author
+  try {
+    const [post] = await db
+      .select({ authorId: communityPosts.authorId, title: communityPosts.title })
+      .from(communityPosts)
+      .where(eq(communityPosts.id, postId))
+      .limit(1)
+
+    if (parentCommentId) {
+      const [parent] = await db
+        .select({ userId: postComments.userId })
+        .from(postComments)
+        .where(eq(postComments.id, parentCommentId))
+        .limit(1)
+
+      if (parent?.userId && parent.userId !== viewer.id) {
+        await createNotification({
+          recipientProfileId: parent.userId,
+          actorProfileId: viewer.id,
+          type: "comment_reply",
+          postId,
+          commentId: parentCommentId,
+          postTitle: post?.title,
+          snippet: comment,
+        })
+      }
+
+      // Also notify post author if they're not the replier or parent commenter
+      if (post?.authorId && post.authorId !== viewer.id && post.authorId !== parent?.userId) {
+        await createNotification({
+          recipientProfileId: post.authorId,
+          actorProfileId: viewer.id,
+          type: "comment_on_your_post",
+          postId,
+          commentId: newComment?.id,
+          postTitle: post.title,
+          snippet: comment,
+        })
+      }
+    } else {
+      // Top-level comment
+      if (post?.authorId && post.authorId !== viewer.id) {
+        await createNotification({
+          recipientProfileId: post.authorId,
+          actorProfileId: viewer.id,
+          type: "post_comment",
+          postId,
+          commentId: newComment?.id,
+          postTitle: post.title,
+          snippet: comment,
+        })
+      }
+    }
+  } catch (err) {
+    console.error("Failed to trigger comment notification:", err)
+  }
 }
 
 /** Toggle a star on a comment for the signed-in user. */
@@ -448,6 +531,28 @@ export async function toggleCommentStar(commentId: string) {
     return { starred: false }
   }
   await db.insert(commentStars).values({ commentId, userId: viewer.id })
+
+  try {
+    const [c] = await db
+      .select({ userId: postComments.userId, content: postComments.content, postId: postComments.postId })
+      .from(postComments)
+      .where(eq(postComments.id, commentId))
+      .limit(1)
+
+    if (c?.userId && c.userId !== viewer.id) {
+      await createNotification({
+        recipientProfileId: c.userId,
+        actorProfileId: viewer.id,
+        type: "comment_star",
+        commentId,
+        postId: c.postId,
+        snippet: c.content,
+      })
+    }
+  } catch (err) {
+    console.error("Failed to trigger comment_star notification:", err)
+  }
+
   return { starred: true }
 }
 
@@ -575,15 +680,45 @@ export async function listFriendsOf(profileId: string) {
 
 export async function sendFriendRequest(addresseeProfileId: string) {
   const viewer = await requireSocialViewer()
-  await db.insert(friendships).values({ requesterId: viewer.id, addresseeId: addresseeProfileId })
+  const [inserted] = await db
+    .insert(friendships)
+    .values({ requesterId: viewer.id, addresseeId: addresseeProfileId })
+    .returning()
+
+  try {
+    if (inserted && addresseeProfileId !== viewer.id) {
+      await createNotification({
+        recipientProfileId: addresseeProfileId,
+        actorProfileId: viewer.id,
+        type: "friend_request",
+        friendshipId: inserted.id,
+      })
+    }
+  } catch (err) {
+    console.error("Failed to trigger friend_request notification:", err)
+  }
 }
 
 export async function acceptFriendRequest(friendshipId: string) {
   const viewer = await requireSocialViewer()
-  await db
+  const [updated] = await db
     .update(friendships)
     .set({ status: "accepted" })
     .where(and(eq(friendships.id, friendshipId), eq(friendships.addresseeId, viewer.id)))
+    .returning()
+
+  try {
+    if (updated && updated.requesterId !== viewer.id) {
+      await createNotification({
+        recipientProfileId: updated.requesterId,
+        actorProfileId: viewer.id,
+        type: "friend_accepted",
+        friendshipId: updated.id,
+      })
+    }
+  } catch (err) {
+    console.error("Failed to trigger friend_accepted notification:", err)
+  }
 }
 
 export async function removeFriendship(friendshipId: string) {
