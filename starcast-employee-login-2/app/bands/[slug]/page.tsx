@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getPublicBand, getBandPosts } from "@/app/actions/band-pages"
+import { getPublicBandEvents } from "@/app/actions/band-tickets"
 import { BandPageClient } from "./band-page-client"
 
 type Props = {
@@ -31,7 +32,11 @@ export default async function BandPage({ params }: Props) {
   const band = await getPublicBand(decoded)
   if (!band) notFound()
 
-  const posts = await getBandPosts(band.id)
+  const [posts, events] = await Promise.all([
+    getBandPosts(band.id),
+    getPublicBandEvents(band.id),
+  ])
 
-  return <BandPageClient band={band} initialPosts={posts} />
+  return <BandPageClient band={band} initialPosts={posts} initialEvents={events as any} />
 }
+

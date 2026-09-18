@@ -49,6 +49,11 @@ function serialize(b: typeof bands.$inferSelect) {
     pass_expires_at: toIso(b.passExpiresAt),
     youtube_agreement_signed: Boolean(b.youtubeAgreementSigned),
     youtube_agreement_signed_at: toIso(b.youtubeAgreementSignedAt),
+    ticketing_status: b.ticketingStatus ?? "none",
+    ticketing_application_notes: b.ticketingApplicationNotes ?? null,
+    ticketing_applied_at: toIso(b.ticketingAppliedAt),
+    stripe_account_id: b.stripeAccountId ?? null,
+    stripe_account_status: b.stripeAccountStatus ?? "not_connected",
     created_at: toIso(b.createdAt) || new Date().toISOString(),
   }
 }

@@ -17,6 +17,7 @@ import { getPaymentsForBand } from "@/app/actions/payments"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { BandPostsPanel } from "@/components/portal/band-posts-panel"
 import { BandLinksPanel } from "@/components/portal/band-links-panel"
+import { BandTicketingPanel } from "@/components/portal/band-ticketing-panel"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,6 +51,7 @@ import {
   Camera,
   Trash2,
   Loader2,
+  Ticket,
 } from "lucide-react"
 
 interface Band {
@@ -68,6 +70,9 @@ interface Band {
   pass_expires_at: string | null
   youtube_agreement_signed: boolean
   youtube_agreement_signed_at: string | null
+  ticketing_status?: string
+  stripe_account_id?: string | null
+  stripe_account_status?: string
 }
 
 interface Booking {
@@ -138,7 +143,7 @@ export default function PortalPage() {
   const [bookingForm, setBookingForm] = useState({ title: "", startsAt: "", endsAt: "", notes: "" })
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
-  const [portalTab, setPortalTab] = useState<"posts" | "links" | "studio" | "payments">("posts")
+  const [portalTab, setPortalTab] = useState<"posts" | "links" | "studio" | "payments" | "ticketing">("posts")
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [savingBand, setSavingBand] = useState(false)
@@ -925,7 +930,7 @@ export default function PortalPage() {
                 </Card>
 
                 {/* Tab Navigation */}
-                <div className="flex border-b border-[#20205a]/50 gap-4">
+                <div className="flex border-b border-[#20205a]/50 gap-4 flex-wrap">
                   <button
                     onClick={() => setPortalTab("posts")}
                     className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
@@ -936,6 +941,17 @@ export default function PortalPage() {
                   >
                     <Newspaper className="w-4 h-4" />
                     Posts &amp; Updates
+                  </button>
+                  <button
+                    onClick={() => setPortalTab("ticketing")}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                      portalTab === "ticketing"
+                        ? "border-[#ea6f2a] text-[#ea6f2a]"
+                        : "border-transparent text-[#9a9fc4] hover:text-[#f5f7ff]"
+                    }`}
+                  >
+                    <Ticket className="w-4 h-4" />
+                    Ticketing &amp; Shows
                   </button>
                   <button
                     onClick={() => setPortalTab("links")}
@@ -973,6 +989,13 @@ export default function PortalPage() {
                 </div>
 
                 {/* Tab Content */}
+                {portalTab === "ticketing" && (
+                  <BandTicketingPanel
+                    band={selectedBand as any}
+                    onRefreshBand={refreshBands}
+                  />
+                )}
+
                 {portalTab === "posts" && (
                   <BandPostsPanel
                     bandId={selectedBand.id}

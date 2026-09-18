@@ -350,6 +350,12 @@ export const bands = pgTable("bands", {
   passExpiresAt: timestamp("pass_expires_at", { withTimezone: true }),
   youtubeAgreementSigned: boolean("youtube_agreement_signed").notNull().default(false),
   youtubeAgreementSignedAt: timestamp("youtube_agreement_signed_at", { withTimezone: true }),
+  // Ticketing & Stripe Connect fields
+  ticketingStatus: text("ticketing_status").notNull().default("none"), // 'none' | 'applied' | 'approved' | 'rejected'
+  ticketingApplicationNotes: text("ticketing_application_notes"),
+  ticketingAppliedAt: timestamp("ticketing_applied_at", { withTimezone: true }),
+  stripeAccountId: text("stripe_account_id"),
+  stripeAccountStatus: text("stripe_account_status").notNull().default("not_connected"), // 'not_connected' | 'onboarding' | 'active'
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
@@ -438,3 +444,82 @@ export const uploadedBlobs = pgTable("uploaded_blobs", {
   data: text("data").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+// --- Band Ticketing & Events System -----------------------------------------
+
+export const bandEvents = pgTable("band_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bandId: uuid("band_id")
+    .references(() => bands.id, { onDelete: "cascade" })
+    .notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  venueName: text("venue_name").notNull(),
+  venueAddress: text("venue_address"),
+  eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
+  doorsOpenTime: text("doors_open_time"), // e.g. "7:00 PM"
+  startTime: text("start_time"), // e.g. "8:00 PM"
+  priceCents: integer("price_cents").notNull().default(0),
+  totalInventory: integer("total_inventory").notNull().default(20),
+  remainingInventory: integer("remaining_inventory").notNull().default(20),
+  ageRestriction: text("age_restriction").default("All Ages"), // "All Ages" | "18+" | "21+"
+  flyerUrl: text("flyer_url"),
+  // draft | active | sold_out | past | cancelled
+  status: text("status").notNull().default("active"),
+  // Escrow protection: held until 24 hours after the event
+  // held | released | refunded
+  escrowStatus: text("escrow_status").notNull().default("held"),
+  escrowReleaseDate: timestamp("escrow_release_date", { withTimezone: true }),
+  stripeProductId: text("stripe_product_id"),
+  stripePriceId: text("stripe_price_id"),
+  stripeTransferId: text("stripe_transfer_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const bandTicketOrders = pgTable("band_ticket_orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id")
+    .references(() => bandEvents.id, { onDelete: "cascade" })
+    .notNull(),
+  bandId: uuid("band_id")
+    .references(() => bands.id, { onDelete: "cascade" })
+    .notNull(),
+  buyerUserId: text("buyer_user_id"),
+  buyerEmail: text("buyer_email").notNull(),
+  buyerName: text("buyer_name").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPriceCents: integer("unit_price_cents").notNull().default(0),
+  totalCents: integer("total_cents").notNull().default(0),
+  platformFeeCents: integer("platform_fee_cents").notNull().default(0),
+  stripeSessionId: text("stripe_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  // pending | paid | refunded | cancelled
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const bandTicketInstances = pgTable("band_ticket_instances", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id")
+    .references(() => bandTicketOrders.id, { onDelete: "cascade" })
+    .notNull(),
+  eventId: uuid("event_id")
+    .references(() => bandEvents.id, { onDelete: "cascade" })
+    .notNull(),
+  bandId: uuid("band_id")
+    .references(() => bands.id, { onDelete: "cascade" })
+    .notNull(),
+  ticketNumber: integer("ticket_number").notNull(), // e.g. 1 of 20
+  qrToken: text("qr_token").notNull().unique(), // Secure UUID token for verification & QR code
+  holderName: text("holder_name").notNull(),
+  holderEmail: text("holder_email").notNull(),
+  // valid | checked_in | refunded | cancelled
+  status: text("status").notNull().default("valid"),
+  checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+  checkedInByUserId: text("checked_in_by_user_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+

@@ -76,8 +76,19 @@ function Avatar({ name, src }: { name: string; src?: string }) {
   )
 }
 
-export function BandPageClient({ band, initialPosts }: { band: PublicBand; initialPosts: BandPost[] }) {
+import { BandTicketsWidget, type BandEventItem } from "@/components/bands/band-tickets-widget"
+
+export function BandPageClient({
+  band,
+  initialPosts,
+  initialEvents = [],
+}: {
+  band: PublicBand
+  initialPosts: BandPost[]
+  initialEvents?: BandEventItem[]
+}) {
   const [posts, setPosts] = useState<BandPost[]>(initialPosts)
+  const [events, setEvents] = useState<BandEventItem[]>(initialEvents)
   const [isPublic, setIsPublic] = useState(band.is_public)
   const [bannerError, setBannerError] = useState(false)
   const [logoError, setLogoError] = useState(false)
@@ -391,6 +402,13 @@ export function BandPageClient({ band, initialPosts }: { band: PublicBand; initi
         {/* Custom Links (Cosmic Linktree style) */}
         {band.links && band.links.length > 0 && (
           <LinkTree links={band.links.map((link: any) => ({ label: link.title, url: link.url }))} />
+        )}
+
+        {/* Live Event Ticketing Section */}
+        {events && events.length > 0 && (
+          <section className="mb-10">
+            <BandTicketsWidget events={events} bandName={band.name} bandId={band.id} />
+          </section>
         )}
 
         {/* Open Discussion Board */}

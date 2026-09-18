@@ -11,6 +11,12 @@ import {
   adminListInbox, adminMarkRead, adminMarkReplied, adminGetMessage,
   adminListSponsors, adminSetRole, adminSetSocialBan,
 } from "@/app/actions/admin"
+import {
+  adminListTicketingApplications,
+  adminReviewTicketingApplication,
+  adminListHeldEscrows,
+  releaseEscrowPayout,
+} from "@/app/actions/band-tickets"
 import { StudioManager } from "@/components/studio/studio-manager"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -29,7 +35,7 @@ import {
   Check, X, Pin, Trash2, Eye, Send, RefreshCw,
   UserPlus, UserMinus, Building2, ExternalLink, Star, Calendar,
   TrendingUp, BarChart3, Settings, ChevronRight, Sparkles, Music,
-  Ban, ShieldCheck
+  Ban, ShieldCheck, Ticket, CheckCircle2, AlertCircle, DollarSign,
 } from "lucide-react"
 
 interface User {
@@ -119,7 +125,7 @@ interface Sponsor {
   created_at: string
 }
 
-type AdminTab = "overview" | "members" | "studio" | "content" | "inbox" | "sponsors"
+type AdminTab = "overview" | "members" | "studio" | "content" | "inbox" | "sponsors" | "ticketing"
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true)
@@ -131,6 +137,10 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [inboxMessages, setInboxMessages] = useState<InboxMessage[]>([])
   const [sponsors, setSponsors] = useState<Sponsor[]>([])
+  const [ticketingApps, setTicketingApps] = useState<any[]>([])
+  const [heldEscrows, setHeldEscrows] = useState<any[]>([])
+  const [escrowBusy, setEscrowBusy] = useState<string | null>(null)
+  const [escrowFeedback, setEscrowFeedback] = useState("")
   const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null)
   const [replyText, setReplyText] = useState("")
   const [replying, setReplying] = useState(false)
@@ -176,6 +186,16 @@ export default function AdminPage() {
   const fetchSponsors = async () => {
     try { setSponsors(await adminListSponsors() as any[]) } catch {}
   }
+  const fetchTicketing = async () => {
+    try {
+      const [apps, escrows] = await Promise.all([
+        adminListTicketingApplications(),
+        adminListHeldEscrows(),
+      ])
+      setTicketingApps(apps as any[])
+      setHeldEscrows(escrows as any[])
+    } catch {}
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -186,7 +206,7 @@ export default function AdminPage() {
         await Promise.all([
           fetchPendingArticles(), fetchApprovedArticles(),
           fetchCommunityPosts(), fetchCategories(),
-          fetchInbox(), fetchSponsors(),
+          fetchInbox(), fetchSponsors(), fetchTicketing(),
         ])
         setLoading(false)
       } catch {
@@ -350,8 +370,11 @@ export default function AdminPage() {
     )
   }
 
+  const pendingTicketingCount = ticketingApps.filter((a) => a.ticketingStatus === "applied").length
+
   const tabs: { id: AdminTab; label: string; icon: any; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "ticketing", label: "Ticketing & Escrow", icon: Ticket, badge: pendingTicketingCount },
     { id: "members", label: "Members", icon: Users, badge: users.length },
     { id: "studio", label: "Studio", icon: Music },
     { id: "content", label: "Content", icon: FileText, badge: pendingArticles.length },
@@ -1143,6 +1166,221 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* TICKETING & ESCROW OVERSIGHT TAB */}
+        {activeTab === "ticketing" && (
+          <div className="space-y-8">
+            {escrowFeedback && (
+              <div className="p-4 rounded-xl bg-[#22b573]/20 border border-[#22b573]/40 text-[#22b573] text-sm flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  <span>{escrowFeedback}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEscrowFeedback("")}
+                  className="text-[#22b573] hover:bg-[#22b573]/20"
+                >
+                  ✕
+                </Button>
+              </div>
+            )}
+
+            {/* 1. Band Ticketing Applications */}
+            <Card className="bg-[#0c0c3f]/60 border-[#20205a]/50">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-[#f5f7ff] text-lg flex items-center gap-2">
+                    <Ticket className="w-5 h-5 text-[#ea6f2a]" />
+                    Band Ticketing Feature Applications
+                  </CardTitle>
+                  <CardDescription className="text-[#9a9fc4]">
+                    Review band requests to enable live event ticket sales and Stripe Connect payouts
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchTicketing}
+                  className="border-[#20205a] text-[#9a9fc4] hover:text-[#f5f7ff] bg-transparent"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {ticketingApps.length === 0 ? (
+                  <p className="text-sm text-[#9a9fc4] text-center py-6">No band ticketing applications yet.</p>
+                ) : (
+                  <div className="divide-y divide-[#20205a]/50">
+                    {ticketingApps.map((app) => (
+                      <div key={app.id} className="py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-base font-bold text-[#f5f7ff]">{app.name}</h4>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                app.ticketingStatus === "approved"
+                                  ? "bg-[#22b573]/20 text-[#22b573] border border-[#22b573]/40"
+                                  : app.ticketingStatus === "applied"
+                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                  : "bg-red-900/30 text-red-300"
+                              }`}
+                            >
+                              {app.ticketingStatus}
+                            </span>
+                            {app.stripeAccountStatus === "active" && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#20efe0]/15 text-[#20efe0] border border-[#20efe0]/30 font-mono">
+                                Stripe Active
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-[#9a9fc4]">
+                            Contact: {app.contactEmail || "N/A"} • Applied:{" "}
+                            {app.ticketingAppliedAt ? new Date(app.ticketingAppliedAt).toLocaleDateString() : "N/A"}
+                          </p>
+
+                          {app.ticketingApplicationNotes && (
+                            <p className="text-xs text-[#dbe0fb] mt-1.5 p-2 rounded-lg bg-[#05052d]/60 border border-[#20205a]/40 italic">
+                              "{app.ticketingApplicationNotes}"
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {app.ticketingStatus !== "approved" && (
+                            <Button
+                              onClick={async () => {
+                                await adminReviewTicketingApplication(app.id, true)
+                                fetchTicketing()
+                              }}
+                              size="sm"
+                              className="bg-[#22b573] hover:bg-[#1ca266] text-black font-semibold"
+                            >
+                              <Check className="w-4 h-4 mr-1" /> Approve
+                            </Button>
+                          )}
+
+                          {app.ticketingStatus !== "rejected" && (
+                            <Button
+                              onClick={async () => {
+                                await adminReviewTicketingApplication(app.id, false)
+                                fetchTicketing()
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="border-red-700 text-red-400 hover:bg-red-950/40 bg-transparent"
+                            >
+                              <X className="w-4 h-4 mr-1" /> Reject
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 2. Escrow Funds Oversight (24h Post-Event Release) */}
+            <Card className="bg-[#0c0c3f]/60 border-[#20205a]/50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-[#f5f7ff] text-lg flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-[#20efe0]" />
+                      24-Hour Post-Event Escrow Oversight
+                    </CardTitle>
+                    <CardDescription className="text-[#9a9fc4]">
+                      Platform holds ticket funds in escrow until 24 hours after each event to safeguard against cancellations
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {heldEscrows.length === 0 ? (
+                  <p className="text-sm text-[#9a9fc4] text-center py-6">No ticket events found.</p>
+                ) : (
+                  <div className="divide-y divide-[#20205a]/50">
+                    {heldEscrows.map((ev) => {
+                      const now = new Date()
+                      const releaseDate = ev.escrowReleaseDate ? new Date(ev.escrowReleaseDate) : null
+                      const isReadyToRelease = releaseDate ? now >= releaseDate : false
+                      const isReleased = ev.escrowStatus === "released"
+
+                      return (
+                        <div key={ev.id} className="py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="text-base font-bold text-[#f5f7ff]">{ev.title}</h4>
+                              <span className="text-xs text-[#ea6f2a] font-semibold">({ev.bandName})</span>
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                  isReleased
+                                    ? "bg-[#22b573]/20 text-[#22b573] border border-[#22b573]/40"
+                                    : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                }`}
+                              >
+                                {isReleased ? "Escrow Released" : "Escrow Held"}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-[#9a9fc4]">
+                              Venue: {ev.venueName} • Event: {new Date(ev.eventDate).toLocaleDateString()} at {ev.startTime || "8:00 PM"}
+                            </p>
+
+                            <p className="text-xs text-[#20efe0] font-mono mt-1">
+                              Inventory: {ev.totalInventory - ev.remainingInventory} / {ev.totalInventory} tickets sold ($
+                              {((ev.priceCents * (ev.totalInventory - ev.remainingInventory)) / 100).toFixed(2)})
+                            </p>
+
+                            <p className="text-[11px] text-[#9a9fc4] mt-0.5">
+                              Escrow Release Time:{" "}
+                              <strong>{releaseDate ? releaseDate.toLocaleString() : "24h post-show"}</strong>
+                              {!isReleased && !isReadyToRelease && releaseDate && (
+                                <span className="text-amber-400 ml-1.5">
+                                  ({Math.ceil((releaseDate.getTime() - now.getTime()) / (1000 * 60 * 60))} hours left)
+                                </span>
+                              )}
+                            </p>
+                          </div>
+
+                          <div className="shrink-0">
+                            {!isReleased && (
+                              <Button
+                                onClick={async () => {
+                                  setEscrowBusy(ev.id)
+                                  const res = await releaseEscrowPayout(ev.id)
+                                  if (res.success) {
+                                    setEscrowFeedback(res.message || "Escrow transferred successfully!")
+                                    fetchTicketing()
+                                  } else {
+                                    alert(res.error || "Failed to release escrow")
+                                  }
+                                  setEscrowBusy(null)
+                                }}
+                                disabled={escrowBusy === ev.id}
+                                size="sm"
+                                className={
+                                  isReadyToRelease
+                                    ? "bg-[#22b573] hover:bg-[#1da065] text-black font-bold"
+                                    : "border border-[#ea6f2a]/60 text-[#ea6f2a] hover:bg-[#ea6f2a]/20 bg-transparent"
+                                }
+                              >
+                                {escrowBusy === ev.id ? "Transferring..." : isReadyToRelease ? "Transfer Payout Now" : "Force Early Release"}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
       </main>
 
