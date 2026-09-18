@@ -6,6 +6,17 @@ type Props = {
   params: Promise<{ slug: string }>
 }
 
+function cleanText(input?: string | null): string {
+  if (!input) return ""
+  return input
+    .replace(/<[^>]*>/g, "") // strip HTML tags
+    .replace(/!\[.*?\]\(.*?\)/g, "") // strip markdown images
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // strip markdown links
+    .replace(/[#*`_~]/g, "") // strip markdown format symbols
+    .replace(/\s+/g, " ") // collapse whitespace
+    .trim()
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const decodedSlug = decodeURIComponent(slug)
@@ -19,54 +30,70 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!article) {
     return {
-      title: "Article Not Found | Starcast",
-      description: "Read articles on Starcast",
+      title: "Article Not Found | StarCast",
+      description: "Read the latest news and spotlight articles on StarCast Online.",
     }
   }
 
   if (!article.approved) {
     return {
-      title: `[Preview] ${article.title} | Starcast`,
-      description: "Previewing unapproved draft article",
+      title: `[Preview] ${article.title} | StarCast`,
+      description: "Previewing unapproved draft article.",
       robots: { index: false, follow: false },
     }
   }
 
-  const authorName = `${article.authorFirstName || ""} ${article.authorLastName || ""}`.trim()
-  const description = article.content?.substring(0, 160).replace(/\n/g, " ").trim() + "..." || "Read this article on Starcast"
+  const authorName = cleanText(`${article.authorFirstName || ""} ${article.authorLastName || ""}`) || "StarCast Media"
+  const rawExcerpt = cleanText(article.excerpt || article.content)
+  const description = rawExcerpt.length > 180 ? rawExcerpt.slice(0, 177) + "..." : rawExcerpt || "Read this article on StarCast Online"
 
-  // Render a branded OG card (title, excerpt, author, and the article's
-  // image when available) via a plain API route rather than the
-  // opengraph-image.tsx file convention, which crashes on Next.js 16.2.0 +
-  // Turbopack when the generator has async dependencies.
-  const baseUrl = "https://www.starcast.online"
-  const imageUrl = `${baseUrl}/api/og-card/${encodeURIComponent(slug)}`
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://starcast.online"
+  const encodedSlug = encodeURIComponent(slug)
+  const dynamicOgUrl = `${baseUrl}/api/og-card/${encodedSlug}`
+
+  const directImageUrl = article.thumbnailUrl
+    ? (article.thumbnailUrl.startsWith("http") ? article.thumbnailUrl : `${baseUrl}${article.thumbnailUrl.startsWith("/") ? "" : "/"}${article.thumbnailUrl}`)
+    : null
+
+  const images = [
+    {
+      url: dynamicOgUrl,
+      width: 1200,
+      height: 630,
+      alt: article.title,
+      type: "image/png",
+    },
+    ...(directImageUrl
+      ? [
+          {
+            url: directImageUrl,
+            width: 1200,
+            height: 630,
+            alt: article.title,
+          },
+        ]
+      : []),
+  ]
 
   return {
-    title: `${article.title} | Starcast`,
+    title: `${article.title} | StarCast`,
     description,
     authors: authorName ? [{ name: authorName }] : undefined,
     openGraph: {
       title: article.title,
       description,
       type: "article",
-      url: `${baseUrl}/articles/${slug}`,
+      url: `${baseUrl}/articles/${encodedSlug}`,
+      publishedTime: article.createdAt ? new Date(article.createdAt).toISOString() : undefined,
       authors: authorName ? [authorName] : undefined,
-      siteName: "Starcast Media",
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: article.title,
-        },
-      ],
+      siteName: "StarCast Media",
+      images,
     },
     twitter: {
       card: "summary_large_image",
       title: article.title,
       description,
-      images: [imageUrl],
+      images: [dynamicOgUrl],
     },
   }
 }
