@@ -2,14 +2,18 @@
 
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { bands, bandTracks, profiles } from "@/lib/db/schema"
-import { and, asc, desc, eq, inArray } from "drizzle-orm"
+import { bands, bandTracks, trackComments, profiles } from "@/lib/db/schema"
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 
 export interface BandTrackItem {
   id: string
   bandId: string
   title: string
+  slug: string | null
+  artistName: string | null
+  producer: string | null
+  featuredArtists: string | null
   audioUrl: string
   durationSeconds: number
   albumName: string | null
@@ -23,10 +27,27 @@ export interface BandTrackItem {
   position: number
   createdAt: string
   updatedAt: string
+  bandName?: string | null
+  bandSlug?: string | null
+  bandLogo?: string | null
+}
+
+export interface TrackCommentItem {
+  id: string
+  trackId: string
+  userId: string
+  authorName: string
+  authorAvatar: string | null
+  content: string
+  createdAt: string
 }
 
 export interface TrackInput {
   title: string
+  slug?: string
+  artistName?: string
+  producer?: string
+  featuredArtists?: string
   audioUrl: string
   durationSeconds?: number
   albumName?: string
@@ -43,13 +64,28 @@ export interface AlbumReleaseInput {
   releaseYear?: string
   genre?: string
   coverArtUrl?: string
+  producer?: string
   allowDownload?: boolean
   tracks: {
     title: string
     audioUrl: string
+    artistName?: string
+    producer?: string
     durationSeconds?: number
     lyrics?: string
   }[]
+}
+
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\-]+/g, "")
+    .replace(/\-\-+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "")
 }
 
 async function getSessionUser() {
@@ -76,8 +112,6 @@ async function verifyBandOwnershipOrAdmin(bandId: string) {
 
 /**
  * Helper to normalize and convert Google Drive sharing links to direct audio streaming links.
- * Example input: https://drive.google.com/file/d/1A2B3C4D5E/view?usp=sharing
- * Output direct URL: https://drive.google.com/uc?export=download&id=1A2B3C4D5E
  */
 export async function normalizeAudioUrl(url: string): Promise<string> {
   const trimmed = url.trim()
@@ -109,21 +143,29 @@ export async function normalizeAudioUrl(url: string): Promise<string> {
 export async function getBandTracks(bandId: string): Promise<BandTrackItem[]> {
   try {
     const rows = await db
-      .select()
+      .select({
+        track: bandTracks,
+        band: bands,
+      })
       .from(bandTracks)
+      .leftJoin(bands, eq(bandTracks.bandId, bands.id))
       .where(eq(bandTracks.bandId, bandId))
       .orderBy(asc(bandTracks.position), asc(bandTracks.createdAt))
 
-    return rows.map((t) => ({
+    return rows.map(({ track: t, band: b }) => ({
       id: t.id,
       bandId: t.bandId,
       title: t.title,
+      slug: t.slug,
+      artistName: t.artistName || b?.name || null,
+      producer: t.producer,
+      featuredArtists: t.featuredArtists,
       audioUrl: t.audioUrl,
       durationSeconds: t.durationSeconds || 0,
       albumName: t.albumName,
-      coverArtUrl: t.coverArtUrl,
+      coverArtUrl: t.coverArtUrl || b?.logoUrl || null,
       releaseYear: t.releaseYear,
-      genre: t.genre,
+      genre: t.genre || b?.genre || null,
       description: t.description,
       lyrics: t.lyrics,
       allowDownload: t.allowDownload,
@@ -131,9 +173,202 @@ export async function getBandTracks(bandId: string): Promise<BandTrackItem[]> {
       position: t.position || 0,
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),
+      bandName: b?.name,
+      bandSlug: b?.slug,
+      bandLogo: b?.logoUrl || undefined,
     }))
   } catch (err) {
     console.error("Error loading band tracks:", err)
+    return []
+  }
+}
+
+/**
+ * Fetch a single track by its slug (or fallback to UUID id) with band details and related tracks.
+ */
+export async function getTrackBySlug(slugOrId: string): Promise<{
+  track: BandTrackItem | null
+  relatedTracks: BandTrackItem[]
+  comments: TrackCommentItem[]
+}> {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId)
+
+    const rows = await db
+      .select({
+        track: bandTracks,
+        band: bands,
+      })
+      .from(bandTracks)
+      .leftJoin(bands, eq(bandTracks.bandId, bands.id))
+      .where(isUuid ? or(eq(bandTracks.slug, slugOrId), eq(bandTracks.id, slugOrId)) : eq(bandTracks.slug, slugOrId))
+      .limit(1)
+
+    if (rows.length === 0) {
+      return { track: null, relatedTracks: [], comments: [] }
+    }
+
+    const { track: t, band: b } = rows[0]
+
+    const trackItem: BandTrackItem = {
+      id: t.id,
+      bandId: t.bandId,
+      title: t.title,
+      slug: t.slug,
+      artistName: t.artistName || b?.name || null,
+      producer: t.producer,
+      featuredArtists: t.featuredArtists,
+      audioUrl: t.audioUrl,
+      durationSeconds: t.durationSeconds || 0,
+      albumName: t.albumName,
+      coverArtUrl: t.coverArtUrl || b?.logoUrl || null,
+      releaseYear: t.releaseYear,
+      genre: t.genre || b?.genre || null,
+      description: t.description,
+      lyrics: t.lyrics,
+      allowDownload: t.allowDownload,
+      playCount: t.playCount || 0,
+      position: t.position || 0,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+      bandName: b?.name,
+      bandSlug: b?.slug,
+      bandLogo: b?.logoUrl || undefined,
+    }
+
+    // Fetch related tracks by the same band
+    const relatedRows = await db
+      .select({
+        track: bandTracks,
+        band: bands,
+      })
+      .from(bandTracks)
+      .leftJoin(bands, eq(bandTracks.bandId, bands.id))
+      .where(and(eq(bandTracks.bandId, t.bandId), sql`${bandTracks.id} != ${t.id}`))
+      .orderBy(desc(bandTracks.playCount), asc(bandTracks.position))
+      .limit(6)
+
+    const relatedTracks: BandTrackItem[] = relatedRows.map(({ track: rt, band: rb }) => ({
+      id: rt.id,
+      bandId: rt.bandId,
+      title: rt.title,
+      slug: rt.slug,
+      artistName: rt.artistName || rb?.name || null,
+      producer: rt.producer,
+      featuredArtists: rt.featuredArtists,
+      audioUrl: rt.audioUrl,
+      durationSeconds: rt.durationSeconds || 0,
+      albumName: rt.albumName,
+      coverArtUrl: rt.coverArtUrl || rb?.logoUrl || null,
+      releaseYear: rt.releaseYear,
+      genre: rt.genre,
+      description: rt.description,
+      lyrics: rt.lyrics,
+      allowDownload: rt.allowDownload,
+      playCount: rt.playCount || 0,
+      position: rt.position || 0,
+      createdAt: rt.createdAt.toISOString(),
+      updatedAt: rt.updatedAt.toISOString(),
+      bandName: rb?.name,
+      bandSlug: rb?.slug,
+      bandLogo: rb?.logoUrl || undefined,
+    }))
+
+    // Fetch track comments
+    const commentRows = await db
+      .select()
+      .from(trackComments)
+      .where(eq(trackComments.trackId, t.id))
+      .orderBy(desc(trackComments.createdAt))
+      .limit(50)
+
+    const comments: TrackCommentItem[] = commentRows.map((c) => ({
+      id: c.id,
+      trackId: c.trackId,
+      userId: c.userId,
+      authorName: c.authorName,
+      authorAvatar: c.authorAvatar,
+      content: c.content,
+      createdAt: c.createdAt.toISOString(),
+    }))
+
+    return { track: trackItem, relatedTracks, comments }
+  } catch (err) {
+    console.error("Error fetching track by slug:", err)
+    return { track: null, relatedTracks: [], comments: [] }
+  }
+}
+
+/**
+ * Fetch all tracks across StarCast for the /music directory.
+ */
+export async function getAllPublicTracks(options?: {
+  genre?: string
+  query?: string
+  limit?: number
+}): Promise<BandTrackItem[]> {
+  try {
+    const limit = options?.limit || 60
+
+    let baseQuery = db
+      .select({
+        track: bandTracks,
+        band: bands,
+      })
+      .from(bandTracks)
+      .leftJoin(bands, eq(bandTracks.bandId, bands.id))
+      .where(eq(bands.isPublic, true))
+
+    const rows = await baseQuery
+      .orderBy(desc(bandTracks.createdAt))
+      .limit(limit)
+
+    let results = rows.map(({ track: t, band: b }) => ({
+      id: t.id,
+      bandId: t.bandId,
+      title: t.title,
+      slug: t.slug,
+      artistName: t.artistName || b?.name || null,
+      producer: t.producer,
+      featuredArtists: t.featuredArtists,
+      audioUrl: t.audioUrl,
+      durationSeconds: t.durationSeconds || 0,
+      albumName: t.albumName,
+      coverArtUrl: t.coverArtUrl || b?.logoUrl || null,
+      releaseYear: t.releaseYear,
+      genre: t.genre || b?.genre || null,
+      description: t.description,
+      lyrics: t.lyrics,
+      allowDownload: t.allowDownload,
+      playCount: t.playCount || 0,
+      position: t.position || 0,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+      bandName: b?.name,
+      bandSlug: b?.slug,
+      bandLogo: b?.logoUrl || undefined,
+    }))
+
+    if (options?.genre && options.genre !== "all") {
+      const g = options.genre.toLowerCase()
+      results = results.filter((t) => t.genre?.toLowerCase().includes(g))
+    }
+
+    if (options?.query && options.query.trim()) {
+      const q = options.query.toLowerCase().trim()
+      results = results.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.artistName?.toLowerCase().includes(q) ||
+          t.producer?.toLowerCase().includes(q) ||
+          t.albumName?.toLowerCase().includes(q) ||
+          t.bandName?.toLowerCase().includes(q)
+      )
+    }
+
+    return results
+  } catch (err) {
+    console.error("Error loading public tracks:", err)
     return []
   }
 }
@@ -143,7 +378,7 @@ export async function getBandTracks(bandId: string): Promise<BandTrackItem[]> {
  */
 export async function addBandTrack(bandId: string, input: TrackInput) {
   try {
-    await verifyBandOwnershipOrAdmin(bandId)
+    const { band } = await verifyBandOwnershipOrAdmin(bandId)
 
     if (!input.title?.trim()) {
       return { success: false, error: "Track title is required." }
@@ -153,6 +388,11 @@ export async function addBandTrack(bandId: string, input: TrackInput) {
     }
 
     const cleanAudioUrl = await normalizeAudioUrl(input.audioUrl)
+
+    // Generate unique slug
+    const baseSlug = slugify(input.title.trim()) || "track"
+    const randomSuffix = Math.random().toString(36).substring(2, 7)
+    const uniqueSlug = `${baseSlug}-${randomSuffix}`
 
     // Determine next position
     const currentTracks = await db
@@ -169,11 +409,15 @@ export async function addBandTrack(bandId: string, input: TrackInput) {
       .values({
         bandId,
         title: input.title.trim(),
+        slug: uniqueSlug,
+        artistName: input.artistName?.trim() || band.name || null,
+        producer: input.producer?.trim() || null,
+        featuredArtists: input.featuredArtists?.trim() || null,
         audioUrl: cleanAudioUrl,
         durationSeconds: input.durationSeconds || 0,
         albumName: input.albumName?.trim() || null,
         coverArtUrl: input.coverArtUrl?.trim() || null,
-        releaseYear: input.releaseYear?.trim() || null,
+        releaseYear: input.releaseYear?.trim() || new Date().getFullYear().toString(),
         genre: input.genre?.trim() || null,
         description: input.description?.trim() || null,
         lyrics: input.lyrics?.trim() || null,
@@ -182,7 +426,13 @@ export async function addBandTrack(bandId: string, input: TrackInput) {
       })
       .returning()
 
-    return { success: true, track: newTrack }
+    // Ensure catalog is enabled
+    await db
+      .update(bands)
+      .set({ musicCatalogEnabled: true, updatedAt: new Date() })
+      .where(eq(bands.id, bandId))
+
+    return { success: true, track: newTrack, slug: uniqueSlug }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to add track." }
   }
@@ -209,6 +459,10 @@ export async function updateBandTrack(trackId: string, input: Partial<TrackInput
       .update(bandTracks)
       .set({
         title: input.title !== undefined ? input.title.trim() : existing[0].title,
+        artistName: input.artistName !== undefined ? (input.artistName?.trim() || null) : existing[0].artistName,
+        producer: input.producer !== undefined ? (input.producer?.trim() || null) : existing[0].producer,
+        featuredArtists:
+          input.featuredArtists !== undefined ? (input.featuredArtists?.trim() || null) : existing[0].featuredArtists,
         audioUrl: cleanAudioUrl,
         durationSeconds: input.durationSeconds !== undefined ? input.durationSeconds : existing[0].durationSeconds,
         albumName: input.albumName !== undefined ? (input.albumName?.trim() || null) : existing[0].albumName,
@@ -295,33 +549,11 @@ export async function toggleBandMusicCatalog(bandId: string, enabled: boolean, t
 }
 
 /**
- * Increment play count when someone streams a song.
- */
-export async function incrementTrackPlay(trackId: string) {
-  try {
-    const rows = await db
-      .select({ playCount: bandTracks.playCount })
-      .from(bandTracks)
-      .where(eq(bandTracks.id, trackId))
-      .limit(1)
-
-    if (rows[0]) {
-      await db
-        .update(bandTracks)
-        .set({ playCount: (rows[0].playCount || 0) + 1 })
-        .where(eq(bandTracks.id, trackId))
-    }
-  } catch {
-    // Non-blocking fire & forget
-  }
-}
-
-/**
  * Release an entire album or EP with multiple tracks in one batch.
  */
 export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput) {
   try {
-    await verifyBandOwnershipOrAdmin(bandId)
+    const { band } = await verifyBandOwnershipOrAdmin(bandId)
 
     if (!input.albumTitle?.trim()) {
       return { success: false, error: "Album title is required." }
@@ -344,9 +576,16 @@ export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput)
       if (!t.title?.trim() || !t.audioUrl?.trim()) continue
 
       const cleanAudioUrl = await normalizeAudioUrl(t.audioUrl)
+      const baseSlug = slugify(t.title.trim()) || "track"
+      const randomSuffix = Math.random().toString(36).substring(2, 7)
+      const uniqueSlug = `${baseSlug}-${randomSuffix}`
+
       await db.insert(bandTracks).values({
         bandId,
         title: t.title.trim(),
+        slug: uniqueSlug,
+        artistName: t.artistName?.trim() || band.name || null,
+        producer: t.producer?.trim() || input.producer?.trim() || null,
         audioUrl: cleanAudioUrl,
         durationSeconds: t.durationSeconds || 0,
         albumName: input.albumTitle.trim(),
@@ -371,6 +610,99 @@ export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput)
     return { success: true, count: input.tracks.length }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to release album." }
+  }
+}
+
+/**
+ * Increment play count when someone streams a song.
+ */
+export async function incrementTrackPlay(trackId: string) {
+  try {
+    const rows = await db
+      .select({ playCount: bandTracks.playCount })
+      .from(bandTracks)
+      .where(eq(bandTracks.id, trackId))
+      .limit(1)
+
+    if (rows[0]) {
+      await db
+        .update(bandTracks)
+        .set({ playCount: (rows[0].playCount || 0) + 1 })
+        .where(eq(bandTracks.id, trackId))
+    }
+  } catch {
+    // Non-blocking fire & forget
+  }
+}
+
+/**
+ * Add a fan discussion comment on a standalone track page.
+ */
+export async function addTrackComment(trackId: string, content: string) {
+  try {
+    const user = await getSessionUser()
+    if (!user) return { success: false, error: "Please sign in to comment on this song." }
+    if (!content.trim()) return { success: false, error: "Comment cannot be empty." }
+
+    const profileRows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
+    const profile = profileRows[0]
+    const authorName =
+      [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
+      profile?.username ||
+      user.name ||
+      "StarCast Fan"
+    const authorAvatar = profile?.profilePic || user.image || null
+
+    const [comment] = await db
+      .insert(trackComments)
+      .values({
+        trackId,
+        userId: user.id,
+        authorName,
+        authorAvatar,
+        content: content.trim(),
+      })
+      .returning()
+
+    return {
+      success: true,
+      comment: {
+        id: comment.id,
+        trackId: comment.trackId,
+        userId: comment.userId,
+        authorName: comment.authorName,
+        authorAvatar: comment.authorAvatar,
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+      },
+    }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to add comment." }
+  }
+}
+
+/**
+ * Delete a track comment (by author or admin).
+ */
+export async function deleteTrackComment(commentId: string) {
+  try {
+    const user = await getSessionUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+
+    const [existing] = await db.select().from(trackComments).where(eq(trackComments.id, commentId)).limit(1)
+    if (!existing) return { success: false, error: "Comment not found." }
+
+    const [profile] = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
+    const isAdmin = profile?.isAdmin || profile?.isEmployee
+
+    if (existing.userId !== user.id && !isAdmin) {
+      return { success: false, error: "You can only delete your own comments." }
+    }
+
+    await db.delete(trackComments).where(eq(trackComments.id, commentId))
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to delete comment." }
   }
 }
 

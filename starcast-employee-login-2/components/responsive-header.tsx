@@ -80,6 +80,7 @@ export function ResponsiveHeader({
     { href: "/", label: "Home", show: true },
     { href: "/watch", label: "Watch", show: true },
     { href: "/articles", label: "Articles", show: true },
+    { href: "/music", label: "Music", show: true },
     { href: "/community", label: "Community", show: true },
     { href: "/bands", label: "Bands", show: true },
     { href: "/information", label: "Information", show: true },

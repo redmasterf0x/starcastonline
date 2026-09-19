@@ -554,6 +554,10 @@ export const bandTracks = pgTable("band_tracks", {
     .references(() => bands.id, { onDelete: "cascade" })
     .notNull(),
   title: text("title").notNull(),
+  slug: text("slug").unique(),
+  artistName: text("artist_name"),
+  producer: text("producer"),
+  featuredArtists: text("featured_artists"),
   audioUrl: text("audio_url").notNull(),
   durationSeconds: integer("duration_seconds").default(0),
   albumName: text("album_name"),
@@ -568,6 +572,20 @@ export const bandTracks = pgTable("band_tracks", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const trackComments = pgTable("track_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  trackId: uuid("track_id")
+    .references(() => bandTracks.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id").notNull(),
+  authorName: text("author_name").notNull(),
+  authorAvatar: text("author_avatar"),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 
 
 
