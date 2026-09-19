@@ -211,26 +211,36 @@ export function BandPageClient({
 
     setUploadingImage(true)
     setError("")
-    try {
-      const uploaded: string[] = []
-      for (const file of Array.from(files)) {
-        if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
-          throw new Error(`Photo "${file.name}" exceeds ${MAX_IMAGE_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
-        }
-        const fd = new FormData()
-        fd.append("file", file)
-        fd.append("folder", `bands/${band.id}/posts`)
-        const res = await fetch("/api/upload", { method: "POST", body: fd })
-        const data = await res.json()
-        if (!res.ok || !data.url) throw new Error(data.error || "Failed to upload image")
-        uploaded.push(data.url)
+
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+        setError(`Photo "${file.name}" exceeds ${MAX_IMAGE_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
+        setUploadingImage(false)
+        return
       }
-      setDraftImages((prev) => [...prev, ...uploaded])
-    } catch (e: any) {
-      setError(e?.message || "Failed to upload image")
-    } finally {
-      setUploadingImage(false)
+
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const base64Url = reader.result as string
+        setDraftImages((prev) => [...prev, base64Url])
+
+        try {
+          const fd = new FormData()
+          fd.append("file", file)
+          fd.append("folder", `bands/${band.id}/posts`)
+          const res = await fetch("/api/upload", { method: "POST", body: fd })
+          const data = await res.json()
+          if (data.url) {
+            setDraftImages((prev) => prev.map((img) => (img === base64Url ? data.url : img)))
+          }
+        } catch {
+          // Keep base64 fallback
+        }
+      }
+      reader.readAsDataURL(file)
     }
+    setUploadingImage(false)
+    if (imageInputRef.current) imageInputRef.current.value = ""
   }
 
   // ── Single Song Handlers ──
@@ -1145,8 +1155,22 @@ export function BandPageClient({
 
             {/* Action Bar */}
             <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[#20205a]/50 flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#9a9fc4]">
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPostType("image")
+                    setTimeout(() => imageInputRef.current?.click(), 50)
+                  }}
+                  className="text-[#dbe0fb] hover:text-[#ffd166] text-xs h-9 px-2.5 rounded-xl hover:bg-[#20205a]/40"
+                >
+                  <ImageIcon className="w-4 h-4 mr-1.5 text-[#ffd166]" />
+                  {draftImages.length > 0 ? `${draftImages.length} Photos Attached` : "Attach Photos"}
+                </Button>
+
+                <span className="text-xs text-[#9a9fc4] hidden sm:inline">
                   Posting as <strong className="text-[#f5f7ff]">{band.is_owner ? band.name : "Member"}</strong>
                 </span>
               </div>

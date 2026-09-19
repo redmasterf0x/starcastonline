@@ -8,8 +8,8 @@ const MAX_AUDIO_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
 const MAX_GENERAL_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
 
 const ALLOWED_EXTENSIONS = new Set([
-  "jpg", "jpeg", "png", "webp", "gif", "svg",
-  "mp3", "wav", "m4a", "ogg", "flac", "aac", "weba",
+  "jpg", "jpeg", "png", "webp", "gif", "svg", "heic", "heif", "bmp", "ico",
+  "mp3", "wav", "m4a", "ogg", "flac", "aac", "weba", "webm",
   "pdf", "txt"
 ])
 
@@ -25,17 +25,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || ""
-    if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
+    const contentType = file.type || "application/octet-stream"
+    const rawExt = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() || "" : ""
+    const isImage = contentType.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif", "svg", "heic", "heif", "bmp"].includes(rawExt)
+    const isAudio = contentType.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac", "aac", "weba", "webm"].includes(rawExt)
+
+    // Validate type
+    if (!isImage && !isAudio && rawExt && !ALLOWED_EXTENSIONS.has(rawExt)) {
       return NextResponse.json(
-        { error: `File type .${ext} is not allowed. Supported formats: Images (JPG, PNG, WEBP, GIF, SVG) and Audio (MP3, WAV, M4A, OGG, FLAC).` },
+        { error: `File type is not supported. Please upload an image (JPG, PNG, WEBP, GIF, SVG) or audio (MP3, WAV, M4A, FLAC).` },
         { status: 400 }
       )
     }
-
-    const contentType = file.type || "application/octet-stream"
-    const isImage = contentType.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(ext)
-    const isAudio = contentType.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac", "aac", "weba"].includes(ext)
 
     // Enforce file size limit
     if (isImage && file.size > MAX_IMAGE_SIZE_BYTES) {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+    const sanitizedName = (file.name || "upload").replace(/[^a-zA-Z0-9._-]/g, "_")
     const pathname = `${folder}/${Date.now()}-${sanitizedName}`
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
@@ -71,12 +72,15 @@ export async function POST(request: NextRequest) {
         .insert(uploadedBlobs)
         .values({
           pathname,
-          contentType,
+          contentType: contentType || (isImage ? "image/jpeg" : isAudio ? "audio/mpeg" : "application/octet-stream"),
           data: base64Data,
         })
         .onConflictDoUpdate({
           target: uploadedBlobs.pathname,
-          set: { contentType, data: base64Data },
+          set: {
+            contentType: contentType || (isImage ? "image/jpeg" : isAudio ? "audio/mpeg" : "application/octet-stream"),
+            data: base64Data,
+          },
         })
     } catch (dbErr) {
       console.warn("Error storing blob in Postgres:", dbErr)

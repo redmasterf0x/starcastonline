@@ -95,26 +95,36 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
 
     setUploadingImage(true)
     setError(null)
-    try {
-      const uploaded: string[] = []
-      for (const file of Array.from(files)) {
-        if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
-          throw new Error(`Photo "${file.name}" exceeds ${MAX_IMAGE_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
-        }
-        const fd = new FormData()
-        fd.append("file", file)
-        fd.append("folder", `bands/${bandId}/posts`)
-        const res = await fetch("/api/upload", { method: "POST", body: fd })
-        const data = await res.json()
-        if (!res.ok || !data.url) throw new Error(data.error || "Failed to upload image")
-        uploaded.push(data.url)
+
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+        setError(`Photo "${file.name}" exceeds ${MAX_IMAGE_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
+        setUploadingImage(false)
+        return
       }
-      setImages((prev) => [...prev, ...uploaded])
-    } catch (e: any) {
-      setError(e?.message || "Failed to upload image")
-    } finally {
-      setUploadingImage(false)
+
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const base64Url = reader.result as string
+        setImages((prev) => [...prev, base64Url])
+
+        try {
+          const fd = new FormData()
+          fd.append("file", file)
+          fd.append("folder", `bands/${bandId}/posts`)
+          const res = await fetch("/api/upload", { method: "POST", body: fd })
+          const data = await res.json()
+          if (data.url) {
+            setImages((prev) => prev.map((img) => (img === base64Url ? data.url : img)))
+          }
+        } catch {
+          // Keep base64 fallback
+        }
+      }
+      reader.readAsDataURL(file)
     }
+    setUploadingImage(false)
+    if (imageInputRef.current) imageInputRef.current.value = ""
   }
 
   // ── Single Song Handlers ──
