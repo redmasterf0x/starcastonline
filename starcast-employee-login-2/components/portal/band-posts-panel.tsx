@@ -409,21 +409,29 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
           focused ? "border-[#ea6f2a]/60 shadow-lg shadow-[#ea6f2a]/10" : "border-[#20205a]/70"
         }`}
       >
+        <div className="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-[#20205a]/60 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#ea6f2a]" />
+            <span className="text-sm font-bold text-[#f5f7ff]">Broadcast an Update, Drop a Song, or Release an Album</span>
+          </div>
+          <span className="text-xs font-mono text-[#20efe0]">Posting as {bandName}</span>
+        </div>
+
         {/* Post Type Selector Tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#05052d] border border-[#20205a] mb-4 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#05052d] border border-[#20205a] mb-4 overflow-x-auto">
           <button
             type="button"
             onClick={() => {
               setPostType("text")
               setFocused(true)
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
               postType === "text"
                 ? "bg-[#ea6f2a] text-white shadow-md"
                 : "text-[#9a9fc4] hover:text-[#f5f7ff] hover:bg-[#0c0c3f]"
             }`}
           >
-            <FileText className="w-3.5 h-3.5" /> Text Update
+            <FileText className="w-4 h-4" /> Text Post
           </button>
 
           <button
@@ -432,13 +440,13 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
               setPostType("image")
               setFocused(true)
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
               postType === "image"
                 ? "bg-[#ea6f2a] text-white shadow-md"
                 : "text-[#9a9fc4] hover:text-[#f5f7ff] hover:bg-[#0c0c3f]"
             }`}
           >
-            <ImageIcon className="w-3.5 h-3.5" /> Picture / Photo
+            <ImageIcon className="w-4 h-4 text-[#ffd166]" /> Picture / Photo
           </button>
 
           <button
@@ -447,13 +455,13 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
               setPostType("audio")
               setFocused(true)
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 ${
               postType === "audio"
                 ? "bg-[#20efe0] text-[#05051f] shadow-md shadow-[#20efe0]/20"
-                : "text-[#20efe0] hover:bg-[#20efe0]/10"
+                : "text-[#20efe0] hover:bg-[#20efe0]/10 hover:text-white"
             }`}
           >
-            <Music className="w-3.5 h-3.5" /> Song (MP3)
+            <Music className="w-4 h-4" /> 🎵 Song (Single MP3)
           </button>
 
           <button
@@ -462,13 +470,13 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
               setPostType("album")
               setFocused(true)
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 ${
               postType === "album"
                 ? "bg-gradient-to-r from-[#20efe0] to-[#ffd166] text-[#05051f] shadow-md"
-                : "text-[#ffd166] hover:bg-[#ffd166]/10"
+                : "text-[#ffd166] hover:bg-[#ffd166]/10 hover:text-white"
             }`}
           >
-            <Disc3 className="w-3.5 h-3.5" /> Multiple Songs / Album
+            <Disc3 className="w-4 h-4" /> 💿 Multiple Songs / Album
           </button>
         </div>
 
@@ -490,18 +498,18 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onFocus={() => setFocused(true)}
-              rows={focused ? 3 : 2}
+              rows={3}
               placeholder={
                 postType === "audio"
-                  ? `Write liner notes or tell fans about this track as ${bandName}…`
+                  ? `Describe this new song, inspiration, or drop notes as ${bandName}…`
                   : postType === "album"
-                  ? `Write an album announcement as ${bandName}…`
+                  ? `Write an album / EP announcement and backstory as ${bandName}…`
                   : postType === "image"
                   ? `Describe these photos or share an update…`
                   : `Post a message or update as ${bandName}…`
               }
               maxLength={2000}
-              className="w-full resize-none bg-transparent text-[#f5f7ff] placeholder-[#9a9fc4]/70 outline-none text-[15px] leading-relaxed"
+              className="w-full resize-none bg-[#05052d] border border-[#20205a] rounded-xl p-3 text-[#f5f7ff] placeholder-[#9a9fc4]/70 outline-none focus:border-[#ea6f2a]/60 text-[15px] leading-relaxed"
             />
           </div>
         </div>
