@@ -38,6 +38,20 @@ export interface TrackInput {
   allowDownload?: boolean
 }
 
+export interface AlbumReleaseInput {
+  albumTitle: string
+  releaseYear?: string
+  genre?: string
+  coverArtUrl?: string
+  allowDownload?: boolean
+  tracks: {
+    title: string
+    audioUrl: string
+    durationSeconds?: number
+    lyrics?: string
+  }[]
+}
+
 async function getSessionUser() {
   const session = await auth.api.getSession({ headers: await headers() })
   return session?.user ?? null
@@ -301,3 +315,62 @@ export async function incrementTrackPlay(trackId: string) {
     // Non-blocking fire & forget
   }
 }
+
+/**
+ * Release an entire album or EP with multiple tracks in one batch.
+ */
+export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput) {
+  try {
+    await verifyBandOwnershipOrAdmin(bandId)
+
+    if (!input.albumTitle?.trim()) {
+      return { success: false, error: "Album title is required." }
+    }
+    if (!input.tracks || input.tracks.length === 0) {
+      return { success: false, error: "At least one track is required for an album release." }
+    }
+
+    // Determine next starting position
+    const currentTracks = await db
+      .select({ position: bandTracks.position })
+      .from(bandTracks)
+      .where(eq(bandTracks.bandId, bandId))
+      .orderBy(desc(bandTracks.position))
+      .limit(1)
+
+    let startPos = (currentTracks[0]?.position ?? -1) + 1
+
+    for (const t of input.tracks) {
+      if (!t.title?.trim() || !t.audioUrl?.trim()) continue
+
+      const cleanAudioUrl = await normalizeAudioUrl(t.audioUrl)
+      await db.insert(bandTracks).values({
+        bandId,
+        title: t.title.trim(),
+        audioUrl: cleanAudioUrl,
+        durationSeconds: t.durationSeconds || 0,
+        albumName: input.albumTitle.trim(),
+        coverArtUrl: input.coverArtUrl?.trim() || null,
+        releaseYear: input.releaseYear?.trim() || new Date().getFullYear().toString(),
+        genre: input.genre?.trim() || null,
+        lyrics: t.lyrics?.trim() || null,
+        allowDownload: input.allowDownload !== false,
+        position: startPos++,
+      })
+    }
+
+    // Auto-enable music catalog if disabled
+    await db
+      .update(bands)
+      .set({
+        musicCatalogEnabled: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(bands.id, bandId))
+
+    return { success: true, count: input.tracks.length }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to release album." }
+  }
+}
+

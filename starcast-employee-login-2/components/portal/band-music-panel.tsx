@@ -8,9 +8,11 @@ import {
   deleteBandTrack,
   reorderBandTracks,
   toggleBandMusicCatalog,
+  releaseBandAlbum,
   normalizeAudioUrl,
   type BandTrackItem,
   type TrackInput,
+  type AlbumReleaseInput,
 } from "@/app/actions/band-tracks"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -40,6 +42,10 @@ import {
   FileAudio,
   Radio,
   ExternalLink,
+  Disc3,
+  Layers,
+  FolderPlus,
+  Info,
 } from "lucide-react"
 
 interface BandMusicPanelProps {
@@ -54,6 +60,15 @@ interface BandMusicPanelProps {
   onRefreshBand?: () => void
 }
 
+interface AlbumBatchTrackItem {
+  id: string
+  file?: File
+  title: string
+  audioUrl?: string
+  durationSeconds: number
+  lyrics?: string
+}
+
 export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
   const [tracks, setTracks] = useState<BandTrackItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,14 +81,14 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
   const [catalogTitle, setCatalogTitle] = useState(band.music_catalog_title || "Original Music & Tracks")
   const [savingSettings, setSavingSettings] = useState(false)
 
-  // Track Dialog (New / Edit)
+  // 1. Single Track Dialog (New / Edit)
   const [trackDialogOpen, setTrackDialogOpen] = useState(false)
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null)
   const [trackForm, setTrackForm] = useState<TrackInput>({
     title: "",
     audioUrl: "",
     durationSeconds: 0,
-    albumName: "",
+    albumName: "Single",
     coverArtUrl: "",
     releaseYear: new Date().getFullYear().toString(),
     genre: "",
@@ -81,6 +96,27 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
     lyrics: "",
     allowDownload: true,
   })
+
+  // 2. Album / EP Batch Release Dialog
+  const [albumDialogOpen, setAlbumDialogOpen] = useState(false)
+  const [albumForm, setAlbumForm] = useState<{
+    title: string
+    releaseYear: string
+    genre: string
+    coverArtUrl: string
+    allowDownload: boolean
+  }>({
+    title: "",
+    releaseYear: new Date().getFullYear().toString(),
+    genre: "",
+    coverArtUrl: band.logo_url || "",
+    allowDownload: true,
+  })
+  const [albumTracks, setAlbumTracks] = useState<AlbumBatchTrackItem[]>([])
+  const [albumUploadProgress, setAlbumUploadProgress] = useState<string | null>(null)
+  const albumMultiAudioInputRef = useRef<HTMLInputElement>(null)
+  const albumCoverInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingAlbumCover, setUploadingAlbumCover] = useState(false)
 
   // Audio Upload / Source Method: "upload" | "url"
   const [sourceMode, setSourceMode] = useState<"upload" | "url">("upload")
@@ -148,6 +184,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
     }
   }
 
+  // ── Single Track Helpers ──
   function handleOpenNewTrack() {
     setError("")
     setEditingTrackId(null)
@@ -155,7 +192,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
       title: "",
       audioUrl: "",
       durationSeconds: 0,
-      albumName: "",
+      albumName: "Single",
       coverArtUrl: band.logo_url || "",
       releaseYear: new Date().getFullYear().toString(),
       genre: "",
@@ -182,42 +219,52 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
       lyrics: t.lyrics || "",
       allowDownload: t.allowDownload,
     })
-    setSourceMode("url")
+    setSourceMode(t.audioUrl.startsWith("/api/blobs/") ? "upload" : "url")
     setTrackDialogOpen(true)
   }
 
   async function handleAudioFileUpload(file: File) {
     setUploadingAudio(true)
     setError("")
+
+    // 1. Clean track name from filename if empty
+    if (!trackForm.title.trim()) {
+      const cleanName = file.name
+        .replace(/\.[^/.]+$/, "")
+        .replace(/^\d+[\s._-]+/, "")
+        .replace(/[_-]+/g, " ")
+        .trim()
+      setTrackForm((prev) => ({ ...prev, title: cleanName }))
+    }
+
+    // 2. Extract Duration in browser
     try {
-      // Auto fill title if empty
-      if (!trackForm.title) {
-        const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ")
-        setTrackForm((prev) => ({ ...prev, title: cleanTitle }))
+      const objectUrl = URL.createObjectURL(file)
+      const audio = new Audio(objectUrl)
+      audio.onloadedmetadata = () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+          setTrackForm((prev) => ({ ...prev, durationSeconds: Math.round(audio.duration) }))
+        }
+        URL.revokeObjectURL(objectUrl)
       }
+    } catch {
+      // Non-critical
+    }
 
-      // Detect duration using local audio object
-      try {
-        const tempUrl = URL.createObjectURL(file)
-        const tempAudio = new Audio(tempUrl)
-        tempAudio.addEventListener("loadedmetadata", () => {
-          if (tempAudio.duration && isFinite(tempAudio.duration)) {
-            setTrackForm((prev) => ({ ...prev, durationSeconds: Math.round(tempAudio.duration) }))
-          }
-        })
-      } catch {
-        // Duration detection fallback
-      }
+    // 3. Upload File to server
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("folder", `bands/${band.id}/audio`)
 
-      const fd = new FormData()
-      fd.append("file", file)
-      fd.append("folder", "bands/music")
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
       const data = await res.json()
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error || "Upload failed")
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Failed to upload audio file.")
       }
 
       setTrackForm((prev) => ({ ...prev, audioUrl: data.url }))
@@ -232,20 +279,23 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
     setUploadingCover(true)
     setError("")
     try {
-      const fd = new FormData()
-      fd.append("file", file)
-      fd.append("folder", "bands/artwork")
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("folder", `bands/${band.id}/covers`)
 
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+
       const data = await res.json()
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error || "Cover art upload failed")
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Failed to upload cover art.")
       }
 
       setTrackForm((prev) => ({ ...prev, coverArtUrl: data.url }))
     } catch (err: any) {
-      setError(err?.message || "Failed to upload artwork.")
+      setError(err?.message || "Failed to upload cover art.")
     } finally {
       setUploadingCover(false)
     }
@@ -258,7 +308,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
       return
     }
     if (!trackForm.audioUrl.trim()) {
-      setError("Please upload an audio file or enter a valid streaming link.")
+      setError("Please upload an MP3/audio file or enter a valid streaming link.")
       return
     }
 
@@ -279,6 +329,10 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
           setBusy(false)
           return
         }
+        // If first track, make sure catalog is active
+        if (!catalogEnabled) {
+          await handleToggleCatalog(true)
+        }
       }
 
       setTrackDialogOpen(false)
@@ -291,6 +345,174 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
     }
   }
 
+  // ── Album / EP Batch Release Helpers ──
+  function handleOpenAlbumDialog() {
+    setError("")
+    setAlbumForm({
+      title: "",
+      releaseYear: new Date().getFullYear().toString(),
+      genre: "",
+      coverArtUrl: band.logo_url || "",
+      allowDownload: true,
+    })
+    setAlbumTracks([])
+    setAlbumUploadProgress(null)
+    setAlbumDialogOpen(true)
+  }
+
+  async function handleAlbumCoverUpload(file: File) {
+    setUploadingAlbumCover(true)
+    setError("")
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("folder", `bands/${band.id}/albums`)
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+
+      setAlbumForm((prev) => ({ ...prev, coverArtUrl: data.url }))
+    } catch (err: any) {
+      setError(err?.message || "Failed to upload album artwork.")
+    } finally {
+      setUploadingAlbumCover(false)
+    }
+  }
+
+  function handleBatchAudioSelect(files: FileList | null) {
+    if (!files || files.length === 0) return
+
+    const newTracks: AlbumBatchTrackItem[] = []
+    const fileArray = Array.from(files)
+
+    // Sort files naturally by filename (01 - ..., 02 - ...)
+    fileArray.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))
+
+    for (const file of fileArray) {
+      const cleanName = file.name
+        .replace(/\.[^/.]+$/, "")
+        .replace(/^\d+[\s._-]+/, "")
+        .replace(/[_-]+/g, " ")
+        .trim()
+
+      const item: AlbumBatchTrackItem = {
+        id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        file,
+        title: cleanName || file.name,
+        durationSeconds: 0,
+      }
+
+      // Detect duration in browser
+      try {
+        const objectUrl = URL.createObjectURL(file)
+        const audio = new Audio(objectUrl)
+        audio.onloadedmetadata = () => {
+          if (audio.duration && !isNaN(audio.duration)) {
+            setAlbumTracks((prev) =>
+              prev.map((t) => (t.id === item.id ? { ...t, durationSeconds: Math.round(audio.duration) } : t))
+            )
+          }
+          URL.revokeObjectURL(objectUrl)
+        }
+      } catch {
+        // Non-blocking
+      }
+
+      newTracks.push(item)
+    }
+
+    setAlbumTracks((prev) => [...prev, ...newTracks])
+  }
+
+  function handleMoveAlbumTrack(index: number, direction: "up" | "down") {
+    const target = direction === "up" ? index - 1 : index + 1
+    if (target < 0 || target >= albumTracks.length) return
+    const list = [...albumTracks]
+    const [moved] = list.splice(index, 1)
+    list.splice(target, 0, moved)
+    setAlbumTracks(list)
+  }
+
+  function handleRemoveAlbumTrack(id: string) {
+    setAlbumTracks((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  async function handlePublishAlbum(e: React.FormEvent) {
+    e.preventDefault()
+    if (!albumForm.title.trim()) {
+      setError("Album / EP title is required.")
+      return
+    }
+    if (albumTracks.length === 0) {
+      setError("Please select at least 1 audio track for the album.")
+      return
+    }
+
+    setBusy(true)
+    setError("")
+
+    try {
+      const finalizedTracks: { title: string; audioUrl: string; durationSeconds?: number; lyrics?: string }[] = []
+
+      // 1. Upload files sequentially with progress updates
+      for (let i = 0; i < albumTracks.length; i++) {
+        const item = albumTracks[i]
+        setAlbumUploadProgress(`Uploading track ${i + 1} of ${albumTracks.length}: "${item.title}"...`)
+
+        let finalAudioUrl = item.audioUrl || ""
+
+        if (item.file) {
+          const formData = new FormData()
+          formData.append("file", item.file)
+          formData.append("folder", `bands/${band.id}/albums`)
+
+          const res = await fetch("/api/upload", { method: "POST", body: formData })
+          const data = await res.json()
+          if (!res.ok || !data.url) {
+            throw new Error(`Failed to upload audio for track "${item.title}": ${data.error || "Upload failed"}`)
+          }
+          finalAudioUrl = data.url
+        }
+
+        finalizedTracks.push({
+          title: item.title,
+          audioUrl: finalAudioUrl,
+          durationSeconds: item.durationSeconds,
+          lyrics: item.lyrics,
+        })
+      }
+
+      // 2. Batch commit album to database
+      setAlbumUploadProgress("Publishing album to your soundstage...")
+      const releaseInput: AlbumReleaseInput = {
+        albumTitle: albumForm.title.trim(),
+        releaseYear: albumForm.releaseYear.trim(),
+        genre: albumForm.genre.trim(),
+        coverArtUrl: albumForm.coverArtUrl.trim(),
+        allowDownload: albumForm.allowDownload,
+        tracks: finalizedTracks,
+      }
+
+      const res = await releaseBandAlbum(band.id, releaseInput)
+      if (!res.success) {
+        throw new Error(res.error || "Failed to finalize album release.")
+      }
+
+      setCatalogEnabled(true)
+      setAlbumDialogOpen(false)
+      setSuccessMessage(`Album "${albumForm.title}" with ${finalizedTracks.length} tracks published successfully!`)
+      await loadTracks()
+      onRefreshBand?.()
+    } catch (err: any) {
+      setError(err?.message || "An unexpected error occurred while publishing the album.")
+    } finally {
+      setBusy(false)
+      setAlbumUploadProgress(null)
+    }
+  }
+
+  // ── General Track Operations ──
   async function handleDeleteTrack(trackId: string) {
     if (!confirm("Are you sure you want to remove this track from your catalog?")) return
 
@@ -367,12 +589,12 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
         onPlay={() => setIsPlaying(true)}
       />
 
-      {/* ── 1. MUSIC CATALOG CONTROLS CARD ── */}
+      {/* ── 1. MUSIC CATALOG CONTROLS & RELEASE RIBBON ── */}
       <Card className="border-[#20205a]/60 bg-gradient-to-br from-[#0c0c3f]/90 via-[#0a0a2e]/80 to-[#121248]/60 shadow-xl overflow-hidden">
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className="w-8 h-8 rounded-lg bg-[#ea6f2a]/20 border border-[#ea6f2a]/40 flex items-center justify-center text-[#ea6f2a]">
                   <Music className="w-4 h-4" />
                 </div>
@@ -386,30 +608,56 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                       : "bg-[#20205a]/60 text-[#9a9fc4] border border-[#20205a] text-xs"
                   }
                 >
-                  {catalogEnabled ? "Live on Page" : "Disabled"}
+                  {catalogEnabled ? "Live on Public Page" : "Catalog Disabled"}
                 </Badge>
               </div>
               <CardDescription className="text-xs sm:text-sm text-[#9a9fc4]">
-                Upload tracks, demos, and singles for free streaming on your public soundstage page.
+                Upload MP3 singles or entire albums for free streaming on your public soundstage page.
               </CardDescription>
             </div>
 
             {/* Enable / Disable Master Toggle */}
             <div className="flex items-center gap-3 p-3 rounded-xl bg-[#05052d]/90 border border-[#20205a] shrink-0">
               <span className="text-xs sm:text-sm font-semibold text-[#f5f7ff]">
-                {catalogEnabled ? "Catalog Active" : "Catalog Inactive"}
+                {catalogEnabled ? "Public Player Enabled" : "Public Player Disabled"}
               </span>
               <Switch
                 checked={catalogEnabled}
                 onCheckedChange={handleToggleCatalog}
                 disabled={savingSettings}
-                className="data-[state=checked]:bg-[#ea6f2a]"
+                className="data-[state=checked]:bg-[#20efe0]"
               />
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4 pt-0">
+          {/* Quick Release Action Buttons */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#ea6f2a]/15 via-[#0c0c3f] to-[#20efe0]/10 border border-[#20205a] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-[#f5f7ff] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#ffd166]" /> Release Music
+              </p>
+              <p className="text-xs text-[#9a9fc4]">
+                Upload high quality MP3 audio directly or paste Google Drive / Dropbox stream links.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <Button
+                onClick={handleOpenNewTrack}
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl text-xs sm:text-sm h-10 px-4 shadow-md shadow-[#ea6f2a]/20"
+              >
+                <Plus className="w-4 h-4 mr-1.5" /> Release Single (MP3)
+              </Button>
+              <Button
+                onClick={handleOpenAlbumDialog}
+                className="bg-gradient-to-r from-[#20efe0] to-[#00b4d8] hover:opacity-90 text-[#05051f] font-bold rounded-xl text-xs sm:text-sm h-10 px-4 shadow-md shadow-[#20efe0]/20"
+              >
+                <Disc3 className="w-4 h-4 mr-1.5 text-[#05051f]" /> Release Album / EP (Batch MP3s)
+              </Button>
+            </div>
+          </div>
+
           {/* Messages */}
           {error && (
             <div className="p-3 bg-red-950/70 border border-red-800/80 rounded-xl text-red-200 text-xs flex items-center gap-2">
@@ -447,9 +695,6 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 {savingSettings ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
               </Button>
             </div>
-            <p className="text-[11px] text-[#7f84ad]">
-              This title is displayed on your band&apos;s public profile above the audio player.
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -467,12 +712,24 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
             </CardDescription>
           </div>
 
-          <Button
-            onClick={handleOpenNewTrack}
-            className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl text-xs sm:text-sm h-10 px-4 shadow-md shadow-[#ea6f2a]/20"
-          >
-            <Plus className="w-4 h-4 mr-1.5" /> Upload Song / Track
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleOpenNewTrack}
+              variant="outline"
+              size="sm"
+              className="border-[#20205a] text-[#f5f7ff] hover:bg-[#20205a]/40 text-xs h-9"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1 text-[#ea6f2a]" /> Add Single
+            </Button>
+            <Button
+              onClick={handleOpenAlbumDialog}
+              variant="outline"
+              size="sm"
+              className="border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/15 text-xs h-9"
+            >
+              <Disc3 className="w-3.5 h-3.5 mr-1" /> Add Album / EP
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -481,20 +738,26 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
               <Loader2 className="w-6 h-6 text-[#ea6f2a] animate-spin" />
             </div>
           ) : tracks.length === 0 ? (
-            <div className="py-14 text-center rounded-2xl border border-dashed border-[#20205a] bg-[#05052d]/40 p-6 sm:p-10 space-y-3">
+            <div className="py-14 text-center rounded-2xl border border-dashed border-[#20205a] bg-[#05052d]/40 p-6 sm:p-10 space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-[#ea6f2a]/10 border border-[#ea6f2a]/30 flex items-center justify-center mx-auto text-[#ea6f2a]">
                 <FileAudio className="w-7 h-7" />
               </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#f5f7ff]">No Songs Uploaded Yet</h3>
+              <h3 className="text-base sm:text-lg font-bold text-[#f5f7ff]">No Songs in Catalog Yet</h3>
               <p className="text-xs sm:text-sm text-[#9a9fc4] max-w-md mx-auto leading-relaxed">
-                Add your singles, EP demos, live bootlegs, or studio tracks. Fans can listen to them directly from your band page for free!
+                Release your first single or drop an entire album/EP with batch MP3 upload. Fans can stream your tracks for free!
               </p>
-              <div className="pt-2">
+              <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
                 <Button
                   onClick={handleOpenNewTrack}
                   className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl text-xs sm:text-sm h-11 px-5"
                 >
-                  <Plus className="w-4 h-4 mr-1.5" /> Add First Song
+                  <Plus className="w-4 h-4 mr-1.5" /> Release Single (MP3)
+                </Button>
+                <Button
+                  onClick={handleOpenAlbumDialog}
+                  className="bg-[#20efe0] hover:bg-[#20efe0]/90 text-[#05051f] font-bold rounded-xl text-xs sm:text-sm h-11 px-5"
+                >
+                  <Disc3 className="w-4 h-4 mr-1.5" /> Release Album / EP
                 </Button>
               </div>
             </div>
@@ -518,24 +781,21 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                       <button
                         type="button"
                         onClick={() => handleTogglePlayPreview(track)}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform active:scale-95 ${
+                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border transition-transform active:scale-95 ${
                           isThisPlaying
-                            ? "bg-[#20efe0] text-black shadow-lg shadow-[#20efe0]/30"
-                            : "bg-[#0c0c3f] border border-[#20205a] text-[#f5f7ff] hover:bg-[#ea6f2a] hover:border-[#ea6f2a]"
+                            ? "bg-[#20efe0] text-[#05051f] border-[#20efe0] shadow-[0_0_12px_rgba(32,239,224,0.4)]"
+                            : "bg-[#0c0c3f] text-[#ea6f2a] border-[#ea6f2a]/40 hover:bg-[#ea6f2a] hover:text-white"
                         }`}
-                        aria-label={isThisPlaying ? "Pause preview" : "Play preview"}
                       >
-                        {isThisPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 ml-0.5 fill-current" />}
+                        {isThisPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                       </button>
 
-                      {/* Cover Art Thumbnail */}
-                      <div className="w-12 h-12 rounded-lg bg-[#0c0c3f] border border-[#20205a] overflow-hidden shrink-0 relative">
+                      {/* Track cover or logo */}
+                      <div className="w-11 h-11 rounded-lg bg-[#05051f] border border-[#20205a] overflow-hidden shrink-0">
                         {track.coverArtUrl ? (
-                          <img
-                            src={track.coverArtUrl}
-                            alt={track.title}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover" />
+                        ) : band.logo_url ? (
+                          <img src={band.logo_url} alt={band.name} className="w-full h-full object-cover opacity-70" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[#ea6f2a]">
                             <Music className="w-5 h-5" />
@@ -543,74 +803,74 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                         )}
                       </div>
 
-                      {/* Title, Album & Metadata */}
+                      {/* Title & Metadata */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-[#f5f7ff] text-sm sm:text-base truncate">
-                            {track.title}
-                          </span>
-                          {track.genre && (
-                            <Badge variant="outline" className="border-[#20efe0]/30 text-[#20efe0] text-[10px] px-1.5 py-0">
-                              {track.genre}
+                          <span className="font-semibold text-sm text-[#f5f7ff] truncate">{track.title}</span>
+                          {track.albumName && (
+                            <Badge variant="outline" className="border-[#20205a] text-[#9a9fc4] text-[10px] py-0 px-1.5">
+                              {track.albumName}
                             </Badge>
                           )}
-                          {track.allowDownload && (
-                            <Badge className="bg-emerald-950/80 text-emerald-400 border border-emerald-600/30 text-[10px] px-1.5 py-0">
-                              Free Download
-                            </Badge>
+                          {track.releaseYear && (
+                            <span className="text-[11px] text-[#7f84ad] font-mono">{track.releaseYear}</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-[#9a9fc4] mt-0.5">
-                          {track.albumName && <span>{track.albumName}</span>}
-                          {track.releaseYear && <span>({track.releaseYear})</span>}
+                        <div className="flex items-center gap-3 text-xs text-[#9a9fc4] mt-0.5 flex-wrap">
                           {track.durationSeconds > 0 && <span>{formatDuration(track.durationSeconds)}</span>}
-                          <span className="flex items-center gap-1 font-mono text-[#ffd166]">
-                            <Headphones className="w-3 h-3" /> {track.playCount} plays
+                          <span>·</span>
+                          <span className="flex items-center gap-1 text-[#20efe0]">
+                            <Headphones className="w-3 h-3" />
+                            {track.playCount} {track.playCount === 1 ? "stream" : "streams"}
                           </span>
+                          {track.allowDownload && (
+                            <>
+                              <span>·</span>
+                              <span className="text-emerald-400 text-[11px]">Free MP3 Download Enabled</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-1.5 sm:gap-2 self-end sm:self-center shrink-0">
-                      {/* Move Up/Down Order */}
-                      <div className="flex items-center bg-[#0c0c3f] border border-[#20205a] rounded-lg p-0.5">
-                        <button
-                          type="button"
-                          disabled={idx === 0}
-                          onClick={() => handleMoveTrack(idx, "up")}
-                          className="p-1.5 text-[#9a9fc4] hover:text-[#f5f7ff] disabled:opacity-30"
-                          aria-label="Move track up"
-                        >
-                          <ArrowUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={idx === tracks.length - 1}
-                          onClick={() => handleMoveTrack(idx, "down")}
-                          className="p-1.5 text-[#9a9fc4] hover:text-[#f5f7ff] disabled:opacity-30"
-                          aria-label="Move track down"
-                        >
-                          <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Edit Button */}
+                    {/* Actions & Reordering */}
+                    <div className="flex items-center gap-1 self-end sm:self-center">
                       <Button
+                        variant="ghost"
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenEditTrack(track)}
-                        className="border-[#20205a] text-[#f5f7ff] hover:bg-[#20205a]/50 h-9 px-2.5 text-xs"
+                        disabled={idx === 0 || busy}
+                        onClick={() => handleMoveTrack(idx, "up")}
+                        className="h-8 w-8 p-0 text-[#9a9fc4] hover:text-[#f5f7ff] hover:bg-[#20205a]/50"
+                        title="Move Up"
                       >
-                        <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                        <ArrowUp className="w-4 h-4" />
                       </Button>
-
-                      {/* Delete Button */}
                       <Button
+                        variant="ghost"
                         size="sm"
-                        variant="outline"
+                        disabled={idx === tracks.length - 1 || busy}
+                        onClick={() => handleMoveTrack(idx, "down")}
+                        className="h-8 w-8 p-0 text-[#9a9fc4] hover:text-[#f5f7ff] hover:bg-[#20205a]/50"
+                        title="Move Down"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenEditTrack(track)}
+                        className="h-8 w-8 p-0 text-[#9a9fc4] hover:text-[#ea6f2a] hover:bg-[#20205a]/50"
+                        title="Edit Track"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
                         onClick={() => handleDeleteTrack(track.id)}
-                        className="border-red-900/40 text-red-400 hover:bg-red-950/40 hover:text-red-300 h-9 px-2.5 text-xs"
+                        className="h-8 w-8 p-0 text-[#9a9fc4] hover:text-red-400 hover:bg-red-950/40"
+                        title="Delete Track"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -623,69 +883,69 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
         </CardContent>
       </Card>
 
-      {/* ── 3. ADD / EDIT TRACK MODAL ── */}
+      {/* ── 3. RELEASE SINGLE DIALOG ── */}
       <Dialog open={trackDialogOpen} onOpenChange={setTrackDialogOpen}>
-        <DialogContent className="w-[96vw] max-w-2xl sm:max-w-3xl max-h-[92vh] overflow-y-auto border border-[#20205a] bg-[#0c0c3f]/98 text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
+        <DialogContent className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl sm:text-2xl font-black text-[#f5f7ff] flex items-center gap-2">
+            <DialogTitle className="text-lg font-bold text-[#f5f7ff] flex items-center gap-2">
               <Music className="w-5 h-5 text-[#ea6f2a]" />
-              {editingTrackId ? "Edit Song Details" : "Upload / Add Song to Catalog"}
+              {editingTrackId ? "Edit Track Details" : "Release a Single (MP3)"}
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-[#9a9fc4]">
-              Provide audio file or link, artwork, and liner notes for {band.name}.
+            <DialogDescription className="text-xs text-[#9a9fc4]">
+              {editingTrackId
+                ? "Update track information, lyrics, or replacement audio file."
+                : "Upload an MP3 audio file or link from cloud storage for free streaming on your soundstage."}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSaveTrack} className="space-y-5 pt-2">
-            {/* Title */}
+          <form onSubmit={handleSaveTrack} className="space-y-4 py-2">
+            {/* Song Title */}
             <div>
-              <Label htmlFor="track-title" className="text-xs font-semibold text-[#f5f7ff]">
-                Track Title *
+              <Label htmlFor="single-title" className="text-xs text-[#9a9fc4]">
+                Song / Track Title *
               </Label>
               <Input
-                id="track-title"
+                id="single-title"
                 value={trackForm.title}
                 onChange={(e) => setTrackForm({ ...trackForm, title: e.target.value })}
-                placeholder="e.g. Midnight Horizon, Kansas Stargazer..."
+                placeholder="e.g. Midnight Drive, Starlight, Broken Glass..."
                 required
-                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-sm"
+                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
               />
             </div>
 
-            {/* Audio Source Tabs */}
-            <div className="p-4 rounded-xl bg-[#05052d]/90 border border-[#20205a] space-y-3">
+            {/* Audio Source: Direct Upload vs Streaming URL */}
+            <div className="space-y-2 p-3.5 rounded-xl bg-[#05052d]/90 border border-[#20205a]">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-[#f5f7ff] flex items-center gap-1.5">
-                  <FileAudio className="w-4 h-4 text-[#ea6f2a]" /> Audio File / Streaming Source *
-                </Label>
-                <div className="flex rounded-lg border border-[#20205a] p-0.5 bg-[#0c0c3f]">
+                <Label className="text-xs font-semibold text-[#f5f7ff]">Audio Track File *</Label>
+                <div className="flex gap-1">
                   <button
                     type="button"
                     onClick={() => setSourceMode("upload")}
-                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                      sourceMode === "upload" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-white"
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                      sourceMode === "upload" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
                     }`}
                   >
-                    Direct Upload
+                    Upload File
                   </button>
                   <button
                     type="button"
                     onClick={() => setSourceMode("url")}
-                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                      sourceMode === "url" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-white"
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                      sourceMode === "url" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
                     }`}
                   >
-                    Drive / Cloud URL
+                    Google Drive / URL
                   </button>
                 </div>
               </div>
 
               {sourceMode === "upload" ? (
-                <div className="space-y-2">
+                <div>
                   <input
                     ref={audioInputRef}
                     type="file"
-                    accept="audio/*,.mp3,.wav,.ogg,.aac,.m4a,.flac"
+                    accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0]
@@ -694,7 +954,11 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                   />
                   <div
                     onClick={() => audioInputRef.current?.click()}
-                    className="border-2 border-dashed border-[#20205a] hover:border-[#ea6f2a] rounded-xl p-6 text-center cursor-pointer bg-[#0c0c3f]/60 transition-colors"
+                    className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
+                      trackForm.audioUrl
+                        ? "border-emerald-500/50 bg-emerald-950/20"
+                        : "border-[#20205a] hover:border-[#ea6f2a]/60 bg-[#0c0c3f]/50"
+                    }`}
                   >
                     {uploadingAudio ? (
                       <div className="flex flex-col items-center gap-2 text-[#ea6f2a]">
@@ -704,17 +968,17 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                     ) : trackForm.audioUrl ? (
                       <div className="flex flex-col items-center gap-1.5 text-emerald-400">
                         <CheckCircle2 className="w-6 h-6" />
-                        <span className="text-xs font-semibold">Audio Track Ready</span>
+                        <span className="text-xs font-semibold">Audio Track Ready for Streaming</span>
                         <span className="text-[11px] text-[#9a9fc4] font-mono truncate max-w-sm">
                           {trackForm.audioUrl}
                         </span>
-                        <span className="text-[10px] text-[#ea6f2a] hover:underline">Click to change audio file</span>
+                        <span className="text-[10px] text-[#ea6f2a] hover:underline">Click to upload a different file</span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-1.5 text-[#9a9fc4]">
                         <Upload className="w-6 h-6 text-[#ea6f2a]" />
-                        <span className="text-xs font-semibold text-[#f5f7ff]">Click to upload MP3, WAV, AAC, M4A, or FLAC</span>
-                        <span className="text-[11px] text-[#7f84ad]">Instant streaming from StarCast Cloud</span>
+                        <span className="text-xs font-semibold text-[#f5f7ff]">Click or drop MP3, WAV, AAC, M4A, or FLAC</span>
+                        <span className="text-[11px] text-[#7f84ad]">Instant high-speed streaming on StarCast</span>
                       </div>
                     )}
                   </div>
@@ -728,7 +992,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                     className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] text-sm"
                   />
                   <p className="text-[11px] text-[#7f84ad]">
-                    💡 <strong>Tip:</strong> You can paste a Google Drive share link! StarCast will automatically convert it into a streamable direct audio feed.
+                    💡 <strong>Google Drive:</strong> Paste your Google Drive sharing link — StarCast will automatically convert it into a streamable direct audio feed.
                   </p>
                 </div>
               )}
@@ -737,23 +1001,23 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
             {/* Album & Metadata grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="album-name" className="text-xs text-[#9a9fc4]">
-                  Album / EP / Single
+                <Label htmlFor="single-album" className="text-xs text-[#9a9fc4]">
+                  Release Type / Tag
                 </Label>
                 <Input
-                  id="album-name"
+                  id="single-album"
                   value={trackForm.albumName || ""}
                   onChange={(e) => setTrackForm({ ...trackForm, albumName: e.target.value })}
-                  placeholder="e.g. Topeka Sessions EP"
+                  placeholder="Single"
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
                 />
               </div>
               <div>
-                <Label htmlFor="release-year" className="text-xs text-[#9a9fc4]">
+                <Label htmlFor="single-year" className="text-xs text-[#9a9fc4]">
                   Release Year
                 </Label>
                 <Input
-                  id="release-year"
+                  id="single-year"
                   value={trackForm.releaseYear || ""}
                   onChange={(e) => setTrackForm({ ...trackForm, releaseYear: e.target.value })}
                   placeholder="2026"
@@ -761,14 +1025,14 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="track-genre" className="text-xs text-[#9a9fc4]">
-                  Genre / Subgenre
+                <Label htmlFor="single-genre" className="text-xs text-[#9a9fc4]">
+                  Genre
                 </Label>
                 <Input
-                  id="track-genre"
+                  id="single-genre"
                   value={trackForm.genre || ""}
                   onChange={(e) => setTrackForm({ ...trackForm, genre: e.target.value })}
-                  placeholder="e.g. Rock, Indie, Synthwave"
+                  placeholder="e.g. Rock, Indie, Metal"
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
                 />
               </div>
@@ -776,17 +1040,12 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
 
             {/* Artwork Upload & Free Download Option */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-              {/* Cover Art */}
               <div>
-                <Label className="text-xs text-[#9a9fc4]">Track Artwork / Single Cover</Label>
+                <Label className="text-xs text-[#9a9fc4]">Single Artwork / Cover</Label>
                 <div className="flex items-center gap-3 mt-1.5">
                   <div className="w-12 h-12 rounded-lg bg-[#05052d] border border-[#20205a] overflow-hidden shrink-0">
                     {trackForm.coverArtUrl ? (
-                      <img
-                        src={trackForm.coverArtUrl}
-                        alt="Cover preview"
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={trackForm.coverArtUrl} alt="Cover" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#ea6f2a]">
                         <Music className="w-5 h-5" />
@@ -817,13 +1076,13 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 </div>
               </div>
 
-              {/* Free Download Toggle */}
+              {/* Free Download Switch */}
               <div className="flex items-center justify-between p-3 rounded-xl bg-[#05052d] border border-[#20205a]">
                 <div className="space-y-0.5">
                   <Label className="text-xs font-semibold text-[#f5f7ff] flex items-center gap-1">
                     <Download className="w-3.5 h-3.5 text-emerald-400" /> Free MP3 Download
                   </Label>
-                  <p className="text-[10px] text-[#7f84ad]">Allow fans to save audio file to device</p>
+                  <p className="text-[10px] text-[#7f84ad]">Allow fans to download the file</p>
                 </div>
                 <Switch
                   checked={trackForm.allowDownload}
@@ -833,16 +1092,16 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
               </div>
             </div>
 
-            {/* Description & Liner Notes */}
+            {/* Lyrics & Liner Notes */}
             <div>
-              <Label htmlFor="track-notes" className="text-xs text-[#9a9fc4]">
-                Liner Notes, Personnel &amp; Lyrics (Optional)
+              <Label htmlFor="single-lyrics" className="text-xs text-[#9a9fc4]">
+                Lyrics &amp; Liner Notes (Optional)
               </Label>
               <Textarea
-                id="track-notes"
+                id="single-lyrics"
                 value={trackForm.lyrics || trackForm.description || ""}
                 onChange={(e) => setTrackForm({ ...trackForm, lyrics: e.target.value, description: e.target.value })}
-                placeholder="Recorded at StarCast Studio A, lyrics, producer credits..."
+                placeholder="Song lyrics, credits, studio notes..."
                 rows={3}
                 className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs resize-none"
               />
@@ -871,7 +1130,255 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
-                {editingTrackId ? "Save Track Changes" : "Publish Song to Catalog"}
+                {editingTrackId ? "Save Changes" : "Release Single"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 4. RELEASE ALBUM / EP BATCH DIALOG ── */}
+      <Dialog open={albumDialogOpen} onOpenChange={setAlbumDialogOpen}>
+        <DialogContent className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-[#f5f7ff] flex items-center gap-2">
+              <Disc3 className="w-5 h-5 text-[#20efe0]" />
+              Release Album / EP / Mixtape (Batch MP3s)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#9a9fc4]">
+              Select multiple MP3 tracks at once to upload a full album, EP, or demo tape in one easy shot.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handlePublishAlbum} className="space-y-4 py-2">
+            {/* Album Header Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
+                <Label htmlFor="album-title" className="text-xs text-[#9a9fc4]">
+                  Album / EP Title *
+                </Label>
+                <Input
+                  id="album-title"
+                  value={albumForm.title}
+                  onChange={(e) => setAlbumForm({ ...albumForm, title: e.target.value })}
+                  placeholder="e.g. Great Plains Reckoning (2026)"
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="album-year" className="text-xs text-[#9a9fc4]">
+                  Release Year
+                </Label>
+                <Input
+                  id="album-year"
+                  value={albumForm.releaseYear}
+                  onChange={(e) => setAlbumForm({ ...albumForm, releaseYear: e.target.value })}
+                  placeholder="2026"
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            {/* Album Cover & Genre */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+              <div>
+                <Label className="text-xs text-[#9a9fc4]">Album Artwork Cover</Label>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <div className="w-12 h-12 rounded-lg bg-[#05052d] border border-[#20205a] overflow-hidden shrink-0">
+                    {albumForm.coverArtUrl ? (
+                      <img src={albumForm.coverArtUrl} alt="Album Cover" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#20efe0]">
+                        <Disc3 className="w-5 h-5" />
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={albumCoverInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) handleAlbumCoverUpload(f)
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingAlbumCover}
+                    onClick={() => albumCoverInputRef.current?.click()}
+                    className="border-[#20205a] text-[#f5f7ff] hover:bg-[#20205a]/50 text-xs h-9"
+                  >
+                    {uploadingAlbumCover ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+                    Upload Cover Art
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="album-genre" className="text-xs text-[#9a9fc4]">
+                  Primary Genre
+                </Label>
+                <Input
+                  id="album-genre"
+                  value={albumForm.genre}
+                  onChange={(e) => setAlbumForm({ ...albumForm, genre: e.target.value })}
+                  placeholder="e.g. Alternative Rock, Synthwave"
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Multi-Track MP3 Dropzone */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-[#f5f7ff] flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-[#20efe0]" /> Album Tracklist ({albumTracks.length} tracks)
+                </Label>
+                <input
+                  ref={albumMultiAudioInputRef}
+                  type="file"
+                  multiple
+                  accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
+                  className="hidden"
+                  onChange={(e) => handleBatchAudioSelect(e.target.files)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => albumMultiAudioInputRef.current?.click()}
+                  className="border-[#20efe0]/50 text-[#20efe0] hover:bg-[#20efe0]/15 text-xs h-8"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Select MP3 Files
+                </Button>
+              </div>
+
+              {albumTracks.length === 0 ? (
+                <div
+                  onClick={() => albumMultiAudioInputRef.current?.click()}
+                  className="p-8 border-2 border-dashed border-[#20205a] hover:border-[#20efe0]/60 rounded-2xl bg-[#05052d]/60 text-center cursor-pointer space-y-2 transition-colors"
+                >
+                  <FolderPlus className="w-8 h-8 mx-auto text-[#20efe0]" />
+                  <p className="text-xs sm:text-sm font-semibold text-[#f5f7ff]">
+                    Click here to select multiple MP3 audio tracks
+                  </p>
+                  <p className="text-[11px] text-[#7f84ad]">
+                    Tip: You can select all your album tracks at once (e.g. tracks 01 through 10)
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {albumTracks.map((t, idx) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#05052d] border border-[#20205a] gap-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span className="w-6 h-6 rounded-full bg-[#0c0c3f] border border-[#20205a] flex items-center justify-center font-mono font-bold text-[#20efe0] text-[11px] shrink-0">
+                          {idx + 1}
+                        </span>
+                        <Input
+                          value={t.title}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setAlbumTracks((prev) => prev.map((item) => (item.id === t.id ? { ...item, title: val } : item)))
+                          }}
+                          className="h-8 border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] text-xs"
+                          placeholder="Song Title"
+                        />
+                        {t.durationSeconds > 0 && (
+                          <span className="text-[#9a9fc4] font-mono shrink-0">{formatDuration(t.durationSeconds)}</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveAlbumTrack(idx, "up")}
+                          className="h-7 w-7 p-0 text-[#9a9fc4] hover:text-[#f5f7ff]"
+                        >
+                          <ArrowUp className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={idx === albumTracks.length - 1}
+                          onClick={() => handleMoveAlbumTrack(idx, "down")}
+                          className="h-7 w-7 p-0 text-[#9a9fc4] hover:text-[#f5f7ff]"
+                        >
+                          <ArrowDown className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveAlbumTrack(t.id)}
+                          className="h-7 w-7 p-0 text-red-400 hover:bg-red-950/40"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Download switch */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-[#05052d] border border-[#20205a]">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-semibold text-[#f5f7ff] flex items-center gap-1">
+                  <Download className="w-3.5 h-3.5 text-emerald-400" /> Allow Free MP3 Downloads for Album
+                </Label>
+                <p className="text-[10px] text-[#7f84ad]">Fans can download tracks directly from your soundstage</p>
+              </div>
+              <Switch
+                checked={albumForm.allowDownload}
+                onCheckedChange={(checked) => setAlbumForm({ ...albumForm, allowDownload: checked })}
+                className="data-[state=checked]:bg-emerald-600"
+              />
+            </div>
+
+            {/* Progress indicator */}
+            {albumUploadProgress && (
+              <div className="p-3 bg-[#121248] border border-[#20efe0]/50 rounded-xl text-[#20efe0] text-xs flex items-center gap-2 animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                <span>{albumUploadProgress}</span>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 bg-red-950/70 border border-red-800/80 rounded-xl text-red-200 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <DialogFooter className="pt-3 border-t border-[#20205a]">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAlbumDialogOpen(false)}
+                disabled={busy}
+                className="border-[#20205a] text-[#9a9fc4]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={busy || albumTracks.length === 0}
+                className="bg-gradient-to-r from-[#20efe0] to-[#00b4d8] text-[#05051f] font-bold"
+              >
+                {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Disc3 className="w-4 h-4 mr-1.5" />}
+                Publish Full Album ({albumTracks.length} Tracks)
               </Button>
             </DialogFooter>
           </form>
