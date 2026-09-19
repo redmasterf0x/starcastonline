@@ -9,20 +9,100 @@ type Props = {
   params: Promise<{ slug: string }>
 }
 
+function cleanText(input?: string | null): string {
+  if (!input) return ""
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/!\[.*?\]\(.*?\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[#*`_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const band = await getPublicBand(decodeURIComponent(slug))
+  const decodedSlug = decodeURIComponent(slug)
+  const band = await getPublicBand(decodedSlug)
+  
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://starcast.online"
+  const encodedSlug = encodeURIComponent(slug)
+  const canonicalUrl = `${baseUrl}/bands/${encodedSlug}`
+
   if (!band) {
-    return { title: "Band | Starcast Media" }
+    return {
+      title: "Act Not Found | StarCast Media",
+      description: "Discover live artists and bands broadcasting on StarCast Soundstage.",
+      alternates: { canonical: canonicalUrl },
+    }
   }
-  const description = band.bio?.slice(0, 160) || `Follow ${band.name} on Starcast Media.`
+
+  const rawBio = cleanText(band.bio)
+  const description =
+    rawBio.length > 170
+      ? rawBio.slice(0, 167) + "..."
+      : rawBio || `Listen to music, get tickets, and follow ${band.name} on the StarCast Soundstage.`
+
+  const dynamicOgUrl = `${baseUrl}/api/og-band/${encodedSlug}`
+
+  const toAbsoluteUrl = (url?: string | null) => {
+    if (!url) return null
+    if (url.startsWith("http://") || url.startsWith("https://")) return url
+    return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`
+  }
+
+  const directBannerUrl = toAbsoluteUrl(band.banner_url)
+  const directLogoUrl = toAbsoluteUrl(band.logo_url)
+
+  const images = [
+    {
+      url: dynamicOgUrl,
+      width: 1200,
+      height: 630,
+      alt: `${band.name} on StarCast Soundstage`,
+      type: "image/png",
+    },
+    ...(directBannerUrl
+      ? [
+          {
+            url: directBannerUrl,
+            width: 1200,
+            height: 630,
+            alt: `${band.name} Banner`,
+          },
+        ]
+      : []),
+    ...(directLogoUrl
+      ? [
+          {
+            url: directLogoUrl,
+            width: 500,
+            height: 500,
+            alt: `${band.name} Logo`,
+          },
+        ]
+      : []),
+  ]
+
   return {
-    title: `${band.name} | Starcast Media`,
+    title: { absolute: `${band.name} | StarCast Soundstage` },
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
-      title: band.name,
+      title: `${band.name} | StarCast Soundstage`,
       description,
-      images: band.logo_url ? [{ url: band.logo_url }] : undefined,
+      type: "profile",
+      url: canonicalUrl,
+      siteName: "StarCast Media",
+      images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${band.name} | StarCast Soundstage`,
+      description,
+      images: [dynamicOgUrl],
     },
   }
 }
@@ -48,4 +128,3 @@ export default async function BandPage({ params }: Props) {
     />
   )
 }
-
