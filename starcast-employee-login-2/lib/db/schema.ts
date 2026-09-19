@@ -380,7 +380,9 @@ export const bandPosts = pgTable("band_posts", {
   bandId: uuid("band_id").notNull(),
   authorUserId: text("author_user_id").notNull(),
   content: text("content").notNull().default(""),
+  postType: text("post_type").notNull().default("text"), // 'text' | 'image' | 'audio' | 'album'
   images: jsonb("images").default([]),
+  audioTracks: jsonb("audio_tracks").default([]), // array of { id, title, audioUrl, durationSeconds, artistName, producer, coverArtUrl, allowDownload, slug }
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 

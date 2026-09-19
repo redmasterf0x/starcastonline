@@ -403,6 +403,8 @@ export async function getFollowedBandsFeed(limit = 30): Promise<FollowedBandPost
       id: p.id,
       content: p.content,
       images: Array.isArray(p.images) ? (p.images as string[]) : [],
+      post_type: p.postType || (Array.isArray(p.audioTracks) && (p.audioTracks as any[]).length > 0 ? "audio" : Array.isArray(p.images) && (p.images as string[]).length > 0 ? "image" : "text"),
+      audio_tracks: Array.isArray(p.audioTracks) ? (p.audioTracks as BandPostAudioTrack[]) : [],
       author_name: nameFor(p.authorUserId),
       author_avatar: avatarFor(p.authorUserId),
       author_is_owner: band != null && p.authorUserId === band.ownerUserId,
@@ -426,10 +428,24 @@ export type BandComment = {
   created_at: string
 }
 
+export type BandPostAudioTrack = {
+  id?: string
+  title: string
+  audio_url: string
+  duration_seconds?: number
+  artist_name?: string
+  producer?: string
+  cover_art_url?: string
+  allow_download?: boolean
+  slug?: string
+}
+
 export type BandPost = {
   id: string
   content: string
   images: string[]
+  post_type: string // "text" | "image" | "audio" | "album"
+  audio_tracks: BandPostAudioTrack[]
   author_name: string
   author_avatar: string
   author_is_owner: boolean
@@ -490,6 +506,8 @@ export async function getBandPosts(bandId: string): Promise<BandPost[]> {
     id: p.id,
     content: p.content,
     images: Array.isArray(p.images) ? (p.images as string[]) : [],
+    post_type: p.postType || (Array.isArray(p.audioTracks) && (p.audioTracks as any[]).length > 0 ? "audio" : Array.isArray(p.images) && (p.images as string[]).length > 0 ? "image" : "text"),
+    audio_tracks: Array.isArray(p.audioTracks) ? (p.audioTracks as BandPostAudioTrack[]) : [],
     author_name: nameFor(p.authorUserId),
     author_avatar: avatarFor(p.authorUserId),
     author_is_owner: p.authorUserId === band.ownerUserId,
@@ -505,7 +523,13 @@ export async function getBandPosts(bandId: string): Promise<BandPost[]> {
  * non-banned member — not just the band owner — so the board works like a
  * fan discussion space rather than an announcements-only feed.
  */
-export async function createBandPost(bandId: string, content: string, images: string[] = []) {
+export async function createBandPost(
+  bandId: string,
+  content: string,
+  images: string[] = [],
+  postType: string = "text",
+  audioTracks: BandPostAudioTrack[] = []
+) {
   const userId = await requireUserId()
   await assertSocialAllowed(userId)
   const bandRows = await db.select().from(bands).where(eq(bands.id, bandId)).limit(1)
@@ -513,13 +537,15 @@ export async function createBandPost(bandId: string, content: string, images: st
   if (!band) throw new Error("Band not found")
   // A private page is visible only to its owner, so only the owner can post there.
   if (!band.isPublic && band.ownerUserId !== userId) throw new Error("Forbidden")
-  if (!content.trim() && images.length === 0) throw new Error("Post cannot be empty")
+  if (!content.trim() && images.length === 0 && audioTracks.length === 0) throw new Error("Post cannot be empty")
 
   await db.insert(bandPosts).values({
     bandId,
     authorUserId: userId,
     content: content.trim(),
+    postType: postType || "text",
     images,
+    audioTracks: audioTracks as any,
   })
   if (band.slug) revalidatePath(`/bands/${band.slug}`)
   revalidatePath("/community")
