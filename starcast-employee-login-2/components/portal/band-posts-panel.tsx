@@ -81,19 +81,33 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
   }, [load])
 
   // ── Image Handlers ──
+  const MAX_IMAGE_MB = 10
+  const MAX_AUDIO_MB = 50
+  const MAX_IMAGES_PER_POST = 10
+  const MAX_TRACKS_PER_ALBUM = 25
+
   const handleImageFile = async (files: FileList | null) => {
     if (!files || files.length === 0) return
+    if (images.length + files.length > MAX_IMAGES_PER_POST) {
+      setError(`Maximum ${MAX_IMAGES_PER_POST} photos allowed per post.`)
+      return
+    }
+
     setUploadingImage(true)
     setError(null)
     try {
       const uploaded: string[] = []
       for (const file of Array.from(files)) {
+        if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+          throw new Error(`Photo "${file.name}" exceeds ${MAX_IMAGE_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
+        }
         const fd = new FormData()
         fd.append("file", file)
         fd.append("folder", `bands/${bandId}/posts`)
         const res = await fetch("/api/upload", { method: "POST", body: fd })
         const data = await res.json()
-        if (data.url) uploaded.push(data.url)
+        if (!res.ok || !data.url) throw new Error(data.error || "Failed to upload image")
+        uploaded.push(data.url)
       }
       setImages((prev) => [...prev, ...uploaded])
     } catch (e: any) {
@@ -105,6 +119,11 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
 
   // ── Single Song Handlers ──
   const handleSongAudioFile = async (file: File) => {
+    if (file.size > MAX_AUDIO_MB * 1024 * 1024) {
+      setError(`Audio file exceeds ${MAX_AUDIO_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
+      return
+    }
+
     setUploadingSongAudio(true)
     setError(null)
 
@@ -146,6 +165,10 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
   }
 
   const handleSongCoverFile = async (file: File) => {
+    if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+      setError(`Cover art exceeds ${MAX_IMAGE_MB}MB limit.`)
+      return
+    }
     setUploadingSongCover(true)
     try {
       const fd = new FormData()
@@ -153,9 +176,10 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
       fd.append("folder", `bands/${bandId}/covers`)
       const res = await fetch("/api/upload", { method: "POST", body: fd })
       const data = await res.json()
-      if (data.url) setSongCoverUrl(data.url)
-    } catch {
-      // Non-critical
+      if (!res.ok || !data.url) throw new Error(data.error || "Failed to upload cover art")
+      setSongCoverUrl(data.url)
+    } catch (e: any) {
+      setError(e?.message || "Failed to upload cover art")
     } finally {
       setUploadingSongCover(false)
     }
@@ -164,6 +188,10 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
   // ── Multiple Songs Handlers ──
   const handleBatchAudioFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return
+    if (albumTracks.length + files.length > MAX_TRACKS_PER_ALBUM) {
+      setError(`Maximum ${MAX_TRACKS_PER_ALBUM} tracks allowed per album release.`)
+      return
+    }
     const fileArray = Array.from(files).sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
     )
