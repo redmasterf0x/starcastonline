@@ -77,18 +77,23 @@ function Avatar({ name, src }: { name: string; src?: string }) {
 }
 
 import { BandTicketsWidget, type BandEventItem } from "@/components/bands/band-tickets-widget"
+import { BandMusicPlayer } from "@/components/bands/band-music-player"
+import type { BandTrackItem } from "@/app/actions/band-tracks"
 
 export function BandPageClient({
   band,
   initialPosts,
   initialEvents = [],
+  initialTracks = [],
 }: {
   band: PublicBand
   initialPosts: BandPost[]
   initialEvents?: BandEventItem[]
+  initialTracks?: BandTrackItem[]
 }) {
   const [posts, setPosts] = useState<BandPost[]>(initialPosts)
   const [events, setEvents] = useState<BandEventItem[]>(initialEvents)
+  const [tracks, setTracks] = useState<BandTrackItem[]>(initialTracks)
   const [isPublic, setIsPublic] = useState(band.is_public)
   const [bannerError, setBannerError] = useState(false)
   const [logoError, setLogoError] = useState(false)
@@ -402,6 +407,42 @@ export function BandPageClient({
         {/* Custom Links (Cosmic Linktree style) */}
         {band.links && band.links.length > 0 && (
           <LinkTree links={band.links.map((link: any) => ({ label: link.title, url: link.url }))} />
+        )}
+
+        {/* Music Catalog & Audio Streaming Showcase */}
+        {((band.music_catalog_enabled && tracks.length > 0) || (band.is_owner && tracks.length > 0)) && (
+          <section className="mb-10">
+            <BandMusicPlayer
+              bandName={band.name}
+              bandLogo={band.logo_url}
+              catalogTitle={band.music_catalog_title}
+              tracks={tracks}
+            />
+          </section>
+        )}
+
+        {/* Owner helper prompt if catalog empty or disabled */}
+        {band.is_owner && tracks.length === 0 && (
+          <div className="mb-8 p-4 rounded-2xl border border-dashed border-[#20efe0]/30 bg-[#0c0c3f]/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3 text-left">
+              <div className="w-10 h-10 rounded-xl bg-[#20efe0]/10 border border-[#20efe0]/30 flex items-center justify-center shrink-0">
+                <Music className="w-5 h-5 text-[#20efe0]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#f5f7ff]">Enable Free Music Streaming Catalog</p>
+                <p className="text-xs text-[#9a9fc4]">Upload MP3s, WAVs, or paste Google Drive stream links so fans can listen for free on your page.</p>
+              </div>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              className="bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] text-white hover:opacity-90 shrink-0 font-medium"
+            >
+              <Link href="/portal">
+                Open Music Studio
+              </Link>
+            </Button>
+          </div>
         )}
 
         {/* Live Event Ticketing Section */}

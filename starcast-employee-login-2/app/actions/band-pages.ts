@@ -58,6 +58,8 @@ export type PublicBand = {
   follower_count: number
   is_following: boolean
   links?: Array<{ title?: string; label?: string; url: string }> | null
+  music_catalog_enabled?: boolean
+  music_catalog_title?: string | null
 }
 
 /** Number of followers for a set of bands, keyed by bandId. */
@@ -220,6 +222,8 @@ export async function getPublicBand(slug: string): Promise<PublicBand | null> {
     follower_count: followerCounts.get(b.id) ?? 0,
     is_following: followed.has(b.id),
     links: Array.isArray(b.links) ? (b.links as Array<{ title?: string; label?: string; url: string }>) : [],
+    music_catalog_enabled: Boolean(b.musicCatalogEnabled),
+    music_catalog_title: b.musicCatalogTitle ?? "Original Music & Tracks",
   }
 }
 

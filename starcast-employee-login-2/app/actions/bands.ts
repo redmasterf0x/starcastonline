@@ -54,6 +54,8 @@ function serialize(b: typeof bands.$inferSelect) {
     ticketing_applied_at: toIso(b.ticketingAppliedAt),
     stripe_account_id: b.stripeAccountId ?? null,
     stripe_account_status: b.stripeAccountStatus ?? "not_connected",
+    music_catalog_enabled: Boolean(b.musicCatalogEnabled),
+    music_catalog_title: b.musicCatalogTitle ?? "Original Music & Tracks",
     created_at: toIso(b.createdAt) || new Date().toISOString(),
   }
 }

@@ -18,6 +18,7 @@ import { ResponsiveHeader } from "@/components/responsive-header"
 import { BandPostsPanel } from "@/components/portal/band-posts-panel"
 import { BandLinksPanel } from "@/components/portal/band-links-panel"
 import { BandTicketingPanel } from "@/components/portal/band-ticketing-panel"
+import { BandMusicPanel } from "@/components/portal/band-music-panel"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,6 +53,8 @@ import {
   Trash2,
   Loader2,
   Ticket,
+  Headphones,
+  Disc3,
 } from "lucide-react"
 
 interface Band {
@@ -73,6 +76,8 @@ interface Band {
   ticketing_status?: string
   stripe_account_id?: string | null
   stripe_account_status?: string
+  music_catalog_enabled?: boolean
+  music_catalog_title?: string | null
 }
 
 interface Booking {
@@ -143,7 +148,7 @@ export default function PortalPage() {
   const [bookingForm, setBookingForm] = useState({ title: "", startsAt: "", endsAt: "", notes: "" })
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
-  const [portalTab, setPortalTab] = useState<"posts" | "links" | "studio" | "payments" | "ticketing">("posts")
+  const [portalTab, setPortalTab] = useState<"posts" | "music" | "ticketing" | "links" | "studio" | "payments">("posts")
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [savingBand, setSavingBand] = useState(false)
@@ -943,6 +948,20 @@ export default function PortalPage() {
                     Posts &amp; Updates
                   </button>
                   <button
+                    onClick={() => setPortalTab("music")}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                      portalTab === "music"
+                        ? "border-[#20efe0] text-[#20efe0]"
+                        : "border-transparent text-[#9a9fc4] hover:text-[#f5f7ff]"
+                    }`}
+                  >
+                    <Headphones className="w-4 h-4" />
+                    Music &amp; Tracks
+                    {selectedBand.music_catalog_enabled && (
+                      <span className="w-2 h-2 rounded-full bg-[#20efe0] animate-pulse" />
+                    )}
+                  </button>
+                  <button
                     onClick={() => setPortalTab("ticketing")}
                     className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                       portalTab === "ticketing"
@@ -962,7 +981,7 @@ export default function PortalPage() {
                     }`}
                   >
                     <Music className="w-4 h-4" />
-                    Music &amp; Social Links
+                    Social &amp; Web Links
                   </button>
                   <button
                     onClick={() => setPortalTab("studio")}
@@ -989,6 +1008,13 @@ export default function PortalPage() {
                 </div>
 
                 {/* Tab Content */}
+                {portalTab === "music" && (
+                  <BandMusicPanel
+                    band={selectedBand as any}
+                    onRefreshBand={refreshBands}
+                  />
+                )}
+
                 {portalTab === "ticketing" && (
                   <BandTicketingPanel
                     band={selectedBand as any}

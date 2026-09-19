@@ -356,6 +356,9 @@ export const bands = pgTable("bands", {
   ticketingAppliedAt: timestamp("ticketing_applied_at", { withTimezone: true }),
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status").notNull().default("not_connected"), // 'not_connected' | 'onboarding' | 'active'
+  // Music Catalog & Streaming Discography
+  musicCatalogEnabled: boolean("music_catalog_enabled").notNull().default(false),
+  musicCatalogTitle: text("music_catalog_title").default("Original Music & Tracks"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
@@ -542,5 +545,29 @@ export const notifications = pgTable("notifications", {
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+// --- Band Music Catalog & Track Streaming -----------------------------------
+
+export const bandTracks = pgTable("band_tracks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bandId: uuid("band_id")
+    .references(() => bands.id, { onDelete: "cascade" })
+    .notNull(),
+  title: text("title").notNull(),
+  audioUrl: text("audio_url").notNull(),
+  durationSeconds: integer("duration_seconds").default(0),
+  albumName: text("album_name"),
+  coverArtUrl: text("cover_art_url"),
+  releaseYear: text("release_year"),
+  genre: text("genre"),
+  description: text("description"),
+  lyrics: text("lyrics"),
+  allowDownload: boolean("allow_download").notNull().default(true),
+  playCount: integer("play_count").notNull().default(0),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 
 
