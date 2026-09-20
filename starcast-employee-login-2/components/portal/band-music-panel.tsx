@@ -119,7 +119,6 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
   const [uploadingAlbumCover, setUploadingAlbumCover] = useState(false)
 
   // Audio Upload / Source Method: "upload" | "url"
-  const [sourceMode, setSourceMode] = useState<"upload" | "url">("upload")
   const [uploadingAudio, setUploadingAudio] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const audioInputRef = useRef<HTMLInputElement>(null)
@@ -200,7 +199,6 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
       lyrics: "",
       allowDownload: true,
     })
-    setSourceMode("upload")
     setTrackDialogOpen(true)
   }
 
@@ -219,7 +217,6 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
       lyrics: t.lyrics || "",
       allowDownload: t.allowDownload,
     })
-    setSourceMode(t.audioUrl.startsWith("/api/blobs/") ? "upload" : "url")
     setTrackDialogOpen(true)
   }
 
@@ -639,7 +636,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 <Sparkles className="w-4 h-4 text-[#ffd166]" /> Release Music
               </p>
               <p className="text-xs text-[#9a9fc4]">
-                Upload high quality MP3 audio directly or paste Google Drive / Dropbox stream links.
+                Upload high quality MP3 audio directly.
               </p>
             </div>
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -914,88 +911,54 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
               />
             </div>
 
-            {/* Audio Source: Direct Upload vs Streaming URL */}
+            {/* Audio Source: Direct Upload */}
             <div className="space-y-2 p-3.5 rounded-xl bg-[#05052d]/90 border border-[#20205a]">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold text-[#f5f7ff]">Audio Track File *</Label>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setSourceMode("upload")}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                      sourceMode === "upload" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
-                    }`}
-                  >
-                    Upload File
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSourceMode("url")}
-                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                      sourceMode === "url" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
-                    }`}
-                  >
-                    Google Drive / URL
-                  </button>
-                </div>
               </div>
 
-              {sourceMode === "upload" ? (
-                <div>
-                  <input
-                    ref={audioInputRef}
-                    type="file"
-                    accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) handleAudioFileUpload(f)
-                    }}
-                  />
-                  <div
-                    onClick={() => audioInputRef.current?.click()}
-                    className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
-                      trackForm.audioUrl
-                        ? "border-emerald-500/50 bg-emerald-950/20"
-                        : "border-[#20205a] hover:border-[#ea6f2a]/60 bg-[#0c0c3f]/50"
-                    }`}
-                  >
-                    {uploadingAudio ? (
-                      <div className="flex flex-col items-center gap-2 text-[#ea6f2a]">
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span className="text-xs font-semibold">Uploading and processing audio track...</span>
-                      </div>
-                    ) : trackForm.audioUrl ? (
-                      <div className="flex flex-col items-center gap-1.5 text-emerald-400">
-                        <CheckCircle2 className="w-6 h-6" />
-                        <span className="text-xs font-semibold">Audio Track Ready for Streaming</span>
-                        <span className="text-[11px] text-[#9a9fc4] font-mono truncate max-w-sm">
-                          {trackForm.audioUrl}
-                        </span>
-                        <span className="text-[10px] text-[#ea6f2a] hover:underline">Click to upload a different file</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5 text-[#9a9fc4]">
-                        <Upload className="w-6 h-6 text-[#ea6f2a]" />
-                        <span className="text-xs font-semibold text-[#f5f7ff]">Click or drop MP3, WAV, AAC, M4A, or FLAC</span>
-                        <span className="text-[11px] text-[#7f84ad]">Instant high-speed streaming on StarCast</span>
-                      </div>
-                    )}
-                  </div>
+              <div>
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleAudioFileUpload(f)
+                  }}
+                />
+                <div
+                  onClick={() => audioInputRef.current?.click()}
+                  className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
+                    trackForm.audioUrl
+                      ? "border-emerald-500/50 bg-emerald-950/20"
+                      : "border-[#20205a] hover:border-[#ea6f2a]/60 bg-[#0c0c3f]/50"
+                  }`}
+                >
+                  {uploadingAudio ? (
+                    <div className="flex flex-col items-center gap-2 text-[#ea6f2a]">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      <span className="text-xs font-semibold">Uploading and processing audio track...</span>
+                    </div>
+                  ) : trackForm.audioUrl ? (
+                    <div className="flex flex-col items-center gap-1.5 text-emerald-400">
+                      <CheckCircle2 className="w-6 h-6" />
+                      <span className="text-xs font-semibold">Audio Track Ready for Streaming</span>
+                      <span className="text-[11px] text-[#9a9fc4] font-mono truncate max-w-sm">
+                        {trackForm.audioUrl}
+                      </span>
+                      <span className="text-[10px] text-[#ea6f2a] hover:underline">Click to upload a different file</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1.5 text-[#9a9fc4]">
+                      <Upload className="w-6 h-6 text-[#ea6f2a]" />
+                      <span className="text-xs font-semibold text-[#f5f7ff]">Click or drop MP3, WAV, AAC, M4A, or FLAC</span>
+                      <span className="text-[11px] text-[#7f84ad]">Instant high-speed streaming on StarCast</span>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-1.5">
-                  <Input
-                    value={trackForm.audioUrl}
-                    onChange={(e) => setTrackForm({ ...trackForm, audioUrl: e.target.value })}
-                    placeholder="https://drive.google.com/file/d/... or direct https://...mp3"
-                    className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] text-sm"
-                  />
-                  <p className="text-[11px] text-[#7f84ad]">
-                    💡 <strong>Google Drive:</strong> Paste your Google Drive sharing link — StarCast will automatically convert it into a streamable direct audio feed.
-                  </p>
-                </div>
-              )}
+              </div>
             </div>
 
             {/* Album & Metadata grid */}

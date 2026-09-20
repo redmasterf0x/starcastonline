@@ -903,17 +903,47 @@ export function BandPageClient({
               className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] placeholder:text-[#9a9fc4]/70 min-h-[90px] resize-none rounded-2xl text-base p-4"
             />
 
+            {/* ── HIDDEN INPUTS FOR UPLOADS ── */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handlePickImages(e.target.files)}
+            />
+            <input
+              ref={songAudioInputRef}
+              type="file"
+              accept="audio/*,.mp3,.wav,.m4a,.flac"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleSongAudioFile(f)
+              }}
+            />
+            <input
+              ref={songCoverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleSongCoverFile(f)
+              }}
+            />
+            <input
+              ref={albumMultiInputRef}
+              type="file"
+              accept="audio/*,.mp3,.wav,.m4a,.flac"
+              multiple
+              className="hidden"
+              onChange={(e) => handleAlbumMultiFiles(e.target.files)}
+            />
+
             {/* ── Type: Picture/Photos ── */}
             {postType === "image" && (
               <div className="mt-4 p-4 rounded-2xl border border-dashed border-[#ffd166]/40 bg-[#05052d]/80 space-y-3">
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handlePickImages(e.target.files)}
-                />
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <ImageIcon className="w-4 h-4 text-[#ffd166]" />
@@ -986,16 +1016,6 @@ export function BandPageClient({
 
                 {/* Upload MP3 File */}
                 <div className="p-3.5 rounded-xl border border-dashed border-[#20efe0]/40 bg-[#0c0c3f]/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <input
-                    ref={songAudioInputRef}
-                    type="file"
-                    accept="audio/*,.mp3,.wav,.m4a,.flac"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) handleSongAudioFile(f)
-                    }}
-                  />
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-9 h-9 rounded-lg bg-[#20efe0]/15 text-[#20efe0] flex items-center justify-center shrink-0">
                       <Headphones className="w-4 h-4" />
@@ -1023,16 +1043,6 @@ export function BandPageClient({
 
                 {/* Optional Song Cover Art */}
                 <div className="flex items-center justify-between gap-3 pt-1">
-                  <input
-                    ref={songCoverInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) handleSongCoverFile(f)
-                    }}
-                  />
                   <div className="flex items-center gap-2">
                     {songCoverUrl ? (
                       <img src={songCoverUrl} alt="Cover" className="w-8 h-8 rounded-lg object-cover border border-[#20205a]" />
@@ -1091,14 +1101,6 @@ export function BandPageClient({
 
                 {/* Batch Audio File Upload */}
                 <div className="p-3.5 rounded-xl border border-dashed border-[#ffd166]/40 bg-[#0c0c3f]/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <input
-                    ref={albumMultiInputRef}
-                    type="file"
-                    accept="audio/*,.mp3,.wav,.m4a,.flac"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleAlbumMultiFiles(e.target.files)}
-                  />
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-[#ffd166]/15 text-[#ffd166] flex items-center justify-center shrink-0">
                       <Layers className="w-4 h-4" />

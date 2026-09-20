@@ -154,6 +154,10 @@ export default function PortalPage() {
   const [savingBand, setSavingBand] = useState(false)
 
   async function handleUploadLogo(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Profile picture exceeds 5MB limit.")
+      return
+    }
     setUploadingLogo(true)
     setError("")
     try {
@@ -172,6 +176,10 @@ export default function PortalPage() {
   }
 
   async function handleUploadBanner(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Banner exceeds 10MB limit.")
+      return
+    }
     setUploadingBanner(true)
     setError("")
     try {
@@ -661,6 +669,10 @@ export default function PortalPage() {
                           onChange={async (e) => {
                             const f = e.target.files?.[0]
                             if (f && selectedBand) {
+                              if (f.size > 10 * 1024 * 1024) {
+                                setError("Banner exceeds 10MB limit.")
+                                return
+                              }
                               setUploadingBanner(true)
                               setError("")
                               try {
@@ -729,6 +741,10 @@ export default function PortalPage() {
                             onChange={async (e) => {
                               const f = e.target.files?.[0]
                               if (f && selectedBand) {
+                                if (f.size > 5 * 1024 * 1024) {
+                                  setError("Profile picture exceeds 5MB limit.")
+                                  return
+                                }
                                 setUploadingLogo(true)
                                 setError("")
                                 try {

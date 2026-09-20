@@ -155,6 +155,11 @@ export default function DashboardPage() {
     if (!e.target.files || !e.target.files[0] || !profile) return
 
     const file = e.target.files[0]
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage("Image exceeds 5MB limit.")
+      return
+    }
+
     setUploading(true)
 
     // Upload to Vercel Blob (served by Vercel CDN)
@@ -229,7 +234,7 @@ export default function DashboardPage() {
         onLogin={() => router.push("/login")}
       />
 
-      <main className="max-w-2xl mx-auto px-4 py-6 md:py-10 space-y-8 flex-1 w-full">
+      <main className="max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-8 flex-1 w-full">
         {justVerified && (
           <div className="rounded-lg border border-green-800 bg-green-950/50 p-4 flex items-start justify-between gap-4">
             <p className="text-sm text-green-400">Your email is verified. Welcome to Starcast Media!</p>

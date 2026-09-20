@@ -61,6 +61,7 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
   const [albumTitle, setAlbumTitle] = useState("")
   const [albumProducer, setAlbumProducer] = useState("")
   const [albumCoverUrl, setAlbumCoverUrl] = useState("")
+  const [uploadingAlbumCover, setUploadingAlbumCover] = useState(false)
   const [albumTracks, setAlbumTracks] = useState<
     Array<{ id: string; file?: File; title: string; audioUrl: string; durationSeconds: number }>
   >([])
@@ -192,6 +193,27 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
       setError(e?.message || "Failed to upload cover art")
     } finally {
       setUploadingSongCover(false)
+    }
+  }
+
+  const handleAlbumCoverFile = async (file: File) => {
+    if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+      setError(`Cover art exceeds ${MAX_IMAGE_MB}MB limit.`)
+      return
+    }
+    setUploadingAlbumCover(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", `bands/${bandId}/covers`)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Failed to upload cover art")
+      setAlbumCoverUrl(data.url)
+    } catch (e: any) {
+      setError(e?.message || "Failed to upload cover art")
+    } finally {
+      setUploadingAlbumCover(false)
     }
   }
 
@@ -524,19 +546,59 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
           </div>
         </div>
 
+        {/* ── HIDDEN INPUTS FOR UPLOADS ── */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleImageFile(e.target.files)}
+        />
+        <input
+          ref={songAudioInputRef}
+          type="file"
+          accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) handleSongAudioFile(f)
+          }}
+        />
+        <input
+          ref={songCoverInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) handleSongCoverFile(f)
+          }}
+        />
+        <input
+          ref={albumMultiInputRef}
+          type="file"
+          multiple
+          accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
+          className="hidden"
+          onChange={(e) => handleBatchAudioFiles(e.target.files)}
+        />
+        <input
+          ref={albumCoverInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) handleAlbumCoverFile(f)
+          }}
+        />
+
         {/* ── CONDITIONAL COMPOSER FORMS ── */}
 
         {/* 1. Picture / Photo Upload */}
         {postType === "image" && (
           <div className="mt-4 pt-4 border-t border-[#20205a]/60 space-y-3">
-            <input
-              ref={imageInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handleImageFile(e.target.files)}
-            />
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -597,16 +659,6 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
 
             {/* Audio Dropzone */}
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <input
-                ref={songAudioInputRef}
-                type="file"
-                accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) handleSongAudioFile(f)
-                }}
-              />
               <Button
                 type="button"
                 variant="outline"
@@ -626,16 +678,6 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
               )}
 
               {/* Cover Art Upload */}
-              <input
-                ref={songCoverInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) handleSongCoverFile(f)
-                }}
-              />
               <Button
                 type="button"
                 variant="ghost"
@@ -676,14 +718,6 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
 
             {/* Batch MP3 Select */}
             <div className="space-y-2">
-              <input
-                ref={albumMultiInputRef}
-                type="file"
-                multiple
-                accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
-                className="hidden"
-                onChange={(e) => handleBatchAudioFiles(e.target.files)}
-              />
               <div className="flex items-center justify-between">
                 <Button
                   type="button"
@@ -734,11 +768,27 @@ export function BandPostsPanel({ bandId, bandName }: { bandId: string; bandName:
           </div>
         )}
 
-        {/* Footer actions & Post Button */}
-        <div className="mt-4 pt-3 border-t border-[#20205a]/60 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <Badge variant="outline" className="border-[#ea6f2a]/40 text-[#ea6f2a] bg-[#ea6f2a]/10 text-xs">
-            <Sparkles className="w-3 h-3 mr-1" /> Posting as {bandName}
-          </Badge>
+        {/* Action Bar & Post Button */}
+        <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[#20205a]/50 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPostType("image")
+                setTimeout(() => imageInputRef.current?.click(), 50)
+              }}
+              className="text-[#dbe0fb] hover:text-[#ffd166] text-xs h-9 px-2.5 rounded-xl hover:bg-[#20205a]/40"
+            >
+              <ImageIcon className="w-4 h-4 mr-1.5 text-[#ffd166]" />
+              {images.length > 0 ? `${images.length} Photos Attached` : "Attach Photos"}
+            </Button>
+
+            <span className="text-xs text-[#9a9fc4] hidden sm:inline">
+              Posting as <strong className="text-[#f5f7ff]">{bandName}</strong>
+            </span>
+          </div>
 
           {error && <p className="text-xs text-red-400">{error}</p>}
 

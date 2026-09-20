@@ -55,13 +55,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const directLogoUrl = toAbsoluteUrl(band.logo_url)
 
   const images = [
-    {
-      url: dynamicOgUrl,
-      width: 1200,
-      height: 630,
-      alt: `${band.name} on StarCast Soundstage`,
-      type: "image/png",
-    },
     ...(directBannerUrl
       ? [
           {
@@ -72,6 +65,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           },
         ]
       : []),
+    {
+      url: dynamicOgUrl,
+      width: 1200,
+      height: 630,
+      alt: `${band.name} on StarCast Soundstage`,
+      type: "image/png",
+    },
     ...(directLogoUrl
       ? [
           {

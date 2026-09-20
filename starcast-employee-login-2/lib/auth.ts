@@ -39,23 +39,7 @@ export const auth = betterAuth({
     errorURL: "/login",
   },
   emailAndPassword: {
-    enabled: true,
-    // New users must confirm their email before they can sign in.
-    requireEmailVerification: true,
-    autoSignIn: true,
-    sendResetPassword: async ({ user, url }) => {
-      await sendPasswordResetEmail(user.email, url)
-    },
-  },
-  emailVerification: {
-    // Automatically email the verification link when an account is created.
-    sendOnSignUp: true,
-    // Once verified, sign the user in so they land straight in the app.
-    autoSignInAfterVerification: true,
-    expiresIn: 60 * 60 * 24, // link valid for 24h
-    sendVerificationEmail: async ({ user, url }) => {
-      await sendVerificationEmail(user.email, url)
-    },
+    enabled: false,
   },
   databaseHooks: {
     user: {

@@ -339,7 +339,6 @@ export default function AdminPage() {
   }
 
   const handleRefreshContent = async (messageId: string) => {
-    console.log("[v0] Refreshing content for message:", messageId)
     try {
       const res = await fetch("/api/email/refresh", {
         method: "POST",
@@ -347,7 +346,6 @@ export default function AdminPage() {
         body: JSON.stringify({ emailId: messageId }),
       })
       const result = await res.json()
-      console.log("[v0] Refresh result:", result)
       
       if (res.ok && result.success) {
         fetchInbox()

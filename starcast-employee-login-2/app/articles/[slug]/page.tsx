@@ -60,13 +60,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : null
 
   const images = [
-    {
-      url: dynamicOgUrl,
-      width: 1200,
-      height: 630,
-      alt: article.title,
-      type: "image/png",
-    },
     ...(directImageUrl
       ? [
           {
@@ -77,6 +70,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           },
         ]
       : []),
+    {
+      url: dynamicOgUrl,
+      width: 1200,
+      height: 630,
+      alt: article.title,
+      type: "image/png",
+    },
   ]
 
   return {

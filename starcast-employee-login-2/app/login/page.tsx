@@ -3,14 +3,23 @@
 import { useState, useEffect } from "react"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { brandAssets } from "@/lib/brand-assets"
-import { Sparkles, ShieldCheck, Zap, AlertCircle, ArrowRight } from "lucide-react"
+import { Sparkles, ShieldCheck, Zap, AlertCircle, ArrowRight, Phone, MessageSquare } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Phone auth state
+  const [step, setStep] = useState<"phone" | "otp">("phone")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [otp, setOtp] = useState("")
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -19,11 +28,11 @@ export default function LoginPage() {
       const errDesc = params.get("error_description")
       if (err) {
         if (err === "state_mismatch") {
-          setError("Sign-in session expired or timed out. Please click Continue with Google again.")
+          setError("Sign-in session expired or timed out. Please try again.")
         } else if (err === "account_not_linked") {
           setError("An account with this email already exists. Google sign-in is enabled—please try again.")
         } else if (err === "access_denied") {
-          setError("Google sign-in was cancelled.")
+          setError("Sign-in was cancelled.")
         } else {
           setError(errDesc || `Sign-in error: ${err.replace(/_/g, " ")}`)
         }
@@ -42,6 +51,55 @@ export default function LoginPage() {
       })
     } catch (err: any) {
       setError(err?.message ?? "Google sign-in failed. Please try again.")
+      setLoading(false)
+    }
+  }
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!phoneNumber) {
+      setError("Please enter a valid phone number")
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: sendError } = await authClient.phoneNumber.sendOtp({
+        phoneNumber,
+      })
+      if (sendError) {
+        setError(sendError.message || "Failed to send verification code")
+      } else {
+        setStep("otp")
+      }
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to send verification code. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!otp) {
+      setError("Please enter the verification code")
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: verifyError } = await authClient.signIn.phoneNumber({
+        phoneNumber,
+        code: otp,
+      })
+      if (verifyError) {
+        setError(verifyError.message || "Invalid verification code")
+        setLoading(false)
+      } else {
+        router.push("/onboarding")
+      }
+    } catch (err: any) {
+      setError(err?.message ?? "Verification failed. Please try again.")
       setLoading(false)
     }
   }
@@ -83,15 +141,15 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Primary Google Sign-In Action */}
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* Primary Google Sign-In Action */}
             <Button
               type="button"
               disabled={loading}
               onClick={handleGoogleSignIn}
               className="w-full min-h-[52px] h-13 bg-white hover:bg-slate-100 text-gray-900 border border-white/40 font-bold text-base flex items-center justify-center gap-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.35)] active:scale-[0.99] transition-all hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] rounded-xl group"
             >
-              {loading ? (
+              {loading && !phoneNumber ? (
                 <div className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-800 rounded-full animate-spin" />
                   <span>Connecting with Google...</span>
@@ -121,10 +179,87 @@ export default function LoginPage() {
                 </>
               )}
             </Button>
-            <p className="text-center text-xs text-[#9a9fc4]">
-              Instant access • No passwords to remember • Works on any device
-            </p>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-[#20205a]" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-[#0c0c3f] px-2 text-[#9a9fc4]">Or phone number</span>
+              </div>
+            </div>
+
+            {/* Phone Number Flow */}
+            {step === "phone" ? (
+              <form onSubmit={handleSendOtp} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-[#d4d8ee] text-xs">Phone Number</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-[#9a9fc4]" />
+                    <Input 
+                      id="phone"
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      className="pl-9 bg-[#05052d]/50 border-[#20205a] text-[#f5f7ff] placeholder:text-[#9a9fc4]/50 focus:border-[#ea6f2a] focus:ring-[#ea6f2a]/20 h-11"
+                      required
+                    />
+                  </div>
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={loading || !phoneNumber}
+                  className="w-full bg-[#20205a] hover:bg-[#2a2a6a] text-white h-11"
+                >
+                  {loading && phoneNumber ? "Sending..." : "Send Verification Code"}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                <div className="space-y-1.5">
+                  <Label htmlFor="otp" className="text-[#d4d8ee] text-xs">Verification Code</Label>
+                  <div className="relative">
+                    <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-[#9a9fc4]" />
+                    <Input 
+                      id="otp"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      placeholder="123456"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      className="pl-9 bg-[#05052d]/50 border-[#20205a] text-[#f5f7ff] placeholder:text-[#9a9fc4]/50 focus:border-[#ea6f2a] focus:ring-[#ea6f2a]/20 h-11 tracking-widest"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={loading || !otp}
+                  className="w-full bg-gradient-to-r from-[#ea6f2a] to-[#f2a04a] hover:from-[#f2a04a] hover:to-[#ea6f2a] text-white shadow-lg h-11"
+                >
+                  {loading && otp ? "Verifying..." : "Verify & Sign In"}
+                </Button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setStep("phone")
+                    setOtp("")
+                    setError(null)
+                  }}
+                  className="w-full text-center text-xs text-[#9a9fc4] hover:text-white transition-colors py-2"
+                >
+                  Use a different phone number
+                </button>
+              </form>
+            )}
           </div>
+
+          <p className="text-center text-xs text-[#9a9fc4] pt-2">
+            Instant access • No passwords to remember • Works on any device
+          </p>
 
           {/* Feature highlights badge box */}
           <div className="p-4 bg-[#05052d]/90 border border-[#20205a] rounded-xl space-y-2.5">

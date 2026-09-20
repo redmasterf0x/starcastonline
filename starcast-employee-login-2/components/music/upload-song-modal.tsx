@@ -70,7 +70,6 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
     allowDownload: true,
   })
 
-  const [sourceMode, setSourceMode] = useState<"upload" | "url">("upload")
   const [uploadingAudio, setUploadingAudio] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -124,7 +123,15 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
     }
   }
 
+  const MAX_IMAGE_MB = 10
+  const MAX_AUDIO_MB = 50
+
   async function handleAudioUpload(file: File) {
+    if (file.size > MAX_AUDIO_MB * 1024 * 1024) {
+      setError(`Audio file exceeds ${MAX_AUDIO_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
+      return
+    }
+
     setUploadingAudio(true)
     setError("")
 
@@ -171,6 +178,11 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
   }
 
   async function handleCoverUpload(file: File) {
+    if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+      setError(`Cover image exceeds ${MAX_IMAGE_MB}MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`)
+      return
+    }
+
     setUploadingCover(true)
     setError("")
     try {
@@ -401,84 +413,50 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
               <Label className="text-xs font-semibold text-[#f5f7ff] flex items-center gap-1.5">
                 <FileAudio className="w-4 h-4 text-[#ea6f2a]" /> MP3 / Audio File *
               </Label>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setSourceMode("upload")}
-                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                    sourceMode === "upload" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
-                  }`}
-                >
-                  Upload File
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSourceMode("url")}
-                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                    sourceMode === "url" ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
-                  }`}
-                >
-                  Google Drive Link
-                </button>
-              </div>
             </div>
 
-            {sourceMode === "upload" ? (
-              <div>
-                <input
-                  ref={audioInputRef}
-                  type="file"
-                  accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) handleAudioUpload(f)
-                  }}
-                />
-                <div
-                  onClick={() => audioInputRef.current?.click()}
-                  className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
-                    form.audioUrl
-                      ? "border-emerald-500/50 bg-emerald-950/20"
-                      : "border-[#20205a] hover:border-[#ea6f2a]/60 bg-[#0c0c3f]/50"
-                  }`}
-                >
-                  {uploadingAudio ? (
-                    <div className="flex flex-col items-center gap-2 text-[#ea6f2a]">
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                      <span className="text-xs font-semibold">Uploading and analyzing audio track...</span>
-                    </div>
-                  ) : form.audioUrl ? (
-                    <div className="flex flex-col items-center gap-1.5 text-emerald-400">
-                      <CheckCircle2 className="w-6 h-6" />
-                      <span className="text-xs font-semibold">Audio Track Ready</span>
-                      <span className="text-[11px] text-[#9a9fc4] font-mono truncate max-w-sm">
-                        {form.audioUrl}
-                      </span>
-                      <span className="text-[10px] text-[#ea6f2a] hover:underline">Click to change audio file</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1.5 text-[#9a9fc4]">
-                      <Upload className="w-6 h-6 text-[#ea6f2a]" />
-                      <span className="text-xs font-semibold text-[#f5f7ff]">Click to select MP3, WAV, AAC, M4A, or FLAC</span>
-                      <span className="text-[11px] text-[#7f84ad]">Instant high-speed streaming on StarCast</span>
-                    </div>
-                  )}
-                </div>
+            <div>
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/mp3,audio/wav,audio/mpeg,audio/aac,audio/m4a,audio/flac,audio/ogg,.mp3,.wav,.m4a,.flac"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) handleAudioUpload(f)
+                }}
+              />
+              <div
+                onClick={() => audioInputRef.current?.click()}
+                className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
+                  form.audioUrl
+                    ? "border-emerald-500/50 bg-emerald-950/20"
+                    : "border-[#20205a] hover:border-[#ea6f2a]/60 bg-[#0c0c3f]/50"
+                }`}
+              >
+                {uploadingAudio ? (
+                  <div className="flex flex-col items-center gap-2 text-[#ea6f2a]">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span className="text-xs font-semibold">Uploading and analyzing audio track...</span>
+                  </div>
+                ) : form.audioUrl ? (
+                  <div className="flex flex-col items-center gap-1.5 text-emerald-400">
+                    <CheckCircle2 className="w-6 h-6" />
+                    <span className="text-xs font-semibold">Audio Track Ready</span>
+                    <span className="text-[11px] text-[#9a9fc4] font-mono truncate max-w-sm">
+                      {form.audioUrl}
+                    </span>
+                    <span className="text-[10px] text-[#ea6f2a] hover:underline">Click to change audio file</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5 text-[#9a9fc4]">
+                    <Upload className="w-6 h-6 text-[#ea6f2a]" />
+                    <span className="text-xs font-semibold text-[#f5f7ff]">Click to select MP3, WAV, AAC, M4A, or FLAC</span>
+                    <span className="text-[11px] text-[#7f84ad]">Instant high-speed streaming on StarCast</span>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Input
-                  value={form.audioUrl}
-                  onChange={(e) => setForm({ ...form, audioUrl: e.target.value })}
-                  placeholder="https://drive.google.com/file/d/... or direct https://...mp3"
-                  className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] text-sm"
-                />
-                <p className="text-[11px] text-[#7f84ad]">
-                  💡 <strong>Google Drive:</strong> Paste your Google Drive sharing link — StarCast will automatically convert it into a streamable direct audio feed.
-                </p>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Cover Art Upload & Download Option */}
