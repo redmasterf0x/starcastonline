@@ -8,6 +8,9 @@ on:
       - '.github/workflows/build-android-bundle.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build StarCast Android App Bundle
@@ -35,6 +38,27 @@ jobs:
           flutter create --org online.starcast --project-name starcast_mobile --platforms android .
           flutter pub get
 
+      - name: Generate Android Release Keystore
+        working-directory: starcast-mobile
+        run: |
+          mkdir -p android/app
+          keytool -genkeypair -v \
+            -keystore android/app/upload-keystore.jks \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -alias starcastupload \
+            -dname "CN=StarCast Online, OU=Mobile, O=StarCast Media, L=Los Angeles, ST=California, C=US" \
+            -storepass "StarCastPass2026!" \
+            -keypass "StarCastPass2026!"
+          
+          cat <<EOF > android/key.properties
+          storePassword=StarCastPass2026!
+          keyPassword=StarCastPass2026!
+          keyAlias=starcastupload
+          storeFile=upload-keystore.jks
+          EOF
+
       - name: Build Android App Bundle (.aab)
         working-directory: starcast-mobile
         run: flutter build appbundle --release --no-tree-shake-icons
@@ -49,12 +73,14 @@ jobs:
       - name: Create GitHub Release with AAB
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
+        continue-on-error: true
         with:
           tag_name: android-release-latest
           name: StarCast Android App Bundle (online.starcast.app)
           body: |
             ### StarCast Mobile Android App Bundle (.aab)
             - **Package Name:** `online.starcast.app`
+            - **Signing Mode:** Release Mode (Signed with Release Keystore)
             - **Target:** Google Play Console Release
           files: starcast-mobile/build/app/outputs/bundle/release/app-release.aab
         env:
