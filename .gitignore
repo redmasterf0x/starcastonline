@@ -4,7 +4,7 @@
 # Node modules and build
 node_modules/
 .next/
-package-lock.json
+/package-lock.json
 
 # Database secrets & temp files
 .cloud_sql_env.json
