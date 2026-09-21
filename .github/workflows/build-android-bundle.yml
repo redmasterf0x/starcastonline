@@ -1,0 +1,62 @@
+name: Build Android App Bundle (.aab)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'starcast-mobile/**'
+      - '.github/workflows/build-android-bundle.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build StarCast Android App Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java Development Kit (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        working-directory: starcast-mobile
+        run: flutter pub get
+
+      - name: Build Android App Bundle (.aab)
+        working-directory: starcast-mobile
+        run: flutter build appbundle --release --no-tree-shake-icons
+
+      - name: Upload App Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: starcast-app-release-aab
+          path: starcast-mobile/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Create GitHub Release with AAB
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        with:
+          tag_name: android-v1.0.0-${{ github.run_number }}
+          name: StarCast Android App Bundle v1.0.0 (Build ${{ github.run_number }})
+          body: |
+            ### StarCast Mobile Android App Bundle (.aab)
+            - **Package Name:** `online.starcast.app`
+            - **Version:** 1.0.0+${{ github.run_number }}
+            - **Target:** Google Play Console Release
+            
+            Download `app-release.aab` below and upload directly to Google Play Console!
+          files: starcast-mobile/build/app/outputs/bundle/release/app-release.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
