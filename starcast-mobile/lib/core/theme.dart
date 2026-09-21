@@ -57,12 +57,12 @@ class StarCastTheme {
         selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
         unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
       ),
-      cardTheme: CardTheme(
+      cardTheme: const CardThemeData(
         color: liftedPanel,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: subtleBorder, width: 1),
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: subtleBorder, width: 1),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
