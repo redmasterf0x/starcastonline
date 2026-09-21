@@ -23,7 +23,11 @@ import {
   Video,
   ExternalLink,
   Radio,
+  Clock,
+  Flame,
+  ChevronRight,
 } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
 
 const CHANNEL_URL = "https://www.youtube.com/channel/UCZ3dy9aqC46t33dzbBSmNjw"
 const playlistUrl = (id: string) => `https://www.youtube.com/playlist?list=${id}`
@@ -80,6 +84,10 @@ export default async function HomePage() {
   // Featured bands (up to 3)
   const featuredBands = publicBands.slice(0, 3)
 
+  // Articles breakdown: Premier story + secondary stories
+  const latestArticle = recentArticles[0] ?? null
+  const secondaryArticles = recentArticles.slice(1, 4)
+
   // Real community discussions aggregated from DECK + forum (deduplicated by ID)
   const discussionMap = new Map<string, any>()
 
@@ -124,64 +132,240 @@ export default async function HomePage() {
       <div className="relative z-10">
         <ResponsiveHeader currentPage="/" />
 
-        {/* ── MODULE 1: STARCAST HERO (MOBILE-ENLARGED & HIGH CONTRAST) ── */}
-        <section className="relative w-full overflow-hidden border-b border-[#20205a]/60">
-          <Image
-            src="/images/starcast-online-hero.webp"
-            alt="StarCast Online"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center opacity-85"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#05051f] via-[#05051f]/85 to-[#05052d]/60" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#05051f] via-transparent to-[#05051f]/85" />
+        {/* ── TOP SECTION: LATEST ARTICLE & EDITORIAL SPOTLIGHT ── */}
+        <section className="relative w-full border-b border-[#20205a]/60 bg-gradient-to-b from-[#080829] via-[#05051f] to-[#05051f] pt-4 sm:pt-6 pb-10 sm:pb-12">
+          {/* Subtle cosmic ambient glow */}
+          <div className="absolute top-0 right-1/4 w-[500px] h-[350px] bg-[#ea6f2a]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-10 left-10 w-[400px] h-[300px] bg-[#22b573]/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative max-w-7xl mx-auto px-5 sm:px-8 py-16 md:py-28 flex flex-col items-start">
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#0284c7]/25 border border-[#38bdf8]/50 text-[#20efe0] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-6 backdrop-blur-md shadow-[0_0_20px_rgba(32,239,224,0.25)]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#ea6f2a] animate-ping" />
-              <span>STARCAST ONLINE // CENTRAL BROADCAST HUB</span>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+            
+            {/* Quick-Nav Broadcast Bar */}
+            <div className="flex items-center justify-between gap-4 pb-5 mb-6 border-b border-[#20205a]/40 flex-wrap">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-mono font-bold tracking-wider text-[#ffd166]">
+                <Flame className="w-4 h-4 text-[#ea6f2a] animate-pulse shrink-0" />
+                <span className="uppercase text-[#f5f7ff]">STARCAST LATEST // TOP STORY</span>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
+                <Link
+                  href="/articles"
+                  className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#22b573]/20 border border-[#20205a] hover:border-[#22b573]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5 text-[#22b573]" /> All Articles
+                </Link>
+                <Link
+                  href="/watch"
+                  className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#ea6f2a]/20 border border-[#20205a] hover:border-[#ea6f2a]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
+                >
+                  <Tv className="w-3.5 h-3.5 text-[#ea6f2a]" /> Shows
+                </Link>
+                <Link
+                  href="/bands"
+                  className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#20efe0]/20 border border-[#20205a] hover:border-[#20efe0]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
+                >
+                  <Music className="w-3.5 h-3.5 text-[#20efe0]" /> Soundstage
+                </Link>
+                <Link
+                  href="/community"
+                  className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#ffd166]/20 border border-[#20205a] hover:border-[#ffd166]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-[#ffd166]" /> The DECK
+                </Link>
+              </div>
             </div>
 
-            <h1 className="font-black text-[#f5f7ff] leading-none tracking-tight text-left">
-              <span className="block text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black drop-shadow-[0_4px_30px_rgba(0,0,0,0.8)]">
-                STARCAST
-              </span>
-              <span className="block text-3xl sm:text-5xl md:text-6xl lg:text-7xl mt-2 bg-gradient-to-r from-[#ea6f2a] via-[#ffd166] to-[#20efe0] bg-clip-text text-transparent font-black drop-shadow-xl">
-                ONLINE
-              </span>
-            </h1>
+            {/* PREMIER STORY HERO CARD */}
+            {latestArticle ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+                {/* Main Headline Hero (Left / 7 cols) */}
+                <Link
+                  href={`/articles/${latestArticle.slug || latestArticle.id}`}
+                  className="lg:col-span-7 group rounded-3xl border border-[#20205a]/80 bg-[#0c0c3f]/85 hover:border-[#22b573] transition-all duration-300 overflow-hidden shadow-2xl hover:shadow-[0_0_40px_rgba(34,181,115,0.22)] flex flex-col justify-between"
+                >
+                  <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] lg:aspect-[16/9] bg-[#05052d] overflow-hidden">
+                    {latestArticle.thumbnailUrl || (latestArticle.images as any[])?.[0]?.url ? (
+                      <img
+                        src={latestArticle.thumbnailUrl || (latestArticle.images as any[])?.[0]?.url}
+                        alt={latestArticle.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-tr from-[#050528] via-[#0d0d38] to-[#121448] flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-[radial-gradient(#22b573_1px,transparent_1px)] opacity-20 [background-size:20px_20px]" />
+                        <FileText className="w-16 h-16 text-[#22b573]/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-[#0c0c3f]/40 to-transparent pointer-events-none" />
+                    
+                    {/* Badge on cover */}
+                    <div className="absolute top-4 left-4 flex items-center gap-2">
+                      <Badge className="bg-[#22b573] text-black font-black uppercase tracking-wider text-xs px-3 py-1 shadow-lg">
+                        LATEST STORY
+                      </Badge>
+                      {latestArticle.tags?.[0] && (
+                        <Badge variant="outline" className="bg-[#05051f]/80 backdrop-blur-md border-white/20 text-[#f5f7ff] text-xs px-2.5 py-1">
+                          {latestArticle.tags[0]}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
 
-            <p className="text-[#dbe0fb] text-lg sm:text-xl md:text-2xl max-w-2xl mt-6 leading-relaxed font-normal">
-              Every show, live soundstage, local article, and community discussion from Topeka&apos;s premier independent media network.
-            </p>
+                  <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 text-xs text-[#9a9fc4] mb-3">
+                        <span className="font-semibold text-[#22b573]">
+                          {latestArticle.authorFirstName
+                            ? `${latestArticle.authorFirstName} ${latestArticle.authorLastName || ""}`.trim()
+                            : "StarCast Editorial"}
+                        </span>
+                        <span>•</span>
+                        {latestArticle.createdAt && (
+                          <span className="flex items-center gap-1 text-[#cbd0f2]">
+                            <Clock className="w-3.5 h-3.5" />
+                            {formatDistanceToNow(new Date(latestArticle.createdAt), { addSuffix: true })}
+                          </span>
+                        )}
+                      </div>
 
-            {/* Quick-Jump Section Pills (Enlarged Mobile Tap Targets) */}
-            <div className="flex items-center gap-3 mt-9 flex-wrap">
-              <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-full shadow-lg shadow-[#ea6f2a]/25 px-6 h-12 text-sm sm:text-base">
-                <Link href="/watch">
-                  <Tv className="w-4 h-4 mr-2" /> Watch Shows
+                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#f5f7ff] group-hover:text-[#22b573] transition-colors leading-tight">
+                        {latestArticle.title}
+                      </h2>
+
+                      {latestArticle.subtitle && (
+                        <p className="text-base sm:text-lg font-medium text-[#ffd166] mt-2 line-clamp-2">
+                          {latestArticle.subtitle}
+                        </p>
+                      )}
+
+                      {latestArticle.excerpt && (
+                        <p className="text-sm sm:text-base text-[#dbe0fb] mt-3 line-clamp-3 leading-relaxed">
+                          {latestArticle.excerpt}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-[#20205a]/60 flex items-center justify-between text-sm font-bold">
+                      <span className="text-[#22b573] group-hover:translate-x-1 transition-transform flex items-center gap-1.5">
+                        Read Full Story <ArrowRight className="w-4 h-4" />
+                      </span>
+                      <span className="text-xs text-[#9a9fc4] font-mono">
+                        STARCAST EDITORIAL
+                      </span>
+                    </div>
+                  </div>
                 </Link>
-              </Button>
-              <Button asChild variant="outline" className="border-[#20efe0]/50 text-[#20efe0] bg-[#0c0c3f]/80 hover:bg-[#20efe0]/20 hover:text-white rounded-full px-6 h-12 text-sm sm:text-base">
-                <Link href="/bands">
-                  <Music className="w-4 h-4 mr-2" /> Soundstage Bands
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-white/10 rounded-full px-6 h-12 text-sm sm:text-base">
-                <Link href="/community">
-                  <MessageCircle className="w-4 h-4 mr-2 text-[#ea6f2a]" /> The DECK
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="border-[#20205a] text-[#f5f7ff] bg-[#0c0c3f]/60 hover:bg-white/10 rounded-full px-6 h-12 text-sm sm:text-base">
-                <Link href="/articles">
-                  <FileText className="w-4 h-4 mr-2 text-[#22b573]" /> Articles
-                </Link>
-              </Button>
-            </div>
+
+                {/* Secondary Stories / Dispatch Column (Right / 5 cols) */}
+                <div className="lg:col-span-5 flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="text-xs font-mono font-bold tracking-wider text-[#9a9fc4] uppercase">
+                      Recent Dispatches
+                    </span>
+                    <Link
+                      href="/articles"
+                      className="text-xs text-[#22b573] hover:text-[#ffd166] transition-colors font-semibold flex items-center gap-1"
+                    >
+                      View All <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+
+                  {secondaryArticles.length > 0 ? (
+                    secondaryArticles.map((art: any) => (
+                      <Link
+                        key={art.id}
+                        href={`/articles/${art.slug || art.id}`}
+                        className="group flex-1 rounded-2xl border border-[#20205a]/70 bg-[#0c0c3f]/60 hover:bg-[#0c0c3f]/90 hover:border-[#22b573]/60 p-4 sm:p-5 transition-all duration-200 flex gap-4 items-start shadow-md hover:shadow-lg"
+                      >
+                        {art.thumbnailUrl || (art.images as any[])?.[0]?.url ? (
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 bg-[#05052d] border border-[#20205a]">
+                            <img
+                              src={art.thumbnailUrl || (art.images as any[])?.[0]?.url}
+                              alt={art.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-[#05052d] border border-[#20205a] flex items-center justify-center shrink-0 text-[#22b573]">
+                            <FileText className="w-7 h-7" />
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 text-xs text-[#9a9fc4] mb-1">
+                            <span className="font-semibold text-[#22b573]">
+                              {art.authorFirstName
+                                ? `${art.authorFirstName} ${art.authorLastName || ""}`.trim()
+                                : "StarCast"}
+                            </span>
+                            {art.createdAt && (
+                              <>
+                                <span>•</span>
+                                <span className="truncate">
+                                  {formatDistanceToNow(new Date(art.createdAt), { addSuffix: true })}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          <h3 className="text-base sm:text-lg font-bold text-[#f5f7ff] group-hover:text-[#22b573] transition-colors line-clamp-2 leading-snug">
+                            {art.title}
+                          </h3>
+
+                          {art.excerpt && (
+                            <p className="text-xs sm:text-sm text-[#cbd0f2] mt-1.5 line-clamp-2 leading-relaxed">
+                              {art.excerpt}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-[#20205a]/60 bg-[#0c0c3f]/40 p-6 text-center text-xs text-[#9a9fc4]">
+                      <FileText className="w-8 h-8 text-[#22b573] mx-auto mb-2 opacity-60" />
+                      More editorial stories coming soon!
+                    </div>
+                  )}
+
+                  {/* Quick Band / Show Callout Card */}
+                  <div className="rounded-2xl border border-[#ea6f2a]/40 bg-gradient-to-r from-[#ea6f2a]/15 via-[#0c0c3f]/80 to-[#20efe0]/15 p-4 flex items-center justify-between gap-3 mt-auto">
+                    <div>
+                      <p className="text-xs font-bold text-[#ffd166] uppercase tracking-wider font-mono">
+                        Soundstage Submissions
+                      </p>
+                      <p className="text-xs text-[#e8ecff] mt-0.5">
+                        Are you a band or musical artist in Kansas?
+                      </p>
+                    </div>
+                    <Button asChild size="sm" className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white text-xs font-bold shrink-0 rounded-lg">
+                      <Link href="/bands">Join Soundstage</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Fallback if no articles exist yet */
+              <div className="rounded-3xl border border-[#20205a]/80 bg-[#0c0c3f]/80 p-8 sm:p-12 text-center">
+                <FileText className="w-12 h-12 text-[#22b573] mx-auto mb-3" />
+                <h2 className="text-2xl sm:text-3xl font-black text-[#f5f7ff]">Welcome to StarCast Online</h2>
+                <p className="text-sm sm:text-base text-[#cbd0f2] max-w-xl mx-auto mt-2">
+                  Topeka&apos;s premier media network for original talk shows, regional musicians, and community discussions.
+                </p>
+                <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
+                  <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold rounded-xl px-6 h-11">
+                    <Link href="/watch">
+                      <Tv className="w-4 h-4 mr-2" /> Watch Series
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="border-[#20efe0]/50 text-[#20efe0] hover:bg-[#20efe0]/20 rounded-xl px-6 h-11">
+                    <Link href="/bands">
+                      <Music className="w-4 h-4 mr-2" /> Explore Bands
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
           </div>
-
-          <div className="relative h-1 w-full bg-gradient-to-r from-[#ea6f2a] via-[#22b573] to-[#20efe0]" />
         </section>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16 space-y-20">
@@ -351,85 +535,7 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* ── MODULE 4: ARTICLES & JOURNALISM ── */}
-          <section id="articles">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-              <div>
-                <div className="flex items-center gap-2 text-[#22b573] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-1.5">
-                  <FileText className="w-4 h-4" />
-                  <span>STARCAST EDITORIAL</span>
-                </div>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">
-                  Articles, News &amp; Culture
-                </h2>
-                <p className="text-base sm:text-lg text-[#e8ecff] mt-2">
-                  Independent reporting, soundstage spotlights, and creative voices from Topeka and the Midwest.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button asChild variant="outline" className="border-[#22b573]/50 text-[#22b573] hover:bg-[#22b573]/20 hover:text-white rounded-xl h-11 px-5 text-sm sm:text-base font-semibold">
-                  <Link href="/articles">
-                    Read All Articles <ArrowRight className="w-4 h-4 ml-1.5" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {recentArticles.length > 0 ? (
-                recentArticles.slice(0, 3).map((art: any) => (
-                  <Link
-                    key={art.id}
-                    href={`/articles/${art.slug || art.id}`}
-                    className="group rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/60 p-6 flex flex-col justify-between hover:border-[#22b573]/70 transition-all hover:shadow-[0_0_35px_rgba(34,181,115,0.18)]"
-                  >
-                    <div>
-                      {art.category && (
-                        <Badge className="bg-[#22b573]/20 text-[#22b573] border border-[#22b573]/40 text-xs mb-3.5">
-                          {art.category}
-                        </Badge>
-                      )}
-                      <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff] group-hover:text-[#22b573] transition-colors line-clamp-2">
-                        {art.title}
-                      </h3>
-                      {art.excerpt && (
-                        <p className="text-sm sm:text-base text-[#e8ecff] mt-3 line-clamp-3 leading-relaxed">
-                          {art.excerpt}
-                        </p>
-                      )}
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-[#20205a]/60 flex items-center justify-between text-sm text-[#cbd0f2]">
-                      <span className="font-medium">{art.authorName || "StarCast Writer"}</span>
-                      <span className="text-[#22b573] group-hover:translate-x-1 transition-transform font-bold">
-                        Read story &rarr;
-                      </span>
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="col-span-full rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 to-[#070725]/90 p-8 sm:p-12 text-center shadow-2xl">
-                  <div className="w-16 h-16 rounded-2xl bg-[#20efe0]/15 border border-[#20efe0]/30 flex items-center justify-center mx-auto mb-4 text-[#20efe0] shadow-[0_0_25px_rgba(32,239,224,0.2)]">
-                    <FileText className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">
-                    There are none for now
-                  </h3>
-                  <p className="text-sm sm:text-base text-[#e8ecff] max-w-lg mx-auto mt-2 leading-relaxed">
-                    Check back soon for new articles!
-                  </p>
-                  <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
-                    <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25">
-                      <Link href="/articles">
-                        Visit Articles Hub <ArrowRight className="w-4 h-4 ml-2" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* ── MODULE 5: THE DECK & COMMUNITY DISCUSSIONS ── */}
+          {/* ── MODULE 4: THE DECK & COMMUNITY DISCUSSIONS ── */}
           <section id="community">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
               <div>
@@ -509,7 +615,7 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* ── MODULE 6 & 7: STUDIO PRODUCTION + MERCH & SPONSORS MOSAIC ── */}
+          {/* ── MODULE 5 & 6: STUDIO PRODUCTION + MERCH & SPONSORS MOSAIC ── */}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             {/* Studio Facility Showcase (Enlarged Mobile Layout) */}
