@@ -29,9 +29,11 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies
+      - name: Scaffold Native Android Platform Files
         working-directory: starcast-mobile
-        run: flutter pub get
+        run: |
+          flutter create --org online.starcast --project-name starcast_mobile --platforms android .
+          flutter pub get
 
       - name: Build Android App Bundle (.aab)
         working-directory: starcast-mobile
@@ -46,17 +48,14 @@ jobs:
 
       - name: Create GitHub Release with AAB
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         with:
-          tag_name: android-v1.0.0-${{ github.run_number }}
-          name: StarCast Android App Bundle v1.0.0 (Build ${{ github.run_number }})
+          tag_name: android-release-latest
+          name: StarCast Android App Bundle (online.starcast.app)
           body: |
             ### StarCast Mobile Android App Bundle (.aab)
             - **Package Name:** `online.starcast.app`
-            - **Version:** 1.0.0+${{ github.run_number }}
             - **Target:** Google Play Console Release
-            
-            Download `app-release.aab` below and upload directly to Google Play Console!
           files: starcast-mobile/build/app/outputs/bundle/release/app-release.aab
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
