@@ -1,0 +1,39 @@
+# Flutter / Dart gitignore
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android build & secrets
+android/.gradle
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+
+# Keystores and private signing keys
+*.jks
+*.keystore
+*.key
+key.properties
+service_account.json
+google-services.json
+
+# iOS
+ios/.generated/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/ServiceDefinitions.json
+ios/Pods/
+
+# Environment / local configs
+.env*
+!.env.example
