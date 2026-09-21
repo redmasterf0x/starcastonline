@@ -1,0 +1,30 @@
+name: starcast_mobile
+description: "StarCast Online Android Application - Watch, Community, Articles"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.2.1
+  http: ^1.2.2
+  cached_network_image: ^3.4.1
+  intl: ^0.19.0
+  shared_preferences: ^2.3.2
+  url_launcher: ^6.3.1
+  youtube_player_flutter: ^9.1.1
+  google_sign_in: ^6.2.2
+  timeago: ^3.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
