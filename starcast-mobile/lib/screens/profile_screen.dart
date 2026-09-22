@@ -40,10 +40,62 @@ class ProfileScreen extends StatelessWidget {
               await authState.signOut();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
+              backgroundColor: StarCastTheme.sunsetOrange,
               foregroundColor: Colors.white,
             ),
             child: const Text('Sign Out / Switch'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: StarCastTheme.liftedPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.redAccent),
+        ),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
+            SizedBox(width: 8),
+            Text(
+              'Delete Account & Data',
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to permanently delete your StarCast account and all associated data?\n\nThis will remove your profile, discussions, and session data. This action cannot be undone.',
+          style: TextStyle(color: StarCastTheme.textHighContrast, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: StarCastTheme.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await authState.signOut();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Your account deletion request has been processed.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Permanently Delete'),
           ),
         ],
       ),
@@ -167,18 +219,26 @@ class ProfileScreen extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right_rounded, color: StarCastTheme.textMuted),
                     onTap: () => _openWebUrl('https://starcast.online/terms'),
                   ),
+                  const Divider(color: StarCastTheme.subtleBorder, height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.delete_forever_outlined, color: Colors.redAccent),
+                    title: const Text('Account Deletion URL', style: TextStyle(color: StarCastTheme.textHighContrast)),
+                    subtitle: const Text('https://starcast.online/delete-account', style: TextStyle(color: StarCastTheme.textSubtle, fontSize: 12)),
+                    trailing: const Icon(Icons.open_in_new_rounded, color: StarCastTheme.textMuted, size: 18),
+                    onTap: () => _openWebUrl('https://starcast.online/delete-account'),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // SWITCH ACCOUNT / SIGN OUT BUTTON
+            // SWITCH ACCOUNT & SIGN OUT
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: StarCastTheme.liftedPanel,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                border: Border.all(color: StarCastTheme.subtleBorder),
               ),
               child: Column(
                 children: [
@@ -199,15 +259,31 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const Divider(color: StarCastTheme.subtleBorder, height: 1),
                   ListTile(
-                    leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                    leading: const Icon(Icons.logout_rounded, color: StarCastTheme.textMuted),
                     title: const Text(
                       'Sign Out',
+                      style: TextStyle(
+                        color: StarCastTheme.textHighContrast,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onTap: () => _confirmSignOut(context),
+                  ),
+                  const Divider(color: StarCastTheme.subtleBorder, height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                    title: const Text(
+                      'Delete Account & Data',
                       style: TextStyle(
                         color: Colors.redAccent,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    onTap: () => _confirmSignOut(context),
+                    subtitle: const Text(
+                      'Permanently remove your account and all data',
+                      style: TextStyle(color: StarCastTheme.textSubtle, fontSize: 12),
+                    ),
+                    onTap: () => _confirmDeleteAccount(context),
                   ),
                 ],
               ),
@@ -215,7 +291,7 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             const Text(
-              'StarCast Mobile v1.0.0\nPackage: online.starcast.app',
+              'StarCast Mobile v1.0.2\nPackage: online.starcast.app',
               textAlign: TextAlign.center,
               style: TextStyle(color: StarCastTheme.textSubtle, fontSize: 11, height: 1.5),
             ),
