@@ -1,0 +1,16 @@
+{
+  "apphosting": {
+    "backendId": "starcast-backend",
+    "rootDir": ".",
+    "ignore": [
+      "node_modules",
+      ".next",
+      ".netlify",
+      ".git",
+      ".env.local",
+      "scratch",
+      "firebase-debug.log",
+      "firebase-debug.*.log"
+    ]
+  }
+}
