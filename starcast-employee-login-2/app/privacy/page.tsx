@@ -139,19 +139,50 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
+          <section id="delete-account" className="space-y-4 p-6 rounded-2xl border-2 border-red-500/40 bg-red-500/10">
+            <div className="flex items-center gap-2 text-red-400 font-bold text-lg">
+              <ShieldAlert className="w-5 h-5" />
+              <h2>6. Account &amp; Data Deletion Request (Google Play Compliance)</h2>
+            </div>
+            <p className="text-sm text-[#e2e8f0]">
+              In compliance with Google Play Developer Policies and data protection regulations, StarCast users have the right to request permanent deletion of their account and all associated personal data at any time.
+            </p>
+            <div className="space-y-2 text-xs sm:text-sm text-[#c4c7da]">
+              <p>
+                <strong>What data is deleted:</strong> User profile (name, avatar, bio, email, mobile phone number), all community discussion posts and comments on The DECK, saved preferences, and authentication tokens.
+              </p>
+              <p><strong>How to request deletion:</strong></p>
+              <ul className="list-disc pl-5 space-y-1 text-[#e2e8f0]">
+                <li>
+                  <strong>In the StarCast Mobile App:</strong> Open the <strong>Profile</strong> tab &rarr; tap <strong>Delete Account &amp; Data</strong> &rarr; confirm deletion.
+                </li>
+                <li>
+                  <strong>Online / Email Request:</strong> Send an email to{" "}
+                  <a href="mailto:starcastlivemedia@gmail.com" className="text-[#ea6f2a] underline font-semibold">
+                    starcastlivemedia@gmail.com
+                  </a>{" "}
+                  with the subject line <code>Account Deletion Request</code>.
+                </li>
+              </ul>
+              <p className="text-emerald-300 font-semibold pt-1">
+                &check; Deletion requests are processed and verified within 24–48 hours, permanently wiping all personal data from our servers.
+              </p>
+            </div>
+          </section>
+
           <section className="space-y-3">
-            <h2 className="text-xl font-bold text-[#f5f7ff]">6. Your Privacy Rights &amp; Choices</h2>
+            <h2 className="text-xl font-bold text-[#f5f7ff]">7. Your Privacy Rights &amp; Choices</h2>
             <p>
-              You have the right to access, update, or delete your account information at any time through your{" "}
+              You have the right to access, update, or export your account information at any time through your{" "}
               <Link href="/dashboard" className="text-[#ffd166] underline">
                 Account Dashboard
               </Link>
-              . To request complete deletion of your account and associated profile data, contact our support team.
+              . For any additional data inquiries, please contact our support team.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl font-bold text-[#f5f7ff]">7. Contact Us</h2>
+            <h2 className="text-xl font-bold text-[#f5f7ff]">8. Contact Us</h2>
             <p>
               If you have any questions, concerns, or requests regarding this Privacy Policy, please reach out to:
             </p>
