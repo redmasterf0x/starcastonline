@@ -10,3 +10,21 @@ node_modules/
 .cloud_sql_env.json
 .db_password.txt
 .tmp_*
+
+# Android WebView wrapper project
+starcast-webview-android/
+starcast-webview-android/*.aab
+starcast-webview-android/key.properties
+
+# Service accounts and credentials
+*.json
+!package.json
+!tsconfig.json
+!firebase.json
+*.jks
+*.keystore
+*.der
+key.properties
+*.aab
+META-INF/
+scratch/

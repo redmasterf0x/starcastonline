@@ -31,6 +31,35 @@ const nextConfig = {
       },
     ]
   },
+  async redirects() {
+    return [
+      {
+        source: '/account-deletion',
+        destination: '/delete-account',
+        permanent: true,
+      },
+      {
+        source: '/account/delete',
+        destination: '/delete-account',
+        permanent: true,
+      },
+      {
+        source: '/privacy/delete-account',
+        destination: '/delete-account',
+        permanent: true,
+      },
+      {
+        source: '/delete',
+        destination: '/delete-account',
+        permanent: true,
+      },
+      {
+        source: '/data-deletion',
+        destination: '/delete-account',
+        permanent: true,
+      },
+    ]
+  },
 }
 
 export default nextConfig
