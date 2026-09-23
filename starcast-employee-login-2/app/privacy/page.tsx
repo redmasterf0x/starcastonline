@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
-import { ShieldCheck, Lock, Mail, Phone, ArrowLeft, ExternalLink } from "lucide-react"
+import { ShieldCheck, ShieldAlert, Lock, Mail, Phone, ArrowLeft, ExternalLink } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Privacy Policy | StarCast Online",
