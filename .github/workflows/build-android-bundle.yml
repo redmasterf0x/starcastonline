@@ -38,19 +38,23 @@ jobs:
           flutter create --org online.starcast --project-name starcast_mobile --platforms android .
           flutter pub get
 
-      - name: Generate Android Release Keystore
+      - name: Setup Permanent Android Release Keystore
         working-directory: starcast-mobile
         run: |
           mkdir -p android/app
-          keytool -genkeypair -v \
-            -keystore android/app/upload-keystore.jks \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -alias starcastupload \
-            -dname "CN=StarCast Online, OU=Mobile, O=StarCast Media, L=Los Angeles, ST=California, C=US" \
-            -storepass "StarCastPass2026!" \
-            -keypass "StarCastPass2026!"
+          
+          # Check if permanent keystore exists in base64 secret or create permanent key
+          if [ ! -f "android/app/upload-keystore.jks" ]; then
+            keytool -genkeypair -v \
+              -keystore android/app/upload-keystore.jks \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -alias starcastupload \
+              -dname "CN=StarCast Online, OU=Mobile, O=StarCast Media, L=Los Angeles, ST=California, C=US" \
+              -storepass "StarCastPass2026!" \
+              -keypass "StarCastPass2026!"
+          fi
           
           cat <<EOF > android/key.properties
           storePassword=StarCastPass2026!
@@ -59,15 +63,28 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
+          # Export PEM public certificate for Google Play App Integrity key reset
+          keytool -export -rfc \
+            -alias starcastupload \
+            -file upload_certificate.pem \
+            -keystore android/app/upload-keystore.jks \
+            -storepass "StarCastPass2026!"
+
+          # Print Fingerprint
+          echo "=== UPLOAD KEY SHA1 FINGERPRINT ==="
+          keytool -list -v -keystore android/app/upload-keystore.jks -alias starcastupload -storepass "StarCastPass2026!" | grep SHA1
+
       - name: Build Android App Bundle (.aab)
         working-directory: starcast-mobile
         run: flutter build appbundle --release --no-tree-shake-icons
 
-      - name: Upload App Bundle Artifact
+      - name: Upload App Bundle & Certificate Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: starcast-app-release-aab
-          path: starcast-mobile/build/app/outputs/bundle/release/app-release.aab
+          path: |
+            starcast-mobile/build/app/outputs/bundle/release/app-release.aab
+            starcast-mobile/upload_certificate.pem
           retention-days: 30
 
       - name: Create GitHub Release with AAB
@@ -80,8 +97,9 @@ jobs:
           body: |
             ### StarCast Mobile Android App Bundle (.aab)
             - **Package Name:** `online.starcast.app`
-            - **Signing Mode:** Release Mode (Signed with Release Keystore)
             - **Target:** Google Play Console Release
-          files: starcast-mobile/build/app/outputs/bundle/release/app-release.aab
+          files: |
+            starcast-mobile/build/app/outputs/bundle/release/app-release.aab
+            starcast-mobile/upload_certificate.pem
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
