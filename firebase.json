@@ -3,12 +3,16 @@
     "backendId": "starcast-backend",
     "rootDir": "starcast-employee-login-2",
     "ignore": [
-      "node_modules",
-      ".next",
-      ".netlify",
-      ".git",
-      ".env.local",
-      "scratch",
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/.netlify/**",
+      "**/.git/**",
+      "**/.env.local",
+      "**/.env*.local",
+      "**/scratch/**",
+      "**/starcast-mobile/**",
+      "**/starcast-webview-android/**",
+      "**/*.log",
       "firebase-debug.log",
       "firebase-debug.*.log"
     ]
