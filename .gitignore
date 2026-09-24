@@ -1,30 +1,51 @@
-# Local Netlify folder
-.netlify
+# Dependency and build directories
+**/node_modules/
+**/.next/
+**/.netlify/
+**/build/
+**/.dart_tool/
+**/.gradle/
+**/android/.gradle/
+**/android/app/build/
+**/ios/Pods/
+**/dist/
+**/out/
 
-# Node modules and build
-node_modules/
-.next/
-/package-lock.json
+# Package locks and cache
+package-lock.json
+**/package-lock.json
+.eslintcache
+*.tsbuildinfo
 
-# Database secrets & temp files
+# Logs & temp files
+*.log
+_dev.*.log
+**/*.log
+.tmp_*
+**/tmp/
+
+# Secrets, Keystores & Credentials
 .cloud_sql_env.json
 .db_password.txt
-.tmp_*
-
-# Android WebView wrapper project
-starcast-webview-android/
-starcast-webview-android/*.aab
-starcast-webview-android/key.properties
-
-# Service accounts and credentials
 *.json
 !package.json
+!**/package.json
 !tsconfig.json
+!**/tsconfig.json
 !firebase.json
+!apphosting.yaml
+!**/apphosting.yaml
 *.jks
 *.keystore
 *.der
+*.pem
 key.properties
+**/key.properties
+
+# Android & Bundle builds
 *.aab
+*.apk
 META-INF/
+**/META-INF/
+starcast-webview-android/
 scratch/
