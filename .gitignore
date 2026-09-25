@@ -11,9 +11,7 @@
 **/dist/
 **/out/
 
-# Package locks and cache
-package-lock.json
-**/package-lock.json
+# Caches
 .eslintcache
 *.tsbuildinfo
 
@@ -30,6 +28,8 @@ _dev.*.log
 *.json
 !package.json
 !**/package.json
+!package-lock.json
+!**/package-lock.json
 !tsconfig.json
 !**/tsconfig.json
 !firebase.json
