@@ -588,6 +588,12 @@ export const trackComments = pgTable("track_comments", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
-
-
-
+export const inboundEmails = pgTable("inbound_emails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sender: text("sender").notNull(),
+  subject: text("subject"),
+  textBody: text("text_body"),
+  htmlBody: text("html_body"),
+  status: text("status").notNull().default("unread"), // unread, read, archived
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+})

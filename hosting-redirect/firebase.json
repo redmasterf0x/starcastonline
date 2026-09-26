@@ -1,0 +1,34 @@
+{
+  "hosting": {
+    "site": "starcastonline-live",
+    "public": "public",
+    "redirects": [
+      {
+        "source": "/delete-account",
+        "destination": "https://starcast-backend--starcastonline-live.us-central1.hosted.app/delete-account",
+        "type": 302
+      },
+      {
+        "source": "/privacy",
+        "destination": "https://starcast-backend--starcastonline-live.us-central1.hosted.app/privacy",
+        "type": 302
+      },
+      {
+        "source": "/privacy/**",
+        "destination": "https://starcast-backend--starcastonline-live.us-central1.hosted.app/privacy/:splat",
+        "type": 302
+      },
+      {
+        "source": "/account-deletion",
+        "destination": "https://starcast-backend--starcastonline-live.us-central1.hosted.app/delete-account",
+        "type": 302
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
