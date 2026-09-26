@@ -38,3 +38,6 @@ env:
     secret: TWILIO_FROM_NUMBER
   - variable: TWILIO_VERIFY_SERVICE_SID
     secret: TWILIO_VERIFY_SERVICE_SID
+  - variable: RESEND_WEBHOOK_SECRET
+    value: "whsec_v1wFaHhwWpBh5huIQY7j/nY9RebAQxX4"
+
