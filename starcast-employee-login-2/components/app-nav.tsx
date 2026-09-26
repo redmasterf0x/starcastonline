@@ -35,14 +35,24 @@ export function AppNav({ isEmployee = false, isAdmin = false, currentPage = "" }
             </div>
             <nav className="flex items-center gap-6">
               {isAdmin && (
-                <Link
-                  href="/admin"
-                  className={`${
-                    currentPage === "admin" ? "text-[#f4b25c]" : "text-[#9a9fc4]"
-                  } hover:text-[#f4b25c] transition-colors text-sm font-medium`}
-                >
-                  Admin
-                </Link>
+                <>
+                  <Link
+                    href="/admin"
+                    className={`${
+                      currentPage === "admin" ? "text-[#f4b25c]" : "text-[#9a9fc4]"
+                    } hover:text-[#f4b25c] transition-colors text-sm font-medium`}
+                  >
+                    Admin
+                  </Link>
+                  <Link
+                    href="/admin/support"
+                    className={`${
+                      currentPage === "support" ? "text-[#f4b25c]" : "text-[#9a9fc4]"
+                    } hover:text-[#f4b25c] transition-colors text-sm font-medium`}
+                  >
+                    Support
+                  </Link>
+                </>
               )}
               <Link
                 href="/dashboard"

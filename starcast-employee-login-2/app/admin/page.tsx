@@ -36,6 +36,7 @@ import {
   UserPlus, UserMinus, Building2, ExternalLink, Star, Calendar,
   TrendingUp, BarChart3, Settings, ChevronRight, Sparkles, Music,
   Ban, ShieldCheck, Ticket, CheckCircle2, AlertCircle, DollarSign,
+  LifeBuoy, Headphones,
 } from "lucide-react"
 
 interface User {
@@ -426,9 +427,20 @@ export default function AdminPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#f5f7ff] mb-2">Admin Dashboard</h1>
-          <p className="text-[#9a9fc4]">Manage your community, content, and team</p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-[#f5f7ff] mb-2">Admin Dashboard</h1>
+            <p className="text-[#9a9fc4]">Manage your community, content, and team</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/support"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#ea6f2a] via-[#f2a04a] to-[#ffd166] text-[#05052d] font-bold text-sm hover:brightness-110 shadow-lg shadow-[#ea6f2a]/25 transition-all"
+            >
+              <LifeBuoy className="w-4 h-4" />
+              Support Inbox
+            </Link>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -454,6 +466,13 @@ export default function AdminPage() {
               ) : null}
             </button>
           ))}
+          <Link
+            href="/admin/support"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-[#0c0c3f]/60 text-[#ffd166] hover:bg-[#ffd166]/15 hover:text-white border border-[#ffd166]/40 ml-auto"
+          >
+            <LifeBuoy className="w-4 h-4 text-[#ffd166]" />
+            Support Inbox →
+          </Link>
         </div>
 
         {/* OVERVIEW TAB */}
@@ -479,7 +498,7 @@ export default function AdminPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
               {/* Pending Articles */}
               <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
                 <CardHeader className="pb-3">
@@ -513,6 +532,33 @@ export default function AdminPage() {
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* Support & Inbound Email Desk */}
+              <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <LifeBuoy className="w-5 h-5 text-[#ffd166]" />
+                      <CardTitle className="text-[#f5f7ff] text-lg">Support Inbox</CardTitle>
+                    </div>
+                    <Link href="/admin/support">
+                      <Button variant="ghost" size="sm" className="text-[#ffd166] hover:text-[#f2a04a] hover:bg-transparent">
+                        Open Inbox <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-[#9a9fc4]">
+                    View live customer, sponsor & inquiry emails sent to <span className="text-[#ffd166] font-mono text-xs">staff@starcast.online</span>.
+                  </p>
+                  <Link href="/admin/support" className="block">
+                    <Button className="w-full bg-[#20205a] hover:bg-[#ea6f2a] text-[#f5f7ff] hover:text-white transition-all">
+                      Go to Support Inbox →
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             </div>
@@ -1036,7 +1082,23 @@ export default function AdminPage() {
 
         {/* INBOX TAB */}
         {activeTab === "inbox" && (
-          <div className="grid lg:grid-cols-5 gap-6">
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-[#ea6f2a]/20 via-[#0c0c3f] to-[#20205a]/40 border border-[#ea6f2a]/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <LifeBuoy className="w-5 h-5 text-[#ffd166] shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-[#f5f7ff]">Inbound Email Support (staff@starcast.online)</p>
+                  <p className="text-xs text-[#9a9fc4]">Check live support emails received via Resend webhook.</p>
+                </div>
+              </div>
+              <Link href="/admin/support">
+                <Button size="sm" className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold">
+                  Open Support Inbox →
+                </Button>
+              </Link>
+            </div>
+
+            <div className="grid lg:grid-cols-5 gap-6">
             {/* Email List */}
             <div className="lg:col-span-2">
               <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60 h-[600px] flex flex-col">
@@ -1119,6 +1181,7 @@ export default function AdminPage() {
                 )}
               </Card>
             </div>
+          </div>
           </div>
         )}
 
