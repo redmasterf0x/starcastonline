@@ -24,14 +24,14 @@ export async function POST(req: Request) {
     if (svix_id && svix_timestamp && svix_signature) {
       try {
         const wh = new Webhook(secret);
-        payload = wh.verify(payloadString, {
+        const verified = wh.verify(payloadString, {
           "svix-id": svix_id,
           "svix-timestamp": svix_timestamp,
           "svix-signature": svix_signature,
         });
+        payload = typeof verified === "string" ? JSON.parse(verified) : verified;
       } catch (err: any) {
         console.error("[Webhook Svix Verify Error]:", err?.message);
-        // Try parsing JSON directly as fallback if signature had secret mismatch
         try {
           payload = JSON.parse(payloadString);
         } catch {
@@ -46,14 +46,78 @@ export async function POST(req: Request) {
       }
     }
 
-    // Resend wraps payload in `data` for email.received events
-    const emailData = payload?.data || payload || {};
+    // Double check if payload was double-stringified
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch {}
+    }
 
-    const rawFrom = emailData.from || emailData.sender || "Unknown";
-    const from = typeof rawFrom === "string" ? rawFrom : JSON.stringify(rawFrom);
-    const subject = emailData.subject || "No Subject";
-    const textBody = emailData.text || emailData.text_body || emailData.raw || "";
-    const htmlBody = emailData.html || emailData.html_body || "";
+    // Extract Resend email data structure
+    const data = payload?.data || payload || {};
+
+    // 1. Sender extraction
+    let sender =
+      data.from ||
+      data.sender ||
+      data.from_email ||
+      data.headers?.from ||
+      data.headers?.From ||
+      payload.from ||
+      payload.sender ||
+      "";
+
+    if (Array.isArray(sender)) {
+      sender = sender.join(", ");
+    } else if (typeof sender === "object" && sender !== null) {
+      sender = sender.email || sender.address || sender.name || JSON.stringify(sender);
+    }
+
+    if (!sender || sender === "Unknown") {
+      sender = data.envelope?.from || "staff@starcast.online inquiry";
+    }
+
+    // 2. Subject extraction
+    let subject =
+      data.subject ||
+      data.headers?.subject ||
+      data.headers?.Subject ||
+      payload.subject ||
+      "";
+
+    if (!subject) {
+      subject = "Support Request";
+    }
+
+    // 3. Body extraction
+    let textBody =
+      data.text ||
+      data.text_body ||
+      data.plain ||
+      data.body ||
+      data.content ||
+      data.message ||
+      data.snippet ||
+      payload.text ||
+      payload.body ||
+      "";
+
+    const htmlBody =
+      data.html ||
+      data.html_body ||
+      data.body_html ||
+      payload.html ||
+      "";
+
+    // If textBody is empty but we have payload data, format readable summary
+    if (!textBody && htmlBody) {
+      // Strip HTML tags for clean text fallback
+      textBody = htmlBody.replace(/<[^>]*>?/gm, "").trim();
+    }
+
+    if (!textBody && !htmlBody) {
+      textBody = typeof data === "object" ? JSON.stringify(data, null, 2) : payloadString;
+    }
 
     // Ensure database table exists
     await db.execute(sql`
@@ -70,13 +134,13 @@ export async function POST(req: Request) {
 
     // Insert incoming email record
     await db.insert(inboundEmails).values({
-      sender: from,
-      subject: subject,
-      textBody: textBody,
-      htmlBody: htmlBody,
+      sender: String(sender),
+      subject: String(subject),
+      textBody: String(textBody),
+      htmlBody: String(htmlBody),
     });
 
-    console.log("[Webhook Success]: Stored email from", from, "with subject:", subject);
+    console.log("[Webhook Success]: Stored email from", sender, "with subject:", subject);
     return NextResponse.json({ success: true, message: "Email recorded successfully" }, { status: 200 });
   } catch (error: any) {
     console.error("[Webhook Critical Error]:", error);
@@ -86,4 +150,5 @@ export async function POST(req: Request) {
     }, { status: 500 });
   }
 }
+
 
