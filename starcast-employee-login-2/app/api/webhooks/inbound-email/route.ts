@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inboundEmails } from "@/lib/db/schema";
+import { sql } from "drizzle-orm";
 import { Webhook } from "svix";
 
 export async function POST(req: Request) {
@@ -43,6 +44,19 @@ export async function POST(req: Request) {
     const subject = emailData.subject || "No Subject";
     const textBody = emailData.text || "";
     const htmlBody = emailData.html || "";
+
+    // Ensure table exists
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "inbound_emails" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "sender" text NOT NULL,
+        "subject" text,
+        "text_body" text,
+        "html_body" text,
+        "status" text NOT NULL DEFAULT 'unread',
+        "received_at" timestamp with time zone NOT NULL DEFAULT now()
+      );
+    `);
 
     await db.insert(inboundEmails).values({
       sender: from,

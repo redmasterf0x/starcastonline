@@ -1,6 +1,6 @@
 import { db } from "@/lib/db"
 import { inboundEmails } from "@/lib/db/schema"
-import { desc } from "drizzle-orm"
+import { desc, sql } from "drizzle-orm"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,10 +10,31 @@ import { LifeBuoy, ArrowLeft, Mail, Clock, User, ShieldCheck, RefreshCw } from "
 export const dynamic = "force-dynamic"
 
 export default async function AdminSupportPage() {
-  const emails = await db
-    .select()
-    .from(inboundEmails)
-    .orderBy(desc(inboundEmails.receivedAt))
+  let emails: any[] = []
+  let loadError: string | null = null
+
+  try {
+    // Ensure table exists
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "inbound_emails" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "sender" text NOT NULL,
+        "subject" text,
+        "text_body" text,
+        "html_body" text,
+        "status" text NOT NULL DEFAULT 'unread',
+        "received_at" timestamp with time zone NOT NULL DEFAULT now()
+      );
+    `)
+
+    emails = await db
+      .select()
+      .from(inboundEmails)
+      .orderBy(desc(inboundEmails.receivedAt))
+  } catch (err: any) {
+    console.error("[AdminSupportPage DB Error]:", err)
+    loadError = err?.message || "Failed to load support emails"
+  }
 
   return (
     <div className="min-h-screen bg-[#05052d] text-[#f5f7ff] py-10 px-4 sm:px-6 lg:px-8">
