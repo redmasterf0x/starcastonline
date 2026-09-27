@@ -1,39 +1,75 @@
-import { db } from "@/lib/db"
-import { inboundEmails } from "@/lib/db/schema"
-import { desc, sql } from "drizzle-orm"
+import { getInboundEmails, saveInboundEmail, InboundEmailRecord } from "@/lib/firebase/firestore-service"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { LifeBuoy, ArrowLeft, Mail, Clock, User, ShieldCheck, RefreshCw } from "lucide-react"
+import { LifeBuoy, ArrowLeft, Mail, Clock, User, ShieldCheck } from "lucide-react"
+import { SyncButton } from "./sync-button"
 
 export const dynamic = "force-dynamic"
 
+async function autoSyncFromResend() {
+  try {
+    const resendApiKey = process.env.RESEND_API_KEY
+    if (!resendApiKey) return
+
+    // Fetch recent received emails from Resend Receiving API
+    const res = await fetch("https://api.resend.com/emails/receiving", {
+      headers: { Authorization: `Bearer ${resendApiKey}` },
+      cache: "no-store",
+    })
+
+    if (res.ok) {
+      const list = await res.json()
+      const items = list.data || []
+
+      for (const item of items) {
+        const detailRes = await fetch(`https://api.resend.com/emails/receiving/${item.id}`, {
+          headers: { Authorization: `Bearer ${resendApiKey}` },
+          cache: "no-store",
+        })
+
+        if (detailRes.ok) {
+          const detail = await detailRes.json()
+          const sender =
+            detail.headers?.from ||
+            detail.from ||
+            (Array.isArray(item.from) ? item.from.join(", ") : item.from) ||
+            "staff@starcast.online inquiry"
+          const subject = detail.subject || item.subject || "Support Inquiry"
+          const textBody =
+            detail.text ||
+            (detail.html ? detail.html.replace(/<[^>]*>?/gm, "").trim() : "") ||
+            "No message body."
+          const htmlBody = detail.html || ""
+
+          await saveInboundEmail({
+            id: item.id,
+            resendEmailId: item.id,
+            from: String(sender),
+            to: "support@starcast.online",
+            subject: String(subject),
+            text: String(textBody),
+            html: String(htmlBody),
+            status: "open",
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[AutoSync On-Load Error]:", err)
+  }
+}
+
 export default async function AdminSupportPage() {
-  let emails: any[] = []
-  let loadError: string | null = null
+  let emails: InboundEmailRecord[] = []
 
   try {
-    // Ensure table exists
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS "inbound_emails" (
-        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "sender" text NOT NULL,
-        "subject" text,
-        "text_body" text,
-        "html_body" text,
-        "status" text NOT NULL DEFAULT 'unread',
-        "received_at" timestamp with time zone NOT NULL DEFAULT now()
-      );
-    `)
-
-    emails = await db
-      .select()
-      .from(inboundEmails)
-      .orderBy(desc(inboundEmails.receivedAt))
+    // Automatically pull latest emails from Resend on every page load
+    await autoSyncFromResend()
+    emails = await getInboundEmails(50)
   } catch (err: any) {
-    console.error("[AdminSupportPage DB Error]:", err)
-    loadError = err?.message || "Failed to load support emails"
+    console.error("[AdminSupportPage Error]:", err)
   }
 
   return (
@@ -59,13 +95,14 @@ export default async function AdminSupportPage() {
                   Inbound Support Inbox
                 </h1>
                 <p className="text-sm text-[#9a9fc4]">
-                  Real-time customer & sponsor emails sent to <span className="text-[#ffd166] font-mono">staff@starcast.online</span>
+                  Cloud Firestore live customer & sponsor emails sent to <span className="text-[#ffd166] font-mono">staff@starcast.online</span>
                 </p>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <SyncButton />
             <Link href="/admin">
               <Button variant="outline" className="border-[#20205a] text-[#d4d8ee] hover:bg-[#20205a]/60 bg-[#0c0c3f]/50">
                 Admin Panel
@@ -83,7 +120,7 @@ export default async function AdminSupportPage() {
               </div>
               <h3 className="text-lg font-bold text-[#f5f7ff]">No Support Emails Yet</h3>
               <p className="text-sm text-[#9a9fc4] max-w-md mx-auto">
-                When users, listeners, or sponsors email <span className="text-[#ffd166] font-mono">staff@starcast.online</span>, their messages and attachments will appear here automatically.
+                When users, listeners, or sponsors email <span className="text-[#ffd166] font-mono">staff@starcast.online</span>, their messages will appear here in Cloud Firestore automatically.
               </p>
             </div>
           ) : (
@@ -101,18 +138,18 @@ export default async function AdminSupportPage() {
                       <CardDescription className="text-xs sm:text-sm text-[#9a9fc4] flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="flex items-center gap-1.5 text-[#ffd166] font-medium">
                           <User className="w-3.5 h-3.5 text-[#9a9fc4]" />
-                          {email.sender}
+                          {email.from}
                         </span>
                         <span className="text-white/20 hidden sm:inline">•</span>
                         <span className="flex items-center gap-1 text-[#9a9fc4]">
                           <Clock className="w-3.5 h-3.5" />
-                          {email.receivedAt ? new Date(email.receivedAt).toLocaleString() : "Recently"}
+                          {email.createdAt ? new Date(email.createdAt).toLocaleString() : "Recently"}
                         </span>
                       </CardDescription>
                     </div>
                     <Badge
                       className={
-                        email.status === "unread"
+                        email.status === "open"
                           ? "bg-[#ea6f2a] text-white hover:bg-[#bc3f00] uppercase text-[10px] tracking-wider font-bold"
                           : "bg-[#20205a] text-[#9a9fc4] uppercase text-[10px] tracking-wider font-semibold"
                       }
@@ -123,7 +160,7 @@ export default async function AdminSupportPage() {
                 </CardHeader>
                 <CardContent className="pt-5 pb-6">
                   <div className="whitespace-pre-wrap text-sm text-[#d4d8ee] leading-relaxed font-normal bg-[#05052d]/60 p-4 rounded-xl border border-[#20205a]/40">
-                    {email.textBody || "No text body available."}
+                    {email.text || "No text body available."}
                   </div>
                 </CardContent>
               </Card>
@@ -134,4 +171,3 @@ export default async function AdminSupportPage() {
     </div>
   )
 }
-

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { inboundEmails } from "@/lib/db/schema";
-import { sql } from "drizzle-orm";
+import { saveInboundEmail } from "@/lib/firebase/firestore-service";
 import { Webhook } from "svix";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +17,7 @@ export async function POST(req: Request) {
     
     const secret = process.env.RESEND_WEBHOOK_SECRET || FALLBACK_SECRET;
 
-    let payload: any;
+    let payload: any = {};
 
     if (svix_id && svix_timestamp && svix_signature) {
       try {
@@ -29,7 +27,7 @@ export async function POST(req: Request) {
           "svix-timestamp": svix_timestamp,
           "svix-signature": svix_signature,
         });
-        payload = typeof verified === "string" ? JSON.parse(verified) : verified;
+        payload = typeof verified === "string" ? JSON.parse(verified) : (verified || {});
       } catch (err: any) {
         console.warn("[Webhook Svix Verify Warning]:", err?.message);
         try {
@@ -41,7 +39,7 @@ export async function POST(req: Request) {
     } else {
       try {
         payload = JSON.parse(payloadString);
-      } catch (err: any) {
+      } catch {
         payload = { raw: payloadString };
       }
     }
@@ -49,21 +47,27 @@ export async function POST(req: Request) {
     if (typeof payload === "string") {
       try {
         payload = JSON.parse(payload);
-      } catch {}
+      } catch {
+        payload = { raw: payload };
+      }
+    }
+
+    if (!payload || typeof payload !== "object") {
+      payload = {};
     }
 
     // Extract Resend email data structure
-    const data = payload?.data || payload || {};
+    const data = (payload.data && typeof payload.data === "object" ? payload.data : payload) || {};
 
     // 1. Sender extraction
     let sender =
-      data.from ||
-      data.sender ||
-      data.from_email ||
-      data.headers?.from ||
-      data.headers?.From ||
-      payload.from ||
-      payload.sender ||
+      data?.from ||
+      data?.sender ||
+      data?.from_email ||
+      data?.headers?.from ||
+      data?.headers?.From ||
+      payload?.from ||
+      payload?.sender ||
       "";
 
     if (Array.isArray(sender)) {
@@ -74,34 +78,34 @@ export async function POST(req: Request) {
 
     // 2. Subject extraction
     let subject =
-      data.subject ||
-      data.headers?.subject ||
-      data.headers?.Subject ||
-      payload.subject ||
+      data?.subject ||
+      data?.headers?.subject ||
+      data?.headers?.Subject ||
+      payload?.subject ||
       "";
 
     // 3. Body extraction
     let textBody =
-      data.text ||
-      data.text_body ||
-      data.plain ||
-      data.body ||
-      data.content ||
-      data.message ||
-      data.snippet ||
-      payload.text ||
-      payload.body ||
+      data?.text ||
+      data?.text_body ||
+      data?.plain ||
+      data?.body ||
+      data?.content ||
+      data?.message ||
+      data?.snippet ||
+      payload?.text ||
+      payload?.body ||
       "";
 
     let htmlBody =
-      data.html ||
-      data.html_body ||
-      data.body_html ||
-      payload.html ||
+      data?.html ||
+      data?.html_body ||
+      data?.body_html ||
+      payload?.html ||
       "";
 
-    // 4. Auto-fetch full email details from Resend Receiving API if needed
-    const emailId = data.email_id || data.id || payload.email_id || payload.id;
+    // 4. Auto-fetch full email details from Resend Receiving API if email_id is present
+    const emailId = data?.email_id || data?.id || payload?.email_id || payload?.id;
     const resendApiKey = process.env.RESEND_API_KEY;
 
     if (emailId && resendApiKey) {
@@ -113,17 +117,21 @@ export async function POST(req: Request) {
         });
         if (res.ok) {
           const resendDoc = await res.json();
-          if (resendDoc.from) {
-            sender = Array.isArray(resendDoc.from) ? resendDoc.from.join(", ") : String(resendDoc.from);
-          }
-          if (resendDoc.subject) {
-            subject = String(resendDoc.subject);
-          }
-          if (resendDoc.text) {
-            textBody = String(resendDoc.text);
-          }
-          if (resendDoc.html) {
-            htmlBody = String(resendDoc.html);
+          if (resendDoc && typeof resendDoc === "object") {
+            if (resendDoc.headers?.from) {
+              sender = String(resendDoc.headers.from);
+            } else if (resendDoc.from) {
+              sender = Array.isArray(resendDoc.from) ? resendDoc.from.join(", ") : String(resendDoc.from);
+            }
+            if (resendDoc.subject) {
+              subject = String(resendDoc.subject);
+            }
+            if (resendDoc.text) {
+              textBody = String(resendDoc.text);
+            }
+            if (resendDoc.html) {
+              htmlBody = String(resendDoc.html);
+            }
           }
         }
       } catch (fetchErr) {
@@ -147,29 +155,19 @@ export async function POST(req: Request) {
       textBody = typeof data === "object" ? JSON.stringify(data, null, 2) : payloadString;
     }
 
-    // Ensure database table exists
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS "inbound_emails" (
-        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "sender" text NOT NULL,
-        "subject" text,
-        "text_body" text,
-        "html_body" text,
-        "status" text NOT NULL DEFAULT 'unread',
-        "received_at" timestamp with time zone NOT NULL DEFAULT now()
-      );
-    `);
-
-    // Insert incoming email record
-    await db.insert(inboundEmails).values({
-      sender: String(sender),
+    // Save to Cloud Firestore
+    const docId = await saveInboundEmail({
+      resendEmailId: emailId,
+      from: String(sender),
+      to: "support@starcast.online",
       subject: String(subject),
-      textBody: String(textBody),
-      htmlBody: String(htmlBody),
+      text: String(textBody),
+      html: String(htmlBody),
+      status: "open",
     });
 
-    console.log("[Webhook Success]: Stored email from", sender, "with subject:", subject);
-    return NextResponse.json({ success: true, message: "Email recorded successfully" }, { status: 200 });
+    console.log("[Webhook Success]: Stored email in Firestore [", docId, "] from", sender, "with subject:", subject);
+    return NextResponse.json({ success: true, message: "Email recorded in Firestore successfully", id: docId }, { status: 200 });
   } catch (error: any) {
     console.error("[Webhook Critical Error]:", error);
     return NextResponse.json({ 
@@ -179,6 +177,3 @@ export async function POST(req: Request) {
     }, { status: 200 });
   }
 }
-
-
-
