@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { saveInboundEmail } from "@/lib/firebase/firestore-service";
+import { db } from "@/lib/db";
+import { profiles, inboxMessages } from "@/lib/db/schema";
+import { eq, ilike, or } from "drizzle-orm";
 import { Webhook } from "svix";
 
 export const dynamic = "force-dynamic";
@@ -76,7 +79,22 @@ export async function POST(req: Request) {
       sender = sender.email || sender.address || sender.name || JSON.stringify(sender);
     }
 
-    // 2. Subject extraction
+    // 2. Recipient extraction
+    let recipient =
+      data?.to ||
+      data?.recipient ||
+      data?.headers?.to ||
+      data?.headers?.To ||
+      payload?.to ||
+      "";
+
+    if (Array.isArray(recipient)) {
+      recipient = recipient.join(", ");
+    } else if (typeof recipient === "object" && recipient !== null) {
+      recipient = recipient.email || recipient.address || JSON.stringify(recipient);
+    }
+
+    // 3. Subject extraction
     let subject =
       data?.subject ||
       data?.headers?.subject ||
@@ -84,7 +102,7 @@ export async function POST(req: Request) {
       payload?.subject ||
       "";
 
-    // 3. Body extraction
+    // 4. Body extraction
     let textBody =
       data?.text ||
       data?.text_body ||
@@ -104,7 +122,7 @@ export async function POST(req: Request) {
       payload?.html ||
       "";
 
-    // 4. Auto-fetch full email details from Resend Receiving API if email_id is present
+    // 5. Auto-fetch full email details from Resend Receiving API if email_id is present
     const emailId = data?.email_id || data?.id || payload?.email_id || payload?.id;
     const resendApiKey = process.env.RESEND_API_KEY;
 
@@ -123,6 +141,11 @@ export async function POST(req: Request) {
             } else if (resendDoc.from) {
               sender = Array.isArray(resendDoc.from) ? resendDoc.from.join(", ") : String(resendDoc.from);
             }
+            if (resendDoc.headers?.to) {
+              recipient = String(resendDoc.headers.to);
+            } else if (resendDoc.to) {
+              recipient = Array.isArray(resendDoc.to) ? resendDoc.to.join(", ") : String(resendDoc.to);
+            }
             if (resendDoc.subject) {
               subject = String(resendDoc.subject);
             }
@@ -140,11 +163,15 @@ export async function POST(req: Request) {
     }
 
     if (!sender) {
-      sender = "staff@starcast.online inquiry";
+      sender = "Inquirer";
+    }
+
+    if (!recipient) {
+      recipient = "support@starcast.online";
     }
 
     if (!subject) {
-      subject = "Support Inquiry";
+      subject = "Message for Staff";
     }
 
     if (!textBody && htmlBody) {
@@ -155,19 +182,60 @@ export async function POST(req: Request) {
       textBody = typeof data === "object" ? JSON.stringify(data, null, 2) : payloadString;
     }
 
-    // Save to Cloud Firestore
+    // Match recipient to staff member profile in Postgres
+    let staffProfileId: string | null = null;
+    try {
+      const cleanRecipient = String(recipient).toLowerCase().trim();
+      const matchedProfiles = await db
+        .select({ id: profiles.id, staffEmail: profiles.staffEmail, firstName: profiles.firstName })
+        .from(profiles)
+        .where(
+          or(
+            eq(profiles.staffEmail, cleanRecipient),
+            ilike(profiles.staffEmail, `%${cleanRecipient}%`)
+          )
+        )
+        .limit(1);
+
+      if (matchedProfiles.length > 0) {
+        staffProfileId = matchedProfiles[0].id;
+      }
+    } catch (matchErr) {
+      console.warn("[Staff Match Lookup Warning]:", matchErr);
+    }
+
+    // 1. Store in Postgres inbox_messages (for Staff Mailbox)
+    try {
+      await db.insert(inboxMessages).values({
+        resendId: emailId ? String(emailId) : null,
+        fromEmail: String(sender),
+        fromName: String(sender).split("<")[0].trim().replace(/"/g, "") || null,
+        toEmail: String(recipient),
+        subject: String(subject),
+        body: String(textBody),
+        textBody: String(textBody),
+        htmlBody: htmlBody ? String(htmlBody) : null,
+        staffProfileId: staffProfileId || undefined,
+        status: "unread",
+        isRead: false,
+      });
+    } catch (dbErr) {
+      console.warn("[Postgres inbox_messages Insert Warning]:", dbErr);
+    }
+
+    // 2. Save to Cloud Firestore (for Admin Support Inbox)
     const docId = await saveInboundEmail({
       resendEmailId: emailId,
       from: String(sender),
-      to: "support@starcast.online",
+      to: String(recipient),
       subject: String(subject),
       text: String(textBody),
       html: String(htmlBody),
       status: "open",
     });
 
-    console.log("[Webhook Success]: Stored email in Firestore [", docId, "] from", sender, "with subject:", subject);
-    return NextResponse.json({ success: true, message: "Email recorded in Firestore successfully", id: docId }, { status: 200 });
+    console.log("[Webhook Success]: Stored email in DB & Firestore [", docId, "] from", sender, "to", recipient);
+    return NextResponse.json({ success: true, message: "Email recorded successfully", id: docId }, { status: 200 });
   } catch (error: any) {
     console.error("[Webhook Critical Error]:", error);
     return NextResponse.json({ 

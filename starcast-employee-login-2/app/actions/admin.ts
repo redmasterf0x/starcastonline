@@ -48,6 +48,7 @@ export async function adminListUsers() {
     is_admin: p.isAdmin,
     can_write_articles: p.canWriteArticles,
     can_manage_calendar: p.canManageCalendar,
+    staff_email: p.staffEmail ?? "",
     username: p.username ?? "",
     social_banned: p.socialBanned,
     social_ban_reason: p.socialBanReason ?? "",
@@ -98,6 +99,41 @@ export async function adminSetSocialBan(profileId: string, banned: boolean, reas
  * - staff  → role=staff, is_admin=false, is_employee=true
  * - user   → role=user,  is_admin=false, is_employee=false, staff perms revoked
  */
+async function ensureStaffEmail(profileId: string) {
+  const [target] = await db.select().from(profiles).where(eq(profiles.id, profileId)).limit(1)
+  if (!target) return
+  if (target.staffEmail && target.staffEmail.trim()) return target.staffEmail
+
+  let baseHandle = ""
+  if (target.firstName && target.firstName.trim()) {
+    baseHandle = target.firstName.trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+  } else if (target.username && target.username.trim()) {
+    baseHandle = target.username.trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+  } else if (target.email) {
+    baseHandle = target.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "")
+  } else {
+    baseHandle = "staff"
+  }
+
+  let staffEmail = `${baseHandle}.staff@starcast.online`
+  const existing = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(eq(profiles.staffEmail, staffEmail))
+    .limit(1)
+  if (existing.length > 0 && existing[0].id !== profileId) {
+    if (target.lastName && target.lastName.trim()) {
+      const lastInitial = target.lastName.trim().toLowerCase().charAt(0)
+      staffEmail = `${baseHandle}.${lastInitial}.staff@starcast.online`
+    } else {
+      staffEmail = `${baseHandle}${Math.floor(10 + Math.random() * 90)}.staff@starcast.online`
+    }
+  }
+
+  await db.update(profiles).set({ staffEmail }).where(eq(profiles.id, profileId))
+  return staffEmail
+}
+
 export async function adminSetRole(profileId: string, role: "admin" | "staff" | "user") {
   const admin = await requireAdmin()
   if (!["admin", "staff", "user"].includes(role)) throw new Error("Invalid role")
@@ -117,11 +153,13 @@ export async function adminSetRole(profileId: string, role: "admin" | "staff" | 
       .update(profiles)
       .set({ role: "admin", isAdmin: true, isEmployee: true })
       .where(eq(profiles.id, profileId))
+    await ensureStaffEmail(profileId)
   } else if (role === "staff") {
     await db
       .update(profiles)
       .set({ role: "staff", isAdmin: false, isEmployee: true })
       .where(eq(profiles.id, profileId))
+    await ensureStaffEmail(profileId)
   } else {
     await db
       .update(profiles)
@@ -140,6 +178,7 @@ export async function adminSetRole(profileId: string, role: "admin" | "staff" | 
 export async function adminPromoteUser(profileId: string) {
   await requireAdmin()
   await db.update(profiles).set({ isEmployee: true }).where(eq(profiles.id, profileId))
+  await ensureStaffEmail(profileId)
   return { success: true }
 }
 
@@ -151,6 +190,26 @@ export async function adminDemoteUser(profileId: string) {
     .set({ isEmployee: false, canWriteArticles: false, canManageCalendar: false })
     .where(eq(profiles.id, profileId))
   return { success: true }
+}
+
+export async function adminUpdateStaffEmail(profileId: string, staffEmail: string) {
+  await requireAdmin()
+  const cleanEmail = staffEmail.trim().toLowerCase()
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    throw new Error("Invalid email address")
+  }
+
+  const existing = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(eq(profiles.staffEmail, cleanEmail))
+    .limit(1)
+  if (existing.length > 0 && existing[0].id !== profileId) {
+    throw new Error("This staff email address is already in use by another member")
+  }
+
+  await db.update(profiles).set({ staffEmail: cleanEmail }).where(eq(profiles.id, profileId))
+  return { success: true, staffEmail: cleanEmail }
 }
 
 type PermissionField = "isEmployee" | "isAdmin" | "canWriteArticles" | "canManageCalendar"

@@ -26,10 +26,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { StaffMailbox } from "@/components/staff/staff-mailbox"
 import {
   Plus,
   Calendar,
   List,
+  Mail,
   Clock,
   MapPin,
   Edit,
@@ -175,7 +177,7 @@ export default function ProductionPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isCrew, setIsCrew] = useState(false)
   const [canManageCalendar, setCanManageCalendar] = useState(false)
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
+  const [viewMode, setViewMode] = useState<"list" | "calendar" | "mailbox">("calendar")
   const [calendarMonth, setCalendarMonth] = useState(() => new Date())
   const [productions, setProductions] = useState<Production[]>([])
   const [crewCounts, setCrewCounts] = useState<Record<string, number>>({})
@@ -643,20 +645,9 @@ export default function ProductionPage() {
         </div>
 
         <div className="flex gap-2 mb-6 flex-wrap">
-  <Button
-    onClick={() => setViewMode("list")}
-    variant={viewMode === "list" ? "default" : "outline"}
-            className={viewMode === "list" 
-              ? "bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
-              : "border-[#20205a] text-[#9a9fc4] hover:bg-[#20205a]/20 bg-transparent"}
-          >
-            <List className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">List View</span>
-            <span className="sm:hidden">List</span>
-          </Button>
-  <Button
-    onClick={() => setViewMode("calendar")}
-    variant={viewMode === "calendar" ? "default" : "outline"}
+          <Button
+            onClick={() => setViewMode("calendar")}
+            variant={viewMode === "calendar" ? "default" : "outline"}
             className={viewMode === "calendar" 
               ? "bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
               : "border-[#20205a] text-[#9a9fc4] hover:bg-[#20205a]/20 bg-transparent"}
@@ -665,9 +656,37 @@ export default function ProductionPage() {
             <span className="hidden sm:inline">Calendar View</span>
             <span className="sm:hidden">Calendar</span>
           </Button>
+
+          <Button
+            onClick={() => setViewMode("list")}
+            variant={viewMode === "list" ? "default" : "outline"}
+            className={viewMode === "list" 
+              ? "bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
+              : "border-[#20205a] text-[#9a9fc4] hover:bg-[#20205a]/20 bg-transparent"}
+          >
+            <List className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">List View</span>
+            <span className="sm:hidden">List</span>
+          </Button>
+
+          <Button
+            onClick={() => setViewMode("mailbox")}
+            variant={viewMode === "mailbox" ? "default" : "outline"}
+            className={viewMode === "mailbox" 
+              ? "bg-[#20efe0] hover:bg-[#1cd8ca] text-[#05051f] font-bold shadow-md shadow-[#20efe0]/20"
+              : "border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/10 bg-transparent"}
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">Staff Mailbox</span>
+            <span className="sm:hidden">Mailbox</span>
+          </Button>
         </div>
 
-        {/* Crew Panel */}
+        {viewMode === "mailbox" ? (
+          <StaffMailbox />
+        ) : (
+          <>
+            {/* Crew Panel */}
         <Card className="border-[#20205a] bg-[#0c0c3f]/50 mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="text-[#f5f7ff] text-lg flex items-center gap-2">
@@ -961,6 +980,8 @@ export default function ProductionPage() {
               </p>
             )}
           </section>
+        )}
+          </>
         )}
       </main>
 

@@ -8,8 +8,7 @@ import {
   adminApproveArticle, adminUnpublishArticle, adminDeleteArticle,
   adminListCommunityPosts, adminPinPost, adminDeletePost,
   adminListCategories, adminCreateCategory, adminDeleteCategory,
-  adminListInbox, adminMarkRead, adminMarkReplied, adminGetMessage,
-  adminListSponsors, adminSetRole, adminSetSocialBan,
+  adminListSponsors, adminSetRole, adminSetSocialBan, adminUpdateStaffEmail,
 } from "@/app/actions/admin"
 import {
   adminListTicketingApplications,
@@ -45,6 +44,7 @@ interface User {
   first_name: string
   last_name: string
   email: string
+  staff_email?: string
   phone?: string
   bio?: string
   profile_pic?: string
@@ -126,7 +126,7 @@ interface Sponsor {
   created_at: string
 }
 
-type AdminTab = "overview" | "members" | "studio" | "content" | "inbox" | "sponsors" | "ticketing"
+type AdminTab = "overview" | "members" | "studio" | "content" | "sponsors" | "ticketing"
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true)
@@ -136,28 +136,25 @@ export default function AdminPage() {
   const [approvedArticles, setApprovedArticles] = useState<Article[]>([])
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [inboxMessages, setInboxMessages] = useState<InboxMessage[]>([])
   const [sponsors, setSponsors] = useState<Sponsor[]>([])
   const [ticketingApps, setTicketingApps] = useState<any[]>([])
   const [heldEscrows, setHeldEscrows] = useState<any[]>([])
   const [escrowBusy, setEscrowBusy] = useState<string | null>(null)
   const [escrowFeedback, setEscrowFeedback] = useState("")
-  const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null)
-  const [replyText, setReplyText] = useState("")
-  const [replying, setReplying] = useState(false)
-  const [replyMessage, setReplyMessage] = useState("")
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; user: User | null; action: 'promote' | 'revoke' }>({ open: false, user: null, action: 'promote' })
   const [categoryDialog, setCategoryDialog] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
   const [newCategoryIcon, setNewCategoryIcon] = useState("")
   const [memberSearch, setMemberSearch] = useState("")
   const [previewArticle, setPreviewArticle] = useState<Article | null>(null)
+  const [editingStaffEmailUserId, setEditingStaffEmailUserId] = useState<string | null>(null)
+  const [editingStaffEmailValue, setEditingStaffEmailValue] = useState("")
+  const [savingStaffEmail, setSavingStaffEmail] = useState(false)
   const router = useRouter()
 
   // Derived data
   const teamMembers = users.filter((u) => u.is_employee)
   const regularUsers = users.filter((u) => !u.is_employee)
-  const unreadEmails = inboxMessages.filter((m) => !m.is_read).length
 
   const filteredUsers = memberSearch 
     ? users.filter(u => 
@@ -180,9 +177,6 @@ export default function AdminPage() {
   }
   const fetchCategories = async () => {
     try { setCategories(await adminListCategories() as any[]) } catch {}
-  }
-  const fetchInbox = async () => {
-    try { setInboxMessages(await adminListInbox() as any[]) } catch {}
   }
   const fetchSponsors = async () => {
     try { setSponsors(await adminListSponsors() as any[]) } catch {}
@@ -207,7 +201,7 @@ export default function AdminPage() {
         await Promise.all([
           fetchPendingArticles(), fetchApprovedArticles(),
           fetchCommunityPosts(), fetchCategories(),
-          fetchInbox(), fetchSponsors(), fetchTicketing(),
+          fetchSponsors(), fetchTicketing(),
         ])
         setLoading(false)
       } catch {
@@ -311,64 +305,6 @@ export default function AdminPage() {
   const handleDeleteCategory = async (categoryId: string) => {
     await adminDeleteCategory(categoryId); fetchCategories()
   }
-  const handleMarkRead = async (messageId: string) => {
-    await adminMarkRead(messageId); fetchInbox()
-  }
-
-  const handleReply = async () => {
-    if (!selectedMessage || !replyText.trim()) return
-    setReplying(true)
-    setReplyMessage("")
-    try {
-      const res = await fetch("/api/email/reply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: selectedMessage.from_email, subject: `Re: ${selectedMessage.subject}`, text: replyText }),
-      })
-      if (res.ok) {
-        await adminMarkReplied(selectedMessage.id)
-        setReplyMessage("Reply sent!")
-        setReplyText("")
-        fetchInbox()
-      } else {
-        setReplyMessage("Failed to send reply")
-      }
-    } catch {
-      setReplyMessage("Failed to send reply")
-    }
-    setReplying(false)
-  }
-
-  const handleRefreshContent = async (messageId: string) => {
-    try {
-      const res = await fetch("/api/email/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailId: messageId }),
-      })
-      const result = await res.json()
-      
-      if (res.ok && result.success) {
-        fetchInbox()
-        const data = await adminGetMessage(messageId)
-        if (data) setSelectedMessage(data)
-      } else {
-        alert(result.message || result.error || "Failed to fetch content")
-      }
-    } catch (err: any) {
-      console.error("[v0] Refresh error:", err)
-      alert("Error fetching content: " + err?.message)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#ea6f2a]/30 border-t-[#ea6f2a] rounded-full animate-spin" />
-      </div>
-    )
-  }
-
   const pendingTicketingCount = ticketingApps.filter((a) => a.ticketingStatus === "applied").length
 
   const tabs: { id: AdminTab; label: string; icon: any; badge?: number }[] = [
@@ -377,7 +313,6 @@ export default function AdminPage() {
     { id: "members", label: "Members", icon: Users, badge: users.length },
     { id: "studio", label: "Studio", icon: Music },
     { id: "content", label: "Content", icon: FileText, badge: pendingArticles.length },
-    { id: "inbox", label: "Inbox", icon: Mail, badge: unreadEmails },
     { id: "sponsors", label: "Sponsors", icon: Building2, badge: sponsors.filter(s => s.status === "paid").length },
   ]
 
@@ -484,7 +419,7 @@ export default function AdminPage() {
                 { label: "Total Members", value: users.length, icon: Users, color: "text-blue-400" },
                 { label: "Team Members", value: teamMembers.length, icon: Sparkles, color: "text-[#ea6f2a]" },
                 { label: "Pending Articles", value: pendingArticles.length, icon: FileText, color: "text-yellow-400" },
-                { label: "Unread Emails", value: unreadEmails, icon: Mail, color: "text-green-400" },
+                { label: "Active Sponsors", value: sponsors.filter(s => s.status === "paid").length, icon: Building2, color: "text-emerald-400" },
               ].map((stat, i) => (
                 <div key={i} className="bg-[#0c0c3f]/60 border border-[#20205a]/50 rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-3">
@@ -657,6 +592,66 @@ export default function AdminPage() {
                               )}
                             </div>
                             <p className="text-sm text-[#9a9fc4] truncate">{user.email}</p>
+                            
+                            {/* Official Staff Email */}
+                            <div className="mt-2 p-2 rounded-lg bg-[#05052d] border border-[#20205a]/80 flex flex-col gap-1">
+                              <span className="text-[10px] uppercase tracking-wider text-[#ffd166] font-mono font-semibold flex items-center gap-1">
+                                <Mail className="w-3 h-3 text-[#ea6f2a]" /> Staff Inbox Address
+                              </span>
+                              {editingStaffEmailUserId === user.id ? (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <Input
+                                    value={editingStaffEmailValue}
+                                    onChange={(e) => setEditingStaffEmailValue(e.target.value)}
+                                    placeholder="name.staff@starcast.online"
+                                    className="h-7 text-xs bg-[#0c0c3f] border-[#20205a] text-[#20efe0] font-mono"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    disabled={savingStaffEmail}
+                                    onClick={async () => {
+                                      setSavingStaffEmail(true)
+                                      try {
+                                        await adminUpdateStaffEmail(user.id, editingStaffEmailValue)
+                                        setEditingStaffEmailUserId(null)
+                                        await fetchUsers()
+                                      } catch (err: any) {
+                                        alert(err?.message || "Failed to update staff email")
+                                      } finally {
+                                        setSavingStaffEmail(false)
+                                      }
+                                    }}
+                                    className="h-7 px-2 text-xs bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingStaffEmailUserId(null)}
+                                    className="h-7 px-2 text-xs text-[#9a9fc4]"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-mono text-[#20efe0] truncate">
+                                    {user.staff_email || `${user.first_name.toLowerCase()}.staff@starcast.online`}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setEditingStaffEmailUserId(user.id)
+                                      setEditingStaffEmailValue(user.staff_email || `${user.first_name.toLowerCase()}.staff@starcast.online`)
+                                    }}
+                                    className="text-[11px] text-[#ffd166] hover:underline font-semibold"
+                                  >
+                                    Edit
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
                             {user.location && (
                               <p className="text-xs text-[#9a9fc4]/60 mt-1">{user.location}</p>
                             )}
@@ -1080,110 +1075,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* INBOX TAB */}
-        {activeTab === "inbox" && (
-          <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-gradient-to-r from-[#ea6f2a]/20 via-[#0c0c3f] to-[#20205a]/40 border border-[#ea6f2a]/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <LifeBuoy className="w-5 h-5 text-[#ffd166] shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-[#f5f7ff]">Inbound Email Support (staff@starcast.online)</p>
-                  <p className="text-xs text-[#9a9fc4]">Check live support emails received via Resend webhook.</p>
-                </div>
-              </div>
-              <Link href="/admin/support">
-                <Button size="sm" className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold">
-                  Open Support Inbox →
-                </Button>
-              </Link>
-            </div>
 
-            <div className="grid lg:grid-cols-5 gap-6">
-            {/* Email List */}
-            <div className="lg:col-span-2">
-              <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60 h-[600px] flex flex-col">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-[#f5f7ff]">Inbox ({inboxMessages.length})</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto space-y-2">
-                  {inboxMessages.map((msg) => (
-                    <button
-                      key={msg.id}
-                      onClick={() => { setSelectedMessage(msg); handleMarkRead(msg.id) }}
-                      className={`w-full text-left p-3 rounded-xl border transition-all ${
-                        selectedMessage?.id === msg.id 
-                          ? "bg-[#ea6f2a]/20 border-[#ea6f2a]/50" 
-                          : msg.is_read 
-                          ? "bg-[#05052d]/30 border-[#20205a]/30 hover:border-[#20205a]" 
-                          : "bg-[#05052d]/50 border-[#20205a]/50 hover:border-[#ea6f2a]/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        {!msg.is_read && <div className="w-2 h-2 rounded-full bg-[#ea6f2a]" />}
-                        <p className={`text-sm truncate ${msg.is_read ? "text-[#9a9fc4]" : "text-[#f5f7ff] font-semibold"}`}>
-                          {msg.from_email}
-                        </p>
-                      </div>
-                      <p className="text-[#f5f7ff] font-medium truncate text-sm">{msg.subject}</p>
-                      <p className="text-xs text-[#9a9fc4] mt-1">{new Date(msg.created_at).toLocaleDateString()}</p>
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Email Detail */}
-            <div className="lg:col-span-3">
-              <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60 h-[600px] flex flex-col">
-                {selectedMessage ? (
-                  <>
-                    <CardHeader className="border-b border-[#20205a]/30">
-                      <CardTitle className="text-[#f5f7ff] text-lg">{selectedMessage.subject}</CardTitle>
-                      <CardDescription className="text-[#9a9fc4]">
-                        From: {selectedMessage.from_email} • {new Date(selectedMessage.created_at).toLocaleString()}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-y-auto py-4">
-                      {selectedMessage.html_body ? (
-                        <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedMessage.html_body }} />
-                      ) : selectedMessage.text_body ? (
-                        <pre className="text-[#f5f7ff] whitespace-pre-wrap font-sans text-sm">{selectedMessage.text_body}</pre>
-                      ) : (
-                        <div className="text-center py-8">
-                          <p className="text-[#9a9fc4] mb-4">No content available</p>
-                          <Button onClick={() => handleRefreshContent(selectedMessage.id)} variant="outline" className="border-[#20205a] text-[#ea6f2a] hover:bg-[#ea6f2a]/20 bg-transparent">
-                            <RefreshCw className="w-4 h-4 mr-2" /> Fetch Content
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                    <div className="p-4 border-t border-[#20205a]/30 space-y-3">
-                      <Textarea
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Type your reply..."
-                        className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[80px]"
-                      />
-                      <div className="flex items-center justify-between">
-                        <p className={`text-sm ${replyMessage.includes("sent") ? "text-green-400" : "text-red-400"}`}>
-                          {replyMessage}
-                        </p>
-                        <Button onClick={handleReply} disabled={replying || !replyText.trim()} className="bg-[#ea6f2a] hover:bg-[#bc3f00]">
-                          <Send className="w-4 h-4 mr-2" /> {replying ? "Sending..." : "Send Reply"}
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-[#9a9fc4]">
-                    Select an email to view
-                  </div>
-                )}
-              </Card>
-            </div>
-          </div>
-          </div>
-        )}
 
         {/* SPONSORS TAB */}
         {activeTab === "sponsors" && (

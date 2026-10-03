@@ -93,7 +93,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 | Domain | Tables | Notes |
 |---|---|---|
 | Auth | `user`, `session`, `account`, `verification` | Better Auth managed |
-| Members | `profiles`, `phone_verifications` | profile = app user record, roles, onboarding, social ban, Stripe payout account |
+| Members | `profiles`, `phone_verifications` | profile = app user record, roles, onboarding, social ban, `staff_email` (e.g. `dave.staff@starcast.online`), Stripe payout account |
 | Articles | `articles`, `article_likes`, `saved_articles` | `approved` gate; admin approves |
 | Community | `community_categories`, `community_posts`, `post_stars`, `post_comments` (threaded via `parent_comment_id`), `comment_stars` | categories tagged per show (`show_id`, `topic` general/community) |
 | Social | `friendships` (status pending/accepted), `messages` (DMs), `notifications` | notifications keyed by **profile ids** |
@@ -101,8 +101,8 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 | Studio | `bookings`, `payments` | booking status requested→confirmed→checked_in→completed/cancelled; rate snapshot on booking |
 | Music | `band_tracks`, `track_comments` | `band_tracks.slug` → `/music/[slug]`; `bands.music_catalog_enabled` toggle; legacy audio also in `band_posts.audio_tracks` jsonb |
 | Ticketing | `band_events`, `band_ticket_orders`, `band_ticket_instances` | bands apply (`ticketing_status`), Stripe Connect payout, escrow held until 24h after event; QR via `qr_token` → `/tickets/[token]` |
-| Staff ops | `productions`, `production_crew`, `production_requests`, `timesheets`, `payouts` | crew reminders via cron + SMS |
-| Business | `sponsors`, `inbox_messages` | sponsor checkout via Stripe; `inbox_messages` = Resend inbox for admin |
+| Staff ops | `productions`, `production_crew`, `production_requests`, `timesheets`, `payouts` | crew reminders via cron + SMS; staff mailbox in `/production` |
+| Business | `sponsors`, `inbox_messages` | sponsor checkout via Stripe; `inbox_messages` = official staff mailbox messages (`staff_profile_id`, `to_email`) |
 | Files | `uploaded_blobs` | base64 file storage (see §7) |
 | (unused?) | `inbound_emails` | Postgres copy exists, but the support inbox actually uses **Firestore** |
 

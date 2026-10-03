@@ -96,6 +96,7 @@ export const profiles = pgTable("profiles", {
   hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }),
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status"),
+  staffEmail: text("staff_email"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
@@ -223,6 +224,8 @@ export const inboxMessages = pgTable("inbox_messages", {
   textBody: text("text_body"),
   htmlBody: text("html_body"),
   isRead: boolean("is_read").notNull().default(false),
+  status: text("status").notNull().default("unread"),
+  staffProfileId: uuid("staff_profile_id"),
   repliedAt: timestamp("replied_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 })
