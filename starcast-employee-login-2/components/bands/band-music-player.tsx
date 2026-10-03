@@ -25,6 +25,8 @@ import {
   Clock,
 } from "lucide-react"
 
+import { useGlobalAudio, type GlobalTrack } from "@/components/music/global-audio-context"
+
 interface BandMusicPlayerProps {
   bandName: string
   bandLogo?: string
@@ -42,103 +44,97 @@ export function BandMusicPlayer({
   isOwner,
   onUploadClick,
 }: BandMusicPlayerProps) {
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(0.85)
-  const [isMuted, setIsMuted] = useState(false)
-  const [isLooping, setIsLooping] = useState(false)
-  const [isShuffled, setIsShuffled] = useState(false)
+  const {
+    currentTrack: globalTrack,
+    isPlaying: isGlobalPlaying,
+    currentTime: globalCurrentTime,
+    duration: globalDuration,
+    volume,
+    isMuted,
+    isLooping,
+    isShuffled,
+    playTrack,
+    togglePlay: toggleGlobalPlay,
+    seek,
+    setVolume,
+    toggleMute,
+    toggleLoop,
+    toggleShuffle,
+    playNext,
+    playPrevious,
+  } = useGlobalAudio()
+
+  const [localTrackIndex, setLocalTrackIndex] = useState(0)
   const [activeLyricsTrack, setActiveLyricsTrack] = useState<BandTrackItem | null>(null)
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const progressBarRef = useRef<HTMLInputElement | null>(null)
+  // Determine active track index based on global player or local selection
+  const matchedGlobalIndex = tracks.findIndex((t) => t.id === globalTrack?.id || t.audioUrl === globalTrack?.audioUrl)
+  const currentTrackIndex = matchedGlobalIndex >= 0 ? matchedGlobalIndex : localTrackIndex
+  const currentTrack = tracks[currentTrackIndex] || tracks[0] || null
 
-  const currentTrack = tracks[currentTrackIndex] || null
+  const isCurrentTrackPlaying = Boolean(
+    globalTrack &&
+    currentTrack &&
+    (globalTrack.id === currentTrack.id || globalTrack.audioUrl === currentTrack.audioUrl) &&
+    isGlobalPlaying
+  )
 
-  useEffect(() => {
-    if (!audioRef.current) return
-    audioRef.current.volume = isMuted ? 0 : volume
-  }, [volume, isMuted])
+  const isThisTrackActive = Boolean(
+    globalTrack &&
+    currentTrack &&
+    (globalTrack.id === currentTrack.id || globalTrack.audioUrl === currentTrack.audioUrl)
+  )
 
-  // Track change handler
-  useEffect(() => {
-    if (!currentTrack || !audioRef.current) return
-    audioRef.current.src = currentTrack.audioUrl
-    setCurrentTime(0)
-    if (isPlaying) {
-      audioRef.current.play().catch(() => setIsPlaying(false))
-      incrementTrackPlay(currentTrack.id)
-    }
-  }, [currentTrackIndex])
+  const isPlaying = isCurrentTrackPlaying
+  const currentTime = isThisTrackActive ? globalCurrentTime : 0
+  const duration = isThisTrackActive && globalDuration > 0 ? globalDuration : (currentTrack?.durationSeconds || 0)
+
+  const toGlobalTrack = (t: BandTrackItem): GlobalTrack => ({
+    id: t.id,
+    title: t.title,
+    audioUrl: t.audioUrl,
+    artistName: t.artistName || bandName,
+    bandName: bandName,
+    bandLogo: bandLogo,
+    coverArtUrl: t.coverArtUrl || bandLogo,
+    slug: t.slug,
+    bandSlug: t.bandSlug,
+    albumName: t.albumName,
+    producer: t.producer,
+    durationSeconds: t.durationSeconds,
+    allowDownload: t.allowDownload,
+    genre: t.genre,
+  })
 
   function handlePlayTrack(index: number) {
-    if (index === currentTrackIndex) {
-      if (isPlaying) {
-        audioRef.current?.pause()
-        setIsPlaying(false)
-      } else {
-        audioRef.current?.play()
-        setIsPlaying(true)
-        if (currentTrack) incrementTrackPlay(currentTrack.id)
-      }
+    const targetTrack = tracks[index]
+    if (!targetTrack) return
+
+    if (matchedGlobalIndex === index) {
+      toggleGlobalPlay()
     } else {
-      setCurrentTrackIndex(index)
-      setIsPlaying(true)
-      if (tracks[index]) incrementTrackPlay(tracks[index].id)
+      setLocalTrackIndex(index)
+      const gQueue = tracks.map(toGlobalTrack)
+      playTrack(toGlobalTrack(targetTrack), gQueue)
     }
   }
 
   function handleNextTrack() {
     if (tracks.length === 0) return
-    if (isShuffled) {
-      const nextIndex = Math.floor(Math.random() * tracks.length)
-      setCurrentTrackIndex(nextIndex)
-    } else {
-      setCurrentTrackIndex((prev) => (prev + 1) % tracks.length)
-    }
-    setIsPlaying(true)
+    playNext()
   }
 
   function handlePrevTrack() {
     if (tracks.length === 0) return
-    if (currentTime > 3) {
-      // If played more than 3 seconds, restart current track
-      if (audioRef.current) audioRef.current.currentTime = 0
-      setCurrentTime(0)
-    } else {
-      setCurrentTrackIndex((prev) => (prev === 0 ? tracks.length - 1 : prev - 1))
-      setIsPlaying(true)
-    }
-  }
-
-  function handleTimeUpdate() {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime)
-      if (audioRef.current.duration && isFinite(audioRef.current.duration)) {
-        setDuration(audioRef.current.duration)
-      }
-    }
+    playPrevious()
   }
 
   function handleSeek(e: React.ChangeEvent<HTMLInputElement>) {
     const target = parseFloat(e.target.value)
-    setCurrentTime(target)
-    if (audioRef.current) {
-      audioRef.current.currentTime = target
+    if (!isThisTrackActive && currentTrack) {
+      handlePlayTrack(currentTrackIndex)
     }
-  }
-
-  function handleTrackEnded() {
-    if (isLooping) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0
-        audioRef.current.play()
-      }
-    } else {
-      handleNextTrack()
-    }
+    seek(target)
   }
 
   function formatTime(secs: number) {
@@ -175,15 +171,6 @@ export function BandMusicPlayer({
 
   return (
     <div className="space-y-6">
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleTimeUpdate}
-        onEnded={handleTrackEnded}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-      />
 
       {/* ── HEADER TITLE ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -281,7 +268,6 @@ export function BandMusicPlayer({
               {/* Scrubber Timeline */}
               <div className="space-y-1.5">
                 <input
-                  ref={progressBarRef}
                   type="range"
                   min="0"
                   max={duration || currentTrack.durationSeconds || 100}
@@ -301,7 +287,7 @@ export function BandMusicPlayer({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsShuffled(!isShuffled)}
+                    onClick={toggleShuffle}
                     className={`p-2 rounded-lg text-xs transition-colors ${
                       isShuffled ? "text-[#20efe0] bg-[#20efe0]/15" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
                     }`}
@@ -311,7 +297,7 @@ export function BandMusicPlayer({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsLooping(!isLooping)}
+                    onClick={toggleLoop}
                     className={`p-2 rounded-lg text-xs transition-colors ${
                       isLooping ? "text-[#20efe0] bg-[#20efe0]/15" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
                     }`}
@@ -357,7 +343,7 @@ export function BandMusicPlayer({
                   <div className="hidden sm:flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setIsMuted(!isMuted)}
+                      onClick={toggleMute}
                       className="p-2 text-[#9a9fc4] hover:text-[#f5f7ff]"
                     >
                       {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -370,7 +356,6 @@ export function BandMusicPlayer({
                       value={isMuted ? 0 : volume}
                       onChange={(e) => {
                         setVolume(parseFloat(e.target.value))
-                        setIsMuted(false)
                       }}
                       className="w-16 h-1.5 bg-[#20205a] rounded-lg appearance-none cursor-pointer accent-[#20efe0]"
                     />

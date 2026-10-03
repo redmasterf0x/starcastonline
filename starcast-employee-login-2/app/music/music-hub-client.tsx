@@ -25,6 +25,8 @@ import {
   Filter,
 } from "lucide-react"
 
+import { useGlobalAudio, type GlobalTrack } from "@/components/music/global-audio-context"
+
 const GENRES = ["All", "Rock", "Indie", "Metal", "Hip Hop", "Electronic", "Pop", "Country", "Acoustic", "Jazz"]
 
 interface MusicHubClientProps {
@@ -43,10 +45,7 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
   const [selectedGenre, setSelectedGenre] = useState("All")
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Floating Player Preview State
-  const [activeTrack, setActiveTrack] = useState<BandTrackItem | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const { currentTrack, isPlaying, playTrack, togglePlay } = useGlobalAudio()
 
   const filteredTracks = tracks.filter((t) => {
     const matchesGenre =
@@ -67,37 +66,48 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
   const trendingTracks = [...tracks].sort((a, b) => b.playCount - a.playCount).slice(0, 4)
 
   const handleTogglePreview = (track: BandTrackItem) => {
-    if (activeTrack?.id === track.id) {
-      if (isPlaying) {
-        audioRef.current?.pause()
-        setIsPlaying(false)
-      } else {
-        audioRef.current?.play()
-        setIsPlaying(true)
-      }
+    if (currentTrack?.id === track.id) {
+      togglePlay()
     } else {
-      setActiveTrack(track)
-      setIsPlaying(true)
-      if (audioRef.current) {
-        audioRef.current.src = track.audioUrl
-        audioRef.current.play().then(() => {
-          incrementTrackPlay(track.id)
-        }).catch(() => setIsPlaying(false))
+      const gTrack: GlobalTrack = {
+        id: track.id,
+        title: track.title,
+        audioUrl: track.audioUrl,
+        artistName: track.artistName,
+        bandName: track.bandName,
+        bandLogo: track.bandLogo,
+        coverArtUrl: track.coverArtUrl,
+        slug: track.slug,
+        bandSlug: track.bandSlug,
+        albumName: track.albumName,
+        producer: track.producer,
+        durationSeconds: track.durationSeconds,
+        allowDownload: track.allowDownload,
+        genre: track.genre,
       }
+      const queueList: GlobalTrack[] = filteredTracks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        audioUrl: t.audioUrl,
+        artistName: t.artistName,
+        bandName: t.bandName,
+        bandLogo: t.bandLogo,
+        coverArtUrl: t.coverArtUrl,
+        slug: t.slug,
+        bandSlug: t.bandSlug,
+        albumName: t.albumName,
+        producer: t.producer,
+        durationSeconds: t.durationSeconds,
+        allowDownload: t.allowDownload,
+        genre: t.genre,
+      }))
+      playTrack(gTrack, queueList)
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#05051f] text-[#f5f7ff] flex flex-col selection:bg-[#ea6f2a] selection:text-white">
+    <div className="min-h-screen bg-[#05051f] text-[#f5f7ff] flex flex-col selection:bg-[#ea6f2a] selection:text-white pb-24">
       <ResponsiveHeader currentPage="/music" />
-
-      {/* Hidden Global Audio Element for Quick Previews */}
-      <audio
-        ref={audioRef}
-        onEnded={() => setIsPlaying(false)}
-        onPause={() => setIsPlaying(false)}
-        onPlay={() => setIsPlaying(true)}
-      />
 
       {/* ── HERO BANNER ── */}
       <section className="relative overflow-hidden border-b border-[#20205a]/60 bg-gradient-to-b from-[#0c0c3f] via-[#080829] to-[#05051f] py-12 sm:py-20 px-4 sm:px-6">
@@ -158,7 +168,7 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
                   onClick={() => handleTogglePreview(trendingTracks[0])}
                   className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-[#ea6f2a] text-white flex items-center justify-center shadow-2xl transition-transform active:scale-95 hover:scale-110"
                 >
-                  {activeTrack?.id === trendingTracks[0].id && isPlaying ? (
+                  {currentTrack?.id === trendingTracks[0].id && isPlaying ? (
                     <Pause className="w-6 h-6 fill-current" />
                   ) : (
                     <Play className="w-6 h-6 fill-current ml-1" />
@@ -256,7 +266,7 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {filteredTracks.map((track) => {
-              const isThisPlaying = activeTrack?.id === track.id && isPlaying
+              const isThisPlaying = currentTrack?.id === track.id && isPlaying
               const cover = track.coverArtUrl || track.bandLogo || "/placeholder.svg"
 
               return (

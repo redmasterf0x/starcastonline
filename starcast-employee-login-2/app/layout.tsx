@@ -4,6 +4,8 @@ import { Montserrat, Geist_Mono } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
 import { SpaceflightTransitionProvider } from "@/components/spaceflight/spaceflight-transition-provider"
 import { CelestialRadar } from "@/components/spaceflight/celestial-radar"
+import { GlobalAudioProvider } from "@/components/music/global-audio-context"
+import { BottomAudioPlayer } from "@/components/music/bottom-audio-player"
 import "./globals.css"
 
 // Montserrat is the closest free match to the brand kit's Proxima Nova Bold.
@@ -355,11 +357,14 @@ export default function RootLayout({
         />
       </head>
       <body className={`font-sans antialiased`}>
-        <SpaceflightTransitionProvider>
-          {children}
-          <CelestialRadar />
-        </SpaceflightTransitionProvider>
-        <Toaster />
+        <GlobalAudioProvider>
+          <SpaceflightTransitionProvider>
+            {children}
+            <CelestialRadar />
+          </SpaceflightTransitionProvider>
+          <BottomAudioPlayer />
+          <Toaster />
+        </GlobalAudioProvider>
       </body>
     </html>
   )

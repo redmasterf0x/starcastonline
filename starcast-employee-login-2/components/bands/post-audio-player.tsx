@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { BandPostAudioTrack } from "@/app/actions/band-pages"
 
+import { useGlobalAudio, type GlobalTrack } from "@/components/music/global-audio-context"
+
 interface PostAudioPlayerProps {
   tracks: BandPostAudioTrack[]
   postType?: string
@@ -22,70 +24,76 @@ function formatDuration(secs?: number) {
 }
 
 export function PostAudioPlayer({ tracks, postType, bandName, bandLogo }: PostAudioPlayerProps) {
-  const [currentIdx, setCurrentIdx] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const {
+    currentTrack: globalTrack,
+    isPlaying: isGlobalPlaying,
+    currentTime: globalCurrentTime,
+    duration: globalDuration,
+    playTrack,
+    togglePlay: toggleGlobalPlay,
+    seek,
+  } = useGlobalAudio()
 
+  const [localIdx, setLocalIdx] = useState(0)
+
+  // Find if current playing track is in this post's tracklist
+  const matchedTrackIdx = tracks.findIndex(
+    (t) => t.audio_url === globalTrack?.audioUrl || (t.slug && t.slug === globalTrack?.slug)
+  )
+  const currentIdx = matchedTrackIdx >= 0 ? matchedTrackIdx : localIdx
   const currentTrack = tracks[currentIdx] || tracks[0]
 
-  useEffect(() => {
-    if (audioRef.current && currentTrack) {
-      audioRef.current.pause()
-      setIsPlaying(false)
-      setCurrentTime(0)
-    }
-  }, [currentIdx])
+  const isCurrentTrackPlaying = Boolean(
+    globalTrack &&
+    currentTrack &&
+    (globalTrack.audioUrl === currentTrack.audio_url || (globalTrack.slug && globalTrack.slug === currentTrack.slug)) &&
+    isGlobalPlaying
+  )
+
+  const isThisTrackActive = Boolean(
+    globalTrack &&
+    currentTrack &&
+    (globalTrack.audioUrl === currentTrack.audio_url || (globalTrack.slug && globalTrack.slug === currentTrack.slug))
+  )
+
+  const isPlaying = isCurrentTrackPlaying
+  const currentTime = isThisTrackActive ? globalCurrentTime : 0
+  const duration = isThisTrackActive && globalDuration > 0 ? globalDuration : (currentTrack?.duration_seconds || 0)
+
+  const toGlobalTrack = (t: BandPostAudioTrack): GlobalTrack => ({
+    id: t.slug || t.audio_url,
+    title: t.title,
+    audioUrl: t.audio_url,
+    artistName: t.artist_name || bandName,
+    bandName: bandName,
+    bandLogo: bandLogo,
+    coverArtUrl: t.cover_art_url || bandLogo,
+    slug: t.slug,
+    producer: t.producer,
+    durationSeconds: t.duration_seconds,
+    allowDownload: t.allow_download,
+  })
 
   const togglePlay = (index?: number) => {
-    if (index !== undefined && index !== currentIdx) {
-      setCurrentIdx(index)
-      setTimeout(() => {
-        audioRef.current?.play().then(() => setIsPlaying(true)).catch(() => {})
-      }, 50)
-      return
-    }
+    const targetIdx = index !== undefined ? index : currentIdx
+    const targetTrack = tracks[targetIdx]
+    if (!targetTrack) return
 
-    if (!audioRef.current) return
-    if (isPlaying) {
-      audioRef.current.pause()
-      setIsPlaying(false)
+    if (matchedTrackIdx === targetIdx) {
+      toggleGlobalPlay()
     } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
-    }
-  }
-
-  const handleTimeUpdate = () => {
-    if (!audioRef.current) return
-    setCurrentTime(audioRef.current.currentTime)
-    if (!duration && audioRef.current.duration) {
-      setDuration(audioRef.current.duration)
-    }
-  }
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current && audioRef.current.duration) {
-      setDuration(audioRef.current.duration)
+      setLocalIdx(targetIdx)
+      const gQueue = tracks.map(toGlobalTrack)
+      playTrack(toGlobalTrack(targetTrack), gQueue)
     }
   }
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value)
-    setCurrentTime(val)
-    if (audioRef.current) audioRef.current.currentTime = val
-  }
-
-  const handleEnded = () => {
-    if (currentIdx < tracks.length - 1) {
-      setCurrentIdx((prev) => prev + 1)
-      setTimeout(() => {
-        audioRef.current?.play().then(() => setIsPlaying(true)).catch(() => {})
-      }, 50)
-    } else {
-      setIsPlaying(false)
-      setCurrentTime(0)
+    if (!isThisTrackActive) {
+      togglePlay(currentIdx)
     }
+    seek(val)
   }
 
   if (!tracks || tracks.length === 0) return null
@@ -95,13 +103,6 @@ export function PostAudioPlayer({ tracks, postType, bandName, bandLogo }: PostAu
 
   return (
     <div className="rounded-2xl border border-[#20205a]/80 bg-[#05052d]/90 p-4 sm:p-5 space-y-3 shadow-xl">
-      <audio
-        ref={audioRef}
-        src={currentTrack.audio_url}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-      />
 
       {/* Track Player Header */}
       <div className="flex items-center gap-4">

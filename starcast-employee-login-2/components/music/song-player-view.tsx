@@ -67,15 +67,30 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString()
 }
 
+import { useGlobalAudio, type GlobalTrack } from "@/components/music/global-audio-context"
+
 export function SongPlayerView({ track, relatedTracks, initialComments, currentUser }: SongPlayerViewProps) {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(track.durationSeconds || 0)
-  const [volume, setVolume] = useState(0.9)
-  const [isMuted, setIsMuted] = useState(false)
-  const [isLooping, setIsLooping] = useState(false)
-  const [playCount, setPlayCount] = useState(track.playCount || 0)
-  const [hasLoggedPlay, setHasLoggedPlay] = useState(false)
+  const {
+    currentTrack,
+    isPlaying: isGlobalPlaying,
+    currentTime: globalCurrentTime,
+    duration: globalDuration,
+    volume,
+    isMuted,
+    isLooping,
+    playTrack,
+    togglePlay: toggleGlobalPlay,
+    seek,
+    setVolume,
+    toggleMute,
+    toggleLoop,
+  } = useGlobalAudio()
+
+  const isCurrentTrack = currentTrack?.id === track.id
+  const isPlaying = isCurrentTrack && isGlobalPlaying
+  const currentTime = isCurrentTrack ? globalCurrentTime : 0
+  const duration = isCurrentTrack && globalDuration > 0 ? globalDuration : (track.durationSeconds || 0)
+
   const [copied, setCopied] = useState(false)
 
   // Comments state
@@ -84,66 +99,53 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
   const [submittingComment, setSubmittingComment] = useState(false)
   const [commentError, setCommentError] = useState("")
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const progressBarRef = useRef<HTMLInputElement | null>(null)
-
-  useEffect(() => {
-    if (!audioRef.current) return
-    audioRef.current.volume = isMuted ? 0 : volume
-  }, [volume, isMuted])
-
   // Toggle play/pause
   const togglePlay = () => {
-    if (!audioRef.current) return
-    if (isPlaying) {
-      audioRef.current.pause()
-      setIsPlaying(false)
+    if (isCurrentTrack) {
+      toggleGlobalPlay()
     } else {
-      audioRef.current.play().then(() => {
-        setIsPlaying(true)
-        if (!hasLoggedPlay) {
-          setHasLoggedPlay(true)
-          setPlayCount((prev) => prev + 1)
-          incrementTrackPlay(track.id)
-        }
-      }).catch((err) => {
-        console.error("Audio playback error:", err)
-      })
-    }
-  }
-
-  const handleTimeUpdate = () => {
-    if (!audioRef.current) return
-    setCurrentTime(audioRef.current.currentTime)
-    if (!duration && audioRef.current.duration) {
-      setDuration(audioRef.current.duration)
-    }
-  }
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current && audioRef.current.duration) {
-      setDuration(audioRef.current.duration)
+      const gTrack: GlobalTrack = {
+        id: track.id,
+        title: track.title,
+        audioUrl: track.audioUrl,
+        artistName: track.artistName,
+        bandName: track.bandName,
+        bandLogo: track.bandLogo,
+        coverArtUrl: track.coverArtUrl,
+        slug: track.slug,
+        bandSlug: track.bandSlug,
+        albumName: track.albumName,
+        producer: track.producer,
+        durationSeconds: track.durationSeconds,
+        allowDownload: track.allowDownload,
+        genre: track.genre,
+      }
+      const queueList: GlobalTrack[] = [track, ...relatedTracks].map((t) => ({
+        id: t.id,
+        title: t.title,
+        audioUrl: t.audioUrl,
+        artistName: t.artistName,
+        bandName: t.bandName,
+        bandLogo: t.bandLogo,
+        coverArtUrl: t.coverArtUrl,
+        slug: t.slug,
+        bandSlug: t.bandSlug,
+        albumName: t.albumName,
+        producer: t.producer,
+        durationSeconds: t.durationSeconds,
+        allowDownload: t.allowDownload,
+        genre: t.genre,
+      }))
+      playTrack(gTrack, queueList)
     }
   }
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const target = Number(e.target.value)
-    setCurrentTime(target)
-    if (audioRef.current) {
-      audioRef.current.currentTime = target
+    if (!isCurrentTrack) {
+      togglePlay()
     }
-  }
-
-  const handleEnded = () => {
-    if (isLooping) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0
-        audioRef.current.play()
-      }
-    } else {
-      setIsPlaying(false)
-      setCurrentTime(0)
-    }
+    seek(target)
   }
 
   const handleShare = () => {
@@ -215,18 +217,8 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
   const artwork = track.coverArtUrl || track.bandLogo || "/placeholder.svg"
 
   return (
-    <div className="min-h-screen bg-[#05051f] text-[#f5f7ff] flex flex-col selection:bg-[#ea6f2a] selection:text-white">
+    <div className="min-h-screen bg-[#05051f] text-[#f5f7ff] flex flex-col selection:bg-[#ea6f2a] selection:text-white pb-24">
       <ResponsiveHeader currentPage="/music" />
-
-      {/* Hidden Audio Element */}
-      <audio
-        ref={audioRef}
-        src={track.audioUrl}
-        preload="metadata"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-      />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-12">
         {/* Navigation Breadcrumb */}
@@ -378,7 +370,6 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                 <div className="space-y-1.5">
                   <div className="relative group/bar flex items-center">
                     <input
-                      ref={progressBarRef}
                       type="range"
                       min={0}
                       max={duration || 100}
@@ -395,7 +386,7 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                     <span>{formatDuration(currentTime)}</span>
                     <div className="flex items-center gap-2">
                       <span className="flex items-center gap-1 text-[#20efe0]">
-                        <Headphones className="w-3.5 h-3.5" /> {playCount} streams
+                        <Headphones className="w-3.5 h-3.5" /> {track.playCount} streams
                       </span>
                       <span>/</span>
                       <span>{formatDuration(duration)}</span>
@@ -414,7 +405,7 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                     </button>
 
                     <button
-                      onClick={() => setIsLooping(!isLooping)}
+                      onClick={toggleLoop}
                       className={`p-2.5 rounded-xl border transition-colors ${
                         isLooping
                           ? "bg-[#20efe0]/20 border-[#20efe0] text-[#20efe0]"
@@ -429,7 +420,7 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                   {/* Volume Slider */}
                   <div className="flex items-center gap-2.5 w-full sm:w-44">
                     <button
-                      onClick={() => setIsMuted(!isMuted)}
+                      onClick={toggleMute}
                       className="text-[#9a9fc4] hover:text-[#f5f7ff]"
                     >
                       {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -442,7 +433,6 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                       value={isMuted ? 0 : volume}
                       onChange={(e) => {
                         setVolume(Number(e.target.value))
-                        setIsMuted(false)
                       }}
                       className="w-full h-1.5 rounded-lg bg-[#20205a] accent-[#ea6f2a] cursor-pointer"
                     />
