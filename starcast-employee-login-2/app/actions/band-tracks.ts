@@ -2,9 +2,10 @@
 
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { bands, bandTracks, trackComments, profiles } from "@/lib/db/schema"
+import { bands, bandTracks, bandPosts, trackComments, profiles } from "@/lib/db/schema"
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm"
 import { headers } from "next/headers"
+import { revalidatePath } from "next/cache"
 
 export interface BandTrackItem {
   id: string
@@ -432,6 +433,42 @@ export async function addBandTrack(bandId: string, input: TrackInput) {
       .set({ musicCatalogEnabled: true, updatedAt: new Date() })
       .where(eq(bands.id, bandId))
 
+    // Auto-broadcast new track to the band's fan feed
+    try {
+      const audioTrackPayload = {
+        id: newTrack.id,
+        title: newTrack.title,
+        audio_url: cleanAudioUrl,
+        duration_seconds: input.durationSeconds || 0,
+        artist_name: input.artistName?.trim() || band.name,
+        producer: input.producer?.trim() || undefined,
+        cover_art_url: input.coverArtUrl?.trim() || band.logoUrl || undefined,
+        allow_download: input.allowDownload !== false,
+        slug: uniqueSlug,
+      }
+
+      const postBody =
+        input.description?.trim() ||
+        `🎵 New release: "${input.title.trim()}" is now streaming on the soundstage!`
+
+      await db.insert(bandPosts).values({
+        bandId,
+        authorUserId: band.ownerUserId,
+        content: postBody,
+        postType: "audio",
+        images: input.coverArtUrl ? [input.coverArtUrl] : [],
+        audioTracks: [audioTrackPayload] as any,
+      })
+    } catch (postErr) {
+      console.error("Failed to auto-post track to band feed:", postErr)
+    }
+
+    if (band.slug) {
+      revalidatePath(`/bands/${band.slug}`)
+    }
+    revalidatePath("/community")
+    revalidatePath("/music")
+
     return { success: true, track: newTrack, slug: uniqueSlug }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to add track." }
@@ -572,6 +609,8 @@ export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput)
 
     let startPos = (currentTracks[0]?.position ?? -1) + 1
 
+    const albumAudioTracks = []
+
     for (const t of input.tracks) {
       if (!t.title?.trim() || !t.audioUrl?.trim()) continue
 
@@ -580,21 +619,36 @@ export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput)
       const randomSuffix = Math.random().toString(36).substring(2, 7)
       const uniqueSlug = `${baseSlug}-${randomSuffix}`
 
-      await db.insert(bandTracks).values({
-        bandId,
-        title: t.title.trim(),
+      const [newTrk] = await db
+        .insert(bandTracks)
+        .values({
+          bandId,
+          title: t.title.trim(),
+          slug: uniqueSlug,
+          artistName: t.artistName?.trim() || band.name || null,
+          producer: t.producer?.trim() || input.producer?.trim() || null,
+          audioUrl: cleanAudioUrl,
+          durationSeconds: t.durationSeconds || 0,
+          albumName: input.albumTitle.trim(),
+          coverArtUrl: input.coverArtUrl?.trim() || null,
+          releaseYear: input.releaseYear?.trim() || new Date().getFullYear().toString(),
+          genre: input.genre?.trim() || null,
+          lyrics: t.lyrics?.trim() || null,
+          allowDownload: input.allowDownload !== false,
+          position: startPos++,
+        })
+        .returning()
+
+      albumAudioTracks.push({
+        id: newTrk.id,
+        title: newTrk.title,
+        audio_url: cleanAudioUrl,
+        duration_seconds: t.durationSeconds || 0,
+        artist_name: t.artistName?.trim() || band.name,
+        producer: t.producer?.trim() || input.producer?.trim() || undefined,
+        cover_art_url: input.coverArtUrl?.trim() || band.logoUrl || undefined,
+        allow_download: input.allowDownload !== false,
         slug: uniqueSlug,
-        artistName: t.artistName?.trim() || band.name || null,
-        producer: t.producer?.trim() || input.producer?.trim() || null,
-        audioUrl: cleanAudioUrl,
-        durationSeconds: t.durationSeconds || 0,
-        albumName: input.albumTitle.trim(),
-        coverArtUrl: input.coverArtUrl?.trim() || null,
-        releaseYear: input.releaseYear?.trim() || new Date().getFullYear().toString(),
-        genre: input.genre?.trim() || null,
-        lyrics: t.lyrics?.trim() || null,
-        allowDownload: input.allowDownload !== false,
-        position: startPos++,
       })
     }
 
@@ -607,7 +661,30 @@ export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput)
       })
       .where(eq(bands.id, bandId))
 
-    return { success: true, count: input.tracks.length }
+    // Auto-broadcast new album drop to the band's fan feed
+    if (albumAudioTracks.length > 0) {
+      try {
+        const postBody = `💿 New album release: "${input.albumTitle.trim()}" (${albumAudioTracks.length} tracks) is now streaming!`
+        await db.insert(bandPosts).values({
+          bandId,
+          authorUserId: band.ownerUserId,
+          content: postBody,
+          postType: "album",
+          images: input.coverArtUrl ? [input.coverArtUrl] : [],
+          audioTracks: albumAudioTracks as any,
+        })
+      } catch (postErr) {
+        console.error("Failed to auto-post album to band feed:", postErr)
+      }
+    }
+
+    if (band.slug) {
+      revalidatePath(`/bands/${band.slug}`)
+    }
+    revalidatePath("/community")
+    revalidatePath("/music")
+
+    return { success: true, count: albumAudioTracks.length }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to release album." }
   }

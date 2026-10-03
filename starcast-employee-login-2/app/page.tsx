@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
 import { ResponsiveHeader } from "@/components/responsive-header"
@@ -28,6 +29,35 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+
+export const metadata: Metadata = {
+  title: "StarCast Media | #1 Topeka Media Company & YouTube Broadcast Studio",
+  description:
+    "StarCast Media is Topeka's premier local media company, YouTube broadcast network, and video production studio. Stream original podcasts, uncut shows, live soundstage sessions, and discover local business advertising in Topeka, KS.",
+  keywords: [
+    "topeka media company",
+    "media company topeka",
+    "youtube media company topeka",
+    "local media company topeka",
+    "media company in topeka kansas",
+    "topeka media production",
+    "video production company topeka",
+    "topeka broadcasting company",
+    "podcast studio topeka",
+    "topeka recording studio",
+    "starcast media",
+    "starcast online",
+    "starcast live media",
+    "@starcastlivemedia",
+    "best media company in topeka",
+    "kansas media company",
+    "topeka soundstage",
+    "independent media topeka",
+  ],
+  alternates: {
+    canonical: "https://starcast.online",
+  },
+}
 
 const CHANNEL_URL = "https://www.youtube.com/channel/UCZ3dy9aqC46t33dzbBSmNjw"
 const playlistUrl = (id: string) => `https://www.youtube.com/playlist?list=${id}`
@@ -202,9 +232,9 @@ export default async function HomePage() {
                       <Badge className="bg-[#22b573] text-black font-black uppercase tracking-wider text-xs px-3 py-1 shadow-lg">
                         LATEST STORY
                       </Badge>
-                      {latestArticle.tags?.[0] && (
+                      {(latestArticle.tags as string[] | undefined)?.[0] && (
                         <Badge variant="outline" className="bg-[#05051f]/80 backdrop-blur-md border-white/20 text-[#f5f7ff] text-xs px-2.5 py-1">
-                          {latestArticle.tags[0]}
+                          {(latestArticle.tags as string[])[0]}
                         </Badge>
                       )}
                     </div>
@@ -256,7 +286,7 @@ export default async function HomePage() {
                 </Link>
 
                 {/* Secondary Stories / Dispatch Column (Right / 5 cols) */}
-                <div className="lg:col-span-5 flex flex-col gap-4">
+                <div className="lg:col-span-5 flex flex-col gap-4 justify-start">
                   <div className="flex items-center justify-between pb-1">
                     <span className="text-xs font-mono font-bold tracking-wider text-[#9a9fc4] uppercase">
                       Recent Dispatches
@@ -274,10 +304,10 @@ export default async function HomePage() {
                       <Link
                         key={art.id}
                         href={`/articles/${art.slug || art.id}`}
-                        className="group flex-1 rounded-2xl border border-[#20205a]/70 bg-[#0c0c3f]/60 hover:bg-[#0c0c3f]/90 hover:border-[#22b573]/60 p-4 sm:p-5 transition-all duration-200 flex gap-4 items-start shadow-md hover:shadow-lg"
+                        className="group rounded-2xl border border-[#20205a]/70 bg-[#0c0c3f]/60 hover:bg-[#0c0c3f]/90 hover:border-[#22b573]/60 p-4 sm:p-5 transition-all duration-200 flex gap-4 items-start shadow-md hover:shadow-lg h-auto"
                       >
                         {art.thumbnailUrl || (art.images as any[])?.[0]?.url ? (
-                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 bg-[#05052d] border border-[#20205a]">
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 aspect-square rounded-xl overflow-hidden shrink-0 bg-[#05052d] border border-[#20205a]">
                             <img
                               src={art.thumbnailUrl || (art.images as any[])?.[0]?.url}
                               alt={art.title}
@@ -285,7 +315,7 @@ export default async function HomePage() {
                             />
                           </div>
                         ) : (
-                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-[#05052d] border border-[#20205a] flex items-center justify-center shrink-0 text-[#22b573]">
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 aspect-square rounded-xl bg-[#05052d] border border-[#20205a] flex items-center justify-center shrink-0 text-[#22b573]">
                             <FileText className="w-7 h-7" />
                           </div>
                         )}

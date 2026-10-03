@@ -225,7 +225,7 @@ export const FALLBACK_WATCH_VIDEOS: WatchVideo[] = [
     duration: "44:37",
     views: "89 views",
     timeAgo: "2 months ago",
-    thumbnail: "https://i.ytimg.com/vi/Hefw7zEuzx8/hqdefault.jpg",
+    thumbnail: "https://i.ytimg.com/vi/r19c5i8hN3w/hqdefault.jpg",
   },
   {
     id: "KxLwH3oFfoc",

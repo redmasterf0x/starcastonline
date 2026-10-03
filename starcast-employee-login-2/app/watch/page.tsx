@@ -8,28 +8,50 @@ import { Footer } from "@/components/footer"
 export const revalidate = 1800 // Revalidate every 30 minutes
 
 export const metadata: Metadata = {
-  title: "Watch Shows & Live Broadcasts | StarCast Online | Starcast Media Topeka",
+  title: "Watch Topeka Shows & Live Broadcasts | StarCast Media YouTube Network",
   description:
-    "Stream uncut original shows, interviews, and soundstage music performances from StarCast Media (@starcastlivemedia). Featuring The Observation Deck, The Psyco G Spot, Star Talk, Talkin' With 40, and Hollywood: After Babylon.",
+    "Stream uncut podcasts, interviews, and soundstage music performances directly from StarCast Media (@starcastlivemedia) — Topeka's premier YouTube media company and video broadcast studio. Featuring The Observation Deck, The Psyco G Spot, Star Talk, Talkin' With 40, and Hollywood: After Babylon.",
+  keywords: [
+    "youtube media company topeka",
+    "watch starcast media",
+    "topeka media company",
+    "media company topeka",
+    "local media company topeka",
+    "topeka youtube broadcasts",
+    "the observation deck topeka",
+    "star talk topeka",
+    "the psyco g spot",
+    "talkin with 40",
+    "hollywood after babylon",
+    "live soundstage topeka",
+    "topeka podcast studio",
+    "streaming media topeka",
+    "kansas live media",
+  ],
+  alternates: {
+    canonical: "https://starcast.online/watch",
+  },
   openGraph: {
-    title: "Watch StarCast Online | Shows, Podcasts & Live Media",
+    title: "Watch Shows & Live Broadcasts | StarCast Media YouTube Network",
     description:
-      "Netflix-style broadcast portal pulling shows directly from @starcastlivemedia. Stream The Observation Deck, Psyco G Spot, Star Talk, and live music sessions.",
+      "Broadcast portal streaming directly from Topeka's premier media company @starcastlivemedia. Stream The Observation Deck, Psyco G Spot, Star Talk, and live soundstage sessions.",
     url: "https://starcast.online/watch",
-    siteName: "StarCast Online",
+    siteName: "StarCast Media | Topeka Media Company",
     images: [
       {
         url: "https://starcast.online/images/spacemanlogo.png",
         width: 1200,
         height: 630,
-        alt: "StarCast Online Watch Platform",
+        alt: "StarCast Media Watch Platform - Topeka Media Company",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Watch Shows & Live Streams | StarCast Online",
+    site: "@starcastlivemedia",
+    creator: "@starcastlivemedia",
+    title: "Watch Shows & Live Streams | StarCast Media Topeka",
     description:
       "Stream uncut podcasts, interviews, and soundstage music performances directly from @starcastlivemedia on StarCast Online.",
     images: ["https://starcast.online/images/spacemanlogo.png"],

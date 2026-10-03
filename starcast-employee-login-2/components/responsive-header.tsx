@@ -41,10 +41,12 @@ export function ResponsiveHeader({
       // Only fetch role details if props didn't already tell us
       if (!isAdminProp && !isCrewProp) {
         getMyProfile()
-          .then((profile) => {
+          .then((profile: any) => {
             if (profile) {
-              setIsAdmin(profile.isAdmin ?? false)
-              setIsCrew(profile.isEmployee ?? false)
+              const isAdminUser = Boolean(profile.isAdmin || profile.role === "admin")
+              const isCrewUser = Boolean(isAdminUser || profile.isEmployee || profile.role === "staff")
+              setIsAdmin(isAdminUser)
+              setIsCrew(isCrewUser)
             }
           })
           .catch(() => {
@@ -84,6 +86,7 @@ export function ResponsiveHeader({
     { href: "/community", label: "Community", show: true },
     { href: "/information", label: "Information", show: true },
     { href: "/merch", label: "Merch", show: true },
+    { href: "/production", label: "Production", show: isCrew || isAdmin },
     { href: "/dashboard", label: "Dashboard", show: loggedIn },
   ]
 

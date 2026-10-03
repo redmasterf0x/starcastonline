@@ -88,7 +88,7 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: verifyError } = await authClient.signIn.phoneNumber({
+      const { data, error: verifyError } = await (authClient.signIn as any).phoneNumber({
         phoneNumber,
         code: otp,
       })

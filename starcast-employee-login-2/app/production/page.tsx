@@ -96,14 +96,21 @@ const recurrenceOptions = [
 function formatDateTimeLocal(dateString: string | null) {
   if (!dateString) return ""
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) return ""
   const pad = (value: number) => String(value).padStart(2, "0")
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 function formatDateLocal(dateString: string | null) {
   if (!dateString) return ""
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) return ""
   const pad = (value: number) => String(value).padStart(2, "0")
+  // If stored as UTC midnight
+  if (dateString.includes("T00:00:00") || (dateString.endsWith("Z") && date.getUTCHours() === 0 && date.getUTCMinutes() === 0)) {
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
+  }
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
@@ -135,13 +142,20 @@ function nextOccurrence(date: Date, frequency: string, anchorDay: number) {
 function expandProductionOccurrences(production: Production) {
   if (!production.is_recurring || !production.recurrence_frequency || !production.recurrence_end_date) return [production]
 
-  const recurrenceEnd = new Date(`${formatDateLocal(production.recurrence_end_date)}T23:59:59`)
+  const rawEndDate = formatDateLocal(production.recurrence_end_date)
+  if (!rawEndDate) return [production]
+
+  const [endYear, endMonth, endDay] = rawEndDate.split("-").map(Number)
+  const recurrenceEnd = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
+
   const occurrences: Production[] = []
   const originalStart = new Date(production.start_date)
-  const duration = production.end_date ? new Date(production.end_date).getTime() - originalStart.getTime() : null
-  let occurrenceStart = originalStart
+  if (isNaN(originalStart.getTime())) return [production]
 
-  for (let index = 0; index < 500 && occurrenceStart <= recurrenceEnd; index += 1) {
+  const duration = production.end_date ? new Date(production.end_date).getTime() - originalStart.getTime() : null
+  let occurrenceStart = new Date(originalStart)
+
+  for (let index = 0; index < 500 && occurrenceStart.getTime() <= recurrenceEnd.getTime(); index += 1) {
     occurrences.push({
       ...production,
       id: index === 0 ? production.id : `${production.id}--occurrence-${index}`,
@@ -198,22 +212,38 @@ export default function ProductionPage() {
 
   useEffect(() => {
     const init = async () => {
-      await checkUserRole()
-      await fetchProductions()
-      await fetchRequests()
-      await fetchAllCrew()
+      const allowed = await checkUserRole()
+      if (allowed) {
+        await Promise.all([
+          fetchProductions(),
+          fetchRequests(),
+          fetchAllCrew(),
+        ])
+      }
     }
     init()
   }, [])
 
   const checkUserRole = async () => {
-  const viewer = await getProductionViewer()
-  if (viewer) {
+    try {
+      const viewer = await getProductionViewer()
+      if (!viewer) {
+        router.push("/login?redirect=/production")
+        return false
+      }
+      if (!viewer.is_employee && !viewer.is_admin) {
+        router.push("/dashboard")
+        return false
+      }
       setIsAdmin(viewer.is_admin || false)
       setIsCrew(viewer.is_employee || false)
       setCanManageCalendar(viewer.can_manage_calendar || false)
+      setLoading(false)
+      return true
+    } catch {
+      router.push("/login?redirect=/production")
+      return false
     }
-    setLoading(false)
   }
 
   const handleSignOut = async () => {
@@ -357,9 +387,10 @@ export default function ProductionPage() {
 
   const handleUpdateProduction = async () => {
     if (!selectedProduction || !validateForm()) return
+    const baseId = selectedProduction.id.split("--occurrence-")[0]
 
     try {
-      await updateProduction(selectedProduction.id, {
+      await updateProduction(baseId, {
         title: formData.title,
         description: formData.description || null,
         start_date: formData.start_date,
@@ -373,23 +404,24 @@ export default function ProductionPage() {
       toast({ title: "Success", description: "Production updated successfully" })
       setEditDialog(false)
       setSelectedProduction(null)
-      fetchProductions()
-    } catch {
-      toast({ title: "Error", description: "Failed to update production", variant: "destructive" })
+      await fetchProductions()
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to update production", variant: "destructive" })
     }
   }
 
   const handleDeleteProduction = async () => {
     if (!selectedProduction) return
+    const baseId = selectedProduction.id.split("--occurrence-")[0]
 
     try {
-      await deleteProduction(selectedProduction.id)
+      await deleteProduction(baseId)
       toast({ title: "Success", description: "Production deleted successfully" })
       setDeleteDialog(false)
       setSelectedProduction(null)
-      fetchProductions()
-    } catch {
-      toast({ title: "Error", description: "Failed to delete production", variant: "destructive" })
+      await fetchProductions()
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to delete production", variant: "destructive" })
     }
   }
 
@@ -446,23 +478,28 @@ export default function ProductionPage() {
   }
 
   const openEditDialog = (prod: Production) => {
-    setSelectedProduction(prod)
+    const baseId = prod.id.split("--occurrence-")[0]
+    const baseProd = productions.find((item) => item.id === baseId) || prod
+
+    setSelectedProduction(baseProd)
     setFormData({
-      title: prod.title,
-      description: prod.description || "",
-      start_date: formatDateTimeLocal(prod.start_date),
-      end_date: formatDateTimeLocal(prod.end_date),
-      location: prod.location || "",
-      status: prod.status,
-      is_recurring: prod.is_recurring,
-      recurrence_frequency: prod.recurrence_frequency || "",
-      recurrence_end_date: formatDateLocal(prod.recurrence_end_date),
+      title: baseProd.title,
+      description: baseProd.description || "",
+      start_date: formatDateTimeLocal(baseProd.start_date),
+      end_date: formatDateTimeLocal(baseProd.end_date),
+      location: baseProd.location || "",
+      status: baseProd.status,
+      is_recurring: baseProd.is_recurring,
+      recurrence_frequency: baseProd.recurrence_frequency || "",
+      recurrence_end_date: formatDateLocal(baseProd.recurrence_end_date),
     })
     setEditDialog(true)
   }
 
   const openDeleteDialog = (prod: Production) => {
-    setSelectedProduction(prod)
+    const baseId = prod.id.split("--occurrence-")[0]
+    const baseProd = productions.find((item) => item.id === baseId) || prod
+    setSelectedProduction(baseProd)
     setDeleteDialog(true)
   }
 

@@ -19,50 +19,70 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Starcast Media | Media & Advertising Company in Topeka, Kansas",
-    template: "%s | Starcast Media Topeka",
+    default: "StarCast Media | #1 Topeka Media Company & YouTube Broadcast Network | Topeka, KS",
+    template: "%s | StarCast Media Topeka | Topeka Media Company",
   },
-  description: "Starcast Media is Topeka's premier media production and advertising company. We offer live media production, video production, sports broadcasting, event coverage, and advertising services in Topeka, Kansas and surrounding areas.",
+  description:
+    "StarCast Media (@starcastlivemedia) is Topeka's leading local media company, YouTube broadcast network, and video production studio. We deliver uncut original talk shows, live music soundstages, sports broadcasting, podcast recordings, and targeted local advertising across Topeka, Kansas.",
   keywords: [
-    "media company Topeka",
-    "advertising company Topeka",
-    "media production Topeka Kansas",
-    "video production Topeka",
-    "Topeka advertising agency",
-    "live media production Kansas",
-    "sports broadcasting Topeka",
-    "event coverage Topeka",
-    "Starcast Media",
-    "Topeka media services",
-    "Kansas media company",
-    "advertising Topeka KS",
-    "media production company near me",
+    "topeka media company",
+    "media company topeka",
+    "youtube media company topeka",
+    "local media company topeka",
+    "media company in topeka kansas",
+    "topeka media production",
+    "video production company topeka",
+    "topeka broadcasting company",
+    "podcast studio topeka",
+    "topeka recording studio",
+    "topeka soundstage",
+    "topeka advertising agency",
+    "starcast media",
+    "starcast online",
+    "starcast live media",
+    "@starcastlivemedia",
+    "kansas media company",
+    "local broadcast network topeka",
+    "live streaming company topeka",
+    "midwest video production",
+    "topeka commercial production",
+    "shawnee county media company",
+    "independent media topeka",
+    "best media company in topeka",
+    "music video production topeka",
+    "sports broadcasting topeka ks",
+    "topeka digital media agency",
+    "topeka audio video production",
   ],
-  authors: [{ name: "Starcast Media" }],
-  creator: "Starcast Media",
-  publisher: "Starcast Media",
-  generator: "v0.app",
+  authors: [{ name: "StarCast Media", url: "https://starcast.online" }],
+  creator: "StarCast Media (@starcastlivemedia)",
+  publisher: "StarCast Media LLC",
+  generator: "Next.js",
   metadataBase: new URL("https://starcast.online"),
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://starcast.online",
-    siteName: "Starcast Media",
-    title: "Starcast Media | Media & Advertising Company in Topeka, Kansas",
-    description: "Topeka's premier media production and advertising company. Live media production, video production, sports broadcasting, and advertising services.",
+    siteName: "StarCast Media | Topeka Media Company",
+    title: "StarCast Media | #1 Topeka Media Company & YouTube Broadcast Network",
+    description:
+      "Topeka's premier local media company and YouTube studio. Live broadcasts, podcast soundstages, music performances, and targeted advertising in Topeka, Kansas.",
     images: [
       {
         url: "/images/spacemanlogo.png",
-        width: 800,
-        height: 800,
-        alt: "Starcast Media - Topeka Media Company",
+        width: 1200,
+        height: 1200,
+        alt: "StarCast Media - Topeka Media Company & YouTube Network",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Starcast Media | Media & Advertising in Topeka, KS",
-    description: "Topeka's premier media production and advertising company.",
+    site: "@starcastlivemedia",
+    creator: "@starcastlivemedia",
+    title: "StarCast Media | Topeka Media Company & YouTube Network",
+    description:
+      "Topeka's premier local media company & broadcast studio. Stream uncut shows, podcasts, and soundstage music in Topeka, KS.",
     images: ["/images/spacemanlogo.png"],
   },
   robots: {
@@ -80,11 +100,8 @@ export const metadata: Metadata = {
     icon: "/images/spacemanlogo.png",
     apple: "/images/spacemanlogo.png",
   },
-  verification: {
-    // Add your Google Search Console verification code here when you have it
-    // google: "your-google-verification-code",
-  },
-  category: "Media Production",
+  category: "Media Production & Broadcasting",
+  classification: "Media Company, Video Production, Broadcasting & Advertising",
   alternates: {
     canonical: "/",
     types: {
@@ -98,21 +115,38 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  // JSON-LD structured data for local business SEO
+  // JSON-LD structured data for local business SEO (Rich Snippets & Local Graph)
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "@id": "https://starcast.online",
-    name: "Starcast Media",
-    alternateName: "Starcast Live Media",
-    description: "Topeka's premier media production and advertising company offering live media production, video production, sports broadcasting, event coverage, and advertising services.",
+    "@type": ["LocalBusiness", "TelevisionStation", "RadioStation", "ProfessionalService", "Organization"],
+    "@id": "https://starcast.online/#organization",
+    name: "StarCast Media",
+    legalName: "StarCast Media LLC",
+    alternateName: [
+      "StarCast",
+      "Starcast Online",
+      "Starcast Live Media",
+      "StarCast Media Topeka",
+      "@starcastlivemedia",
+      "StarCast Broadcast Studio",
+    ],
+    description:
+      "Topeka's premier local media company, YouTube broadcast network, and video production studio offering multi-camera live streaming, podcast recording, soundstage performances, sports broadcasting, and local business advertising in Topeka, Kansas.",
     url: "https://starcast.online",
-    logo: "https://starcast.online/images/spacemanlogo.png",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://starcast.online/images/spacemanlogo.png",
+      width: "800",
+      height: "800",
+    },
     image: "https://starcast.online/images/spacemanlogo.png",
+    telephone: "+1-785-555-0100",
+    email: "contact@starcast.online",
     address: {
       "@type": "PostalAddress",
       addressLocality: "Topeka",
       addressRegion: "KS",
+      postalCode: "66603",
       addressCountry: "US",
     },
     geo: {
@@ -126,54 +160,87 @@ export default function RootLayout({
         name: "Topeka",
       },
       {
+        "@type": "AdministrativeArea",
+        name: "Shawnee County",
+      },
+      {
         "@type": "State",
         name: "Kansas",
       },
+      {
+        "@type": "Country",
+        name: "United States",
+      },
+    ],
+    sameAs: [
+      "https://www.youtube.com/@StarCastLiveMedia",
+      "https://www.youtube.com/channel/UCZ3dy9aqC46t33dzbBSmNjw",
+      "https://open.spotify.com/show/5gfZgUVxAdXLbZ1Ffb4uod",
+      "https://podcasts.apple.com/us/podcast/starcast-presents-the-observation-deck/id1896849212",
+      "https://starcast.online",
     ],
     knowsAbout: [
+      "Topeka Media Company",
+      "YouTube Media Company",
+      "Local Media Company Topeka",
       "Media Production",
       "Video Production",
+      "Podcast Studio Recording",
+      "Live Soundstage Streaming",
       "Sports Broadcasting",
       "Event Coverage",
-      "Live Streaming",
-      "Advertising",
+      "Local Business Advertising",
       "Digital Marketing",
       "Content Creation",
+      "Topeka Kansas Arts & Music",
     ],
     hasOfferCatalog: {
       "@type": "OfferCatalog",
-      name: "Media & Advertising Services",
+      name: "StarCast Media Production & Advertising Services",
       itemListElement: [
         {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Live Media Production",
-            description: "Professional multi-camera live broadcast production for sports, concerts, and events.",
+            name: "YouTube & Video Media Production",
+            description:
+              "High-definition multi-camera video production for YouTube shows, documentaries, commercials, and corporate video in Topeka, KS.",
           },
         },
         {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Video Production",
-            description: "High-quality video production for commercials, corporate videos, and promotional content.",
+            name: "Live Media Production & Streaming",
+            description:
+              "Professional live broadcast production for concerts, sports events, festivals, and press conferences in Topeka and across Kansas.",
           },
         },
         {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Advertising Services",
-            description: "Targeted advertising and sponsorship packages across Starcast Media network platforms.",
+            name: "Podcast Studio & Soundstage Recording",
+            description:
+              "State-of-the-art studio recording facility for audio and visual podcasts, interviews, and live soundstage acoustic performances.",
           },
         },
         {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Sports Broadcasting",
-            description: "Live play-by-play and color commentary sports broadcasting for high school, college, and semi-pro sports.",
+            name: "Local Business Advertising & Sponsorships",
+            description:
+              "Commercial ad spots, sponsored episode integrations, digital banner placements, and billboard sponsorships across StarCast Media platforms.",
+          },
+        },
+        {
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Service",
+            name: "Sports Broadcasting & Highlights",
+            description:
+              "Play-by-play and color commentary live broadcasting for Kansas high school, collegiate, and regional sporting events.",
           },
         },
       ],
@@ -184,27 +251,31 @@ export default function RootLayout({
         "@type": "OpeningHoursSpecification",
         dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
         opens: "08:00",
-        closes: "18:00",
+        closes: "20:00",
       },
       {
         "@type": "OpeningHoursSpecification",
-        dayOfWeek: ["Saturday"],
+        dayOfWeek: ["Saturday", "Sunday"],
         opens: "09:00",
-        closes: "15:00",
+        closes: "18:00",
       },
     ],
   }
 
-  // WebSite schema with Sitelinks - this is what Google uses to generate sitelinks
+  // WebSite schema with Sitelinks
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": "https://starcast.online/#website",
-    name: "Starcast Media",
-    alternateName: ["Starcast", "Starcast Live Media", "StarcastLiveMedia"],
+    name: "StarCast Media",
+    alternateName: ["Starcast", "StarCast Online", "Starcast Live Media", "StarcastLiveMedia", "Topeka Media Company"],
     url: "https://starcast.online",
-    description: "Topeka's premier media production and advertising company. Articles, shows, community, and more.",
+    description:
+      "Topeka's premier local media company and YouTube broadcasting studio. Watch original shows, listen to podcasts, read journalism, and book media production services.",
     inLanguage: "en-US",
+    publisher: {
+      "@id": "https://starcast.online/#organization",
+    },
     potentialAction: {
       "@type": "SearchAction",
       target: {
@@ -221,35 +292,45 @@ export default function RootLayout({
     "@type": "ItemList",
     itemListElement: [
       {
-        "@type": "SiteLinksSearchBox",
-        target: "https://starcast.online/articles?q={search_term_string}",
-      },
-      {
         "@type": "ListItem",
         position: 1,
-        name: "Articles",
-        description: "Sports coverage, analysis, and commentary from Starcast Media.",
-        url: "https://starcast.online/articles",
+        name: "Watch Broadcasts",
+        description: "Stream uncut original shows and live YouTube broadcasts from Topeka's premier media company.",
+        url: "https://starcast.online/watch",
       },
       {
         "@type": "ListItem",
         position: 2,
-        name: "Shows",
-        description: "Watch The Observation Deck, Star Talk, and more Starcast original shows.",
+        name: "Original Shows",
+        description: "Explore The Observation Deck, Star Talk, The Psyco G Spot, and Hollywood: After Babylon.",
         url: "https://starcast.online/shows",
       },
       {
         "@type": "ListItem",
         position: 3,
-        name: "Community",
-        description: "Join the Starcast Media community. Discuss sports, media, and more.",
-        url: "https://starcast.online/community",
+        name: "Articles & News",
+        description: "Local Kansas sports coverage, culture analysis, and media commentary from StarCast.",
+        url: "https://starcast.online/articles",
       },
       {
         "@type": "ListItem",
         position: 4,
-        name: "Information",
-        description: "Learn more about Starcast Media and our services.",
+        name: "Music & Artists",
+        description: "Spotlighting Topeka and Midwest independent bands, soundstage live takes, and discographies.",
+        url: "https://starcast.online/music",
+      },
+      {
+        "@type": "ListItem",
+        position: 5,
+        name: "Sponsor & Advertise",
+        description: "Grow your business with targeted local Topeka advertising, episode sponsorships, and commercials.",
+        url: "https://starcast.online/sponsors",
+      },
+      {
+        "@type": "ListItem",
+        position: 6,
+        name: "About StarCast Media",
+        description: "Learn about Topeka's leading media production company, studio facility, and broadcast network.",
         url: "https://starcast.online/information",
       },
     ],

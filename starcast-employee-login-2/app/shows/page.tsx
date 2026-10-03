@@ -1,7 +1,29 @@
+import type { Metadata } from "next"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { ShowRow, type ShowRowData } from "@/components/show-row"
 import { getPlaylistVideos } from "@/lib/youtube"
+
+export const metadata: Metadata = {
+  title: "Original Shows & Podcasts | StarCast Media Topeka",
+  description:
+    "Explore StarCast Media's original show lineup filmed live in Topeka, Kansas. Stream The Observation Deck, Star Talk, The Psyco G Spot, Hollywood: After Babylon, and Soundstage Live Performances.",
+  keywords: [
+    "topeka media company",
+    "topeka podcasts",
+    "topeka talk shows",
+    "starcast media shows",
+    "youtube media company topeka",
+    "the observation deck",
+    "star talk topeka",
+    "the psyco g spot",
+    "kansas podcast studio",
+    "topeka broadcasting",
+  ],
+  alternates: {
+    canonical: "https://starcast.online/shows",
+  },
+}
 
 const playlistUrl = (id: string) => `https://www.youtube.com/playlist?list=${id}`
 

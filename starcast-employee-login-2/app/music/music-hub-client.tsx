@@ -8,10 +8,8 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { UploadSongModal } from "@/components/music/upload-song-modal"
 import {
   Music,
-  Plus,
   Play,
   Pause,
   Search,
@@ -44,7 +42,6 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
   const [tracks, setTracks] = useState<BandTrackItem[]>(initialTracks)
   const [selectedGenre, setSelectedGenre] = useState("All")
   const [searchQuery, setSearchQuery] = useState("")
-  const [uploadModalOpen, setUploadModalOpen] = useState(false)
 
   // Floating Player Preview State
   const [activeTrack, setActiveTrack] = useState<BandTrackItem | null>(null)
@@ -116,27 +113,29 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
             </div>
 
             <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-[#f5f7ff] tracking-tight leading-tight">
-              Listen &amp; Release <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ea6f2a] via-[#ffd166] to-[#20efe0]">Original Music</span>
+              Discover &amp; Stream <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ea6f2a] via-[#ffd166] to-[#20efe0]">Original Music</span>
             </h1>
 
             <p className="text-sm sm:text-base text-[#9a9fc4] leading-relaxed">
-              Stream free original singles, studio cuts, and demo tapes from local artists and bands. Each song gets its own dedicated standalone player page!
+              Stream free original singles, studio cuts, and demo tapes from local artists and bands. Each release gets its own standalone music page and fan discussions.
             </p>
 
             <div className="pt-2 flex flex-col sm:flex-row items-center gap-3 justify-center md:justify-start">
               <Button
-                onClick={() => setUploadModalOpen(true)}
+                asChild
                 className="bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:opacity-90 text-white font-bold h-12 px-6 rounded-2xl shadow-xl shadow-[#ea6f2a]/25 w-full sm:w-auto"
               >
-                <Plus className="w-5 h-5 mr-2" /> Upload Song / Release
+                <Link href="/bands">
+                  <Disc3 className="w-5 h-5 mr-2" /> Explore Artist Soundstages
+                </Link>
               </Button>
               <Button
                 asChild
                 variant="outline"
                 className="border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/15 h-12 px-6 rounded-2xl w-full sm:w-auto font-semibold"
               >
-                <Link href="/bands">
-                  <Disc3 className="w-4 h-4 mr-2" /> Explore Artist Soundstages
+                <Link href="/portal">
+                  <Sliders className="w-4 h-4 mr-2" /> Artist Studio Portal
                 </Link>
               </Button>
             </div>
@@ -201,9 +200,8 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
 
       {/* ── MAIN CONTENT: SEARCH, FILTERS & TRACK GRID ── */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-        {/* Search & Genre Filters Bar */}
+        {/* Search Bar */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          {/* Search input */}
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-[#9a9fc4] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <Input
@@ -213,14 +211,6 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
               className="pl-10 h-11 border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] rounded-2xl text-xs sm:text-sm placeholder:text-[#7f84ad]"
             />
           </div>
-
-          {/* Quick upload button */}
-          <Button
-            onClick={() => setUploadModalOpen(true)}
-            className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-2xl h-11 px-5 shadow-md shadow-[#ea6f2a]/20 shrink-0 text-xs sm:text-sm"
-          >
-            <Plus className="w-4 h-4 mr-1.5" /> Upload Song
-          </Button>
         </div>
 
         {/* Genre Filter Pills */}
@@ -250,14 +240,16 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
             <p className="text-sm text-[#9a9fc4] max-w-md mx-auto">
               {searchQuery || selectedGenre !== "All"
                 ? "Try searching for a different song title or clearing your genre filter."
-                : "Be the first artist to upload a song on StarCast Online!"}
+                : "Artists and bands can upload songs directly from their Band Soundstage page or Artist Portal."}
             </p>
             <div className="pt-2">
               <Button
-                onClick={() => setUploadModalOpen(true)}
+                asChild
                 className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl text-xs sm:text-sm h-11 px-5"
               >
-                <Plus className="w-4 h-4 mr-1.5" /> Upload First Song
+                <Link href="/bands">
+                  <Disc3 className="w-4 h-4 mr-1.5" /> Explore Artist Pages
+                </Link>
               </Button>
             </div>
           </div>
@@ -348,12 +340,6 @@ export function MusicHubClient({ initialTracks }: MusicHubClientProps) {
           </div>
         )}
       </main>
-
-      {/* Upload Song Modal */}
-      <UploadSongModal
-        open={uploadModalOpen}
-        onOpenChange={setUploadModalOpen}
-      />
 
       <Footer />
     </div>

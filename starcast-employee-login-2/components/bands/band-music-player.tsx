@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
+  Plus,
   Play,
   Pause,
   SkipBack,
@@ -29,6 +30,8 @@ interface BandMusicPlayerProps {
   bandLogo?: string
   catalogTitle?: string | null
   tracks: BandTrackItem[]
+  isOwner?: boolean
+  onUploadClick?: () => void
 }
 
 export function BandMusicPlayer({
@@ -36,6 +39,8 @@ export function BandMusicPlayer({
   bandLogo,
   catalogTitle,
   tracks,
+  isOwner,
+  onUploadClick,
 }: BandMusicPlayerProps) {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -144,7 +149,28 @@ export function BandMusicPlayer({
   }
 
   if (!tracks || tracks.length === 0) {
-    return null
+    if (!isOwner) return null
+    return (
+      <div className="rounded-3xl border border-dashed border-[#ea6f2a]/40 bg-gradient-to-br from-[#0c0c3f]/90 via-[#080829] to-[#05051f] p-6 sm:p-8 text-center space-y-4 shadow-xl">
+        <div className="w-14 h-14 rounded-2xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 flex items-center justify-center mx-auto text-[#ea6f2a]">
+          <Disc3 className="w-7 h-7 animate-pulse" />
+        </div>
+        <div>
+          <h3 className="text-lg sm:text-xl font-black text-[#f5f7ff]">Release Your Original Music</h3>
+          <p className="text-xs sm:text-sm text-[#9a9fc4] max-w-md mx-auto mt-1">
+            Upload your studio tracks, singles, and MP3 cuts to give your soundstage a dedicated discography and stream on StarCast!
+          </p>
+        </div>
+        {onUploadClick && (
+          <Button
+            onClick={onUploadClick}
+            className="bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:opacity-95 text-white font-bold rounded-2xl h-11 px-6 shadow-lg shadow-[#ea6f2a]/25 text-xs sm:text-sm"
+          >
+            <Plus className="w-4 h-4 mr-1.5" /> Upload First Song
+          </Button>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -160,7 +186,7 @@ export function BandMusicPlayer({
       />
 
       {/* ── HEADER TITLE ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-[#ea6f2a]/20 border border-[#ea6f2a]/40 flex items-center justify-center text-[#ea6f2a]">
             <Disc3 className={`w-5 h-5 ${isPlaying ? "animate-spin text-[#20efe0]" : ""}`} />
@@ -175,10 +201,22 @@ export function BandMusicPlayer({
           </div>
         </div>
 
-        <Badge className="bg-[#05052d] text-[#20efe0] border border-[#20efe0]/40 font-mono text-xs hidden sm:flex items-center gap-1.5">
-          <Radio className="w-3.5 h-3.5 animate-pulse text-[#38ef7d]" />
-          <span>{tracks.length} {tracks.length === 1 ? "Track" : "Tracks"}</span>
-        </Badge>
+        <div className="flex items-center gap-2.5">
+          <Badge className="bg-[#05052d] text-[#20efe0] border border-[#20efe0]/40 font-mono text-xs hidden sm:flex items-center gap-1.5">
+            <Radio className="w-3.5 h-3.5 animate-pulse text-[#38ef7d]" />
+            <span>{tracks.length} {tracks.length === 1 ? "Track" : "Tracks"}</span>
+          </Badge>
+
+          {isOwner && onUploadClick && (
+            <Button
+              onClick={onUploadClick}
+              size="sm"
+              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold rounded-xl text-xs h-9 px-3.5 shadow-md shadow-[#ea6f2a]/20"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" /> Upload Song
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── ACTIVE SHOWCASE PLAYER ── */}

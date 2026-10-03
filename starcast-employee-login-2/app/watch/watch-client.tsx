@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
 import type { WatchVideo } from "@/lib/youtube"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,10 +20,8 @@ import {
   Eye,
   Tv,
   X,
-  Radio,
   SlidersHorizontal,
   Flame,
-  Volume2,
 } from "lucide-react"
 
 interface WatchClientProps {
@@ -48,7 +45,6 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
   const [selectedShow, setSelectedShow] = useState("all")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
-  const previousScrollY = useRef(0)
 
   useEffect(() => {
     setMounted(true)
@@ -79,6 +75,8 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
           thumbnail: `https://i.ytimg.com/vi/${videoParam}/hqdefault.jpg`,
         })
       }
+    } else {
+      setActiveVideo(null)
     }
   }, [searchParams, initialVideos])
 
@@ -516,7 +514,7 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0c0c3f] hover:bg-[#ea6f2a] text-[#20efe0] hover:text-white text-xs sm:text-sm font-semibold transition-all shrink-0 border border-white/10"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden xs:inline">Back to Browse</span>
+                <span className="hidden sm:inline">Back to Browse</span>
               </button>
               <Badge
                 variant="outline"
@@ -758,6 +756,7 @@ function VideoCarouselRow({
               onPlay={() => onPlay(video)}
               onShare={(e) => onShare(video, e)}
               copied={copiedId === video.id}
+              badgeColor={badgeColor}
             />
           </div>
         ))}
@@ -772,9 +771,10 @@ interface VideoCardProps {
   onPlay: () => void
   onShare: (e: React.MouseEvent) => void
   copied: boolean
+  badgeColor?: string
 }
 
-function VideoCard({ video, onPlay, onShare, copied }: VideoCardProps) {
+function VideoCard({ video, onPlay, onShare, copied, badgeColor }: VideoCardProps) {
   return (
     <div
       onClick={onPlay}
@@ -827,7 +827,16 @@ function VideoCard({ video, onPlay, onShare, copied }: VideoCardProps) {
       <div className="p-3.5 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#20efe0]">
+            <span
+              className={`text-[10px] font-bold uppercase tracking-wider ${
+                badgeColor
+                  ? badgeColor
+                      .split(" ")
+                      .filter((c) => c.startsWith("text-"))
+                      .join(" ") || "text-[#20efe0]"
+                  : "text-[#20efe0]"
+              }`}
+            >
               {video.show}
             </span>
             {video.timeAgo && (

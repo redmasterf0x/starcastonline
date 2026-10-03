@@ -15,7 +15,13 @@ import { LinkTree } from "@/components/LinkTree"
 import { BandTicketsWidget, type BandEventItem } from "@/components/bands/band-tickets-widget"
 import { BandMusicPlayer } from "@/components/bands/band-music-player"
 import { PostAudioPlayer } from "@/components/bands/post-audio-player"
-import type { BandTrackItem } from "@/app/actions/band-tracks"
+import { UploadSongModal } from "@/components/music/upload-song-modal"
+import {
+  type BandTrackItem,
+  addBandTrack,
+  releaseBandAlbum,
+  getBandTracks,
+} from "@/app/actions/band-tracks"
 import {
   Music,
   Share2,
@@ -109,6 +115,7 @@ export function BandPageClient({
   const [logoError, setLogoError] = useState(false)
   const [copied, setCopied] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [error, setError] = useState("")
   const [isFollowing, setIsFollowing] = useState(band.is_following)
   const [followerCount, setFollowerCount] = useState(band.follower_count)
@@ -150,7 +157,16 @@ export function BandPageClient({
   const albumCoverInputRef = useRef<HTMLInputElement>(null)
 
   async function refresh() {
-    setPosts(await getBandPosts(band.id))
+    try {
+      const [newPosts, newTracks] = await Promise.all([
+        getBandPosts(band.id),
+        getBandTracks(band.id),
+      ])
+      setPosts(newPosts)
+      setTracks(newTracks)
+    } catch (e) {
+      console.error("Failed to refresh band page data:", e)
+    }
   }
 
   function handleShare() {
@@ -411,55 +427,64 @@ export function BandPageClient({
     setPosting(true)
     setError("")
 
-    let finalPostType = postType
-    let audioTracksPayload: BandPostAudioTrack[] = []
-
-    if (postType === "audio") {
-      if (!songAudioUrl) {
-        setError("Please upload an MP3 audio file for your song post.")
-        setPosting(false)
-        return
-      }
-      audioTracksPayload = [
-        {
-          id: `trk_${Date.now()}`,
-          title: songTitle.trim() || "Untitled Release",
-          audio_url: songAudioUrl,
-          duration_seconds: songDuration || 180,
-          artist_name: band.name,
-          producer: songProducer.trim() || undefined,
-          cover_art_url: songCoverUrl || band.logo_url || undefined,
-          allow_download: true,
-        },
-      ]
-    } else if (postType === "album") {
-      if (albumTracks.length === 0) {
-        setError("Please upload at least one track for your album / EP release.")
-        setPosting(false)
-        return
-      }
-      audioTracksPayload = albumTracks.map((t, idx) => ({
-        id: t.id || `trk_${Date.now()}_${idx}`,
-        title: t.title.trim() || `Track ${idx + 1}`,
-        audio_url: t.audioUrl,
-        duration_seconds: t.durationSeconds || 180,
-        artist_name: band.name,
-        producer: (t.producer || albumProducer || "").trim() || undefined,
-        cover_art_url: albumCoverUrl || band.logo_url || undefined,
-        allow_download: true,
-      }))
-    } else if (postType === "image" && draftImages.length === 0 && !draft.trim()) {
-      setError("Please attach at least one photo or write a description.")
-      setPosting(false)
-      return
-    } else if (postType === "text" && !draft.trim()) {
-      setError("Please write something for your update.")
-      setPosting(false)
-      return
-    }
-
     try {
-      await createBandPost(band.id, draft, draftImages, finalPostType, audioTracksPayload)
+      if (postType === "audio") {
+        if (!songAudioUrl) {
+          setError("Please upload an MP3 audio file for your song post.")
+          setPosting(false)
+          return
+        }
+
+        const res = await addBandTrack(band.id, {
+          title: songTitle.trim() || "Untitled Release",
+          producer: songProducer.trim() || undefined,
+          audioUrl: songAudioUrl,
+          durationSeconds: songDuration || 180,
+          coverArtUrl: songCoverUrl || band.logo_url || undefined,
+          description: draft.trim() || undefined,
+          allowDownload: true,
+        })
+
+        if (!res.success) {
+          throw new Error(res.error || "Failed to release song.")
+        }
+      } else if (postType === "album") {
+        if (albumTracks.length === 0) {
+          setError("Please upload at least one track for your album / EP release.")
+          setPosting(false)
+          return
+        }
+
+        const res = await releaseBandAlbum(band.id, {
+          albumTitle: albumTitle.trim() || "Album Release",
+          producer: albumProducer.trim() || undefined,
+          coverArtUrl: albumCoverUrl || band.logo_url || undefined,
+          tracks: albumTracks.map((t) => ({
+            title: t.title.trim() || "Track",
+            audioUrl: t.audioUrl,
+            durationSeconds: t.durationSeconds || 180,
+            producer: (t.producer || albumProducer || "").trim() || undefined,
+          })),
+        })
+
+        if (!res.success) {
+          throw new Error(res.error || "Failed to release album.")
+        }
+      } else if (postType === "image") {
+        if (draftImages.length === 0 && !draft.trim()) {
+          setError("Please attach at least one photo or write a description.")
+          setPosting(false)
+          return
+        }
+        await createBandPost(band.id, draft, draftImages, "image", [])
+      } else {
+        if (!draft.trim()) {
+          setError("Please write something for your update.")
+          setPosting(false)
+          return
+        }
+        await createBandPost(band.id, draft, draftImages, "text", [])
+      }
 
       // Reset form
       setDraft("")
@@ -726,19 +751,16 @@ export function BandPageClient({
           </div>
         </section>
 
-        {/* Custom Links (Cosmic Linktree style) */}
-        {band.links && band.links.length > 0 && (
-          <LinkTree links={band.links.map((link: any) => ({ label: link.title, url: link.url }))} />
-        )}
-
         {/* Music Catalog & Audio Streaming Showcase */}
-        {((band.music_catalog_enabled && tracks.length > 0) || (band.is_owner && tracks.length > 0)) && (
+        {((band.music_catalog_enabled && tracks.length > 0) || band.is_owner) && (
           <section className="mb-10">
             <BandMusicPlayer
               bandName={band.name}
               bandLogo={band.logo_url}
               catalogTitle={band.music_catalog_title}
               tracks={tracks}
+              isOwner={band.is_owner}
+              onUploadClick={() => setUploadModalOpen(true)}
             />
           </section>
         )}
@@ -858,31 +880,35 @@ export function BandPageClient({
                 <span>Picture / Photo</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setPostType("audio")}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
-                  postType === "audio"
-                    ? "bg-[#20efe0] text-[#05051f] shadow-md font-bold"
-                    : "text-[#20efe0] hover:text-white hover:bg-[#20efe0]/10"
-                }`}
-              >
-                <Music className="w-4 h-4" />
-                <span>Song (MP3)</span>
-              </button>
+              {band.is_owner && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setPostType("audio")}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
+                      postType === "audio"
+                        ? "bg-[#20efe0] text-[#05051f] shadow-md font-bold"
+                        : "text-[#20efe0] hover:text-white hover:bg-[#20efe0]/10"
+                    }`}
+                  >
+                    <Music className="w-4 h-4" />
+                    <span>Song (MP3)</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setPostType("album")}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
-                  postType === "album"
-                    ? "bg-gradient-to-r from-[#20efe0] to-[#ffd166] text-[#05051f] shadow-md font-bold"
-                    : "text-[#ffd166] hover:text-white hover:bg-[#ffd166]/10"
-                }`}
-              >
-                <Disc3 className="w-4 h-4" />
-                <span>Multiple Songs / Album</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setPostType("album")}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 ${
+                      postType === "album"
+                        ? "bg-gradient-to-r from-[#20efe0] to-[#ffd166] text-[#05051f] shadow-md font-bold"
+                        : "text-[#ffd166] hover:text-white hover:bg-[#ffd166]/10"
+                    }`}
+                  >
+                    <Disc3 className="w-4 h-4" />
+                    <span>Multiple Songs / Album</span>
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Main Content / Description Input */}
@@ -1279,6 +1305,18 @@ export function BandPageClient({
           type: band.type,
         }}
       />
+
+      {/* Upload Song / Standalone Page Modal for Band Owner */}
+      {band.is_owner && (
+        <UploadSongModal
+          open={uploadModalOpen}
+          onOpenChange={setUploadModalOpen}
+          defaultBandId={band.id}
+          onSuccess={async () => {
+            await refresh()
+          }}
+        />
+      )}
     </div>
   )
 }

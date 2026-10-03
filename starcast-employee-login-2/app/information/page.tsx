@@ -29,7 +29,7 @@ export default function InformationPage() {
             setIsCrew(viewer.isEmployee)
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     } else if (session === null) {
       setCurrentUserId(null)
       setIsAdmin(false)
@@ -74,13 +74,13 @@ export default function InformationPage() {
 
         {/* Screen-only header */}
         <div className="text-center mb-12 print:hidden">
-          <img 
+          <img
             src={brandAssets.full.verticalWhiteBlackStroke || "/placeholder.svg"}
-            alt="Starcast Media" 
+            alt="Starcast Media"
             className="mx-auto mb-6 h-40 object-contain drop-shadow-2xl md:h-52"
           />
           <p className="text-xl text-[#f2a04a] italic">To media and beyond</p>
-          
+
           <div className="flex gap-3 justify-center mt-6">
             <Button
               onClick={handlePrintPage}

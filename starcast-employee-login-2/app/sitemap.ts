@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next"
 import { getApprovedArticlesForFeed } from "@/lib/articles-feed"
+import { listPublicBands } from "@/app/actions/band-pages"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://starcast.online"
@@ -14,10 +15,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${baseUrl}/articles/${article.slug}`,
         lastModified: new Date(article.createdAt),
         changeFrequency: "weekly" as const,
-        priority: 0.7,
+        priority: 0.75,
       }))
   } catch {
     // Database unavailable — serve static routes only
+  }
+
+  // Fetch public bands for sitemap
+  let bandUrls: MetadataRoute.Sitemap = []
+  try {
+    const bands = await listPublicBands()
+    bandUrls = bands
+      .filter((b) => b.slug)
+      .map((b) => ({
+        url: `${baseUrl}/bands/${b.slug}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      }))
+  } catch {
+    // Fallback if band listing is unavailable
   }
 
   return [
@@ -25,13 +42,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: baseUrl,
       lastModified: new Date(),
       changeFrequency: "daily",
-      priority: 1,
+      priority: 1.0,
     },
     {
-      url: `${baseUrl}/articles`,
+      url: `${baseUrl}/watch`,
       lastModified: new Date(),
       changeFrequency: "daily",
-      priority: 0.9,
+      priority: 0.95,
     },
     {
       url: `${baseUrl}/shows`,
@@ -40,10 +57,58 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: `${baseUrl}/shows/theobservationdeck`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/shows/star-talk`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/shows/psyco-g-spot`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/shows/hollywood-after-babylon`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/articles`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/music`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/bands`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
+    {
       url: `${baseUrl}/community`,
       lastModified: new Date(),
       changeFrequency: "daily",
-      priority: 0.9,
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/sponsors`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
     },
     {
       url: `${baseUrl}/information`,
@@ -52,17 +117,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/shows/theobservationdeck`,
+      url: `${baseUrl}/merch`,
       lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/shows/star-talk`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
+      changeFrequency: "weekly",
+      priority: 0.7,
     },
     ...articleUrls,
+    ...bandUrls,
   ]
 }
+

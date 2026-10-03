@@ -1,4 +1,22 @@
+import type { Metadata } from "next"
 import { ShowLanding } from "@/components/show-landing"
+
+export const metadata: Metadata = {
+  title: "Star Talk | StarCast Media Topeka",
+  description:
+    "Star Talk on StarCast Media — in-depth spotlight conversations with creators, innovators, athletes, and personalities shaping Topeka, KS culture and beyond.",
+  keywords: [
+    "star talk topeka",
+    "star talk starcast",
+    "topeka interviews",
+    "topeka media company",
+    "topeka talk show",
+    "kansas podcast",
+  ],
+  alternates: {
+    canonical: "https://starcast.online/shows/star-talk",
+  },
+}
 
 export default function StarTalkPage() {
   return (

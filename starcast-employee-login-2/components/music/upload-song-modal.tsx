@@ -80,9 +80,12 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
 
   useEffect(() => {
     if (open) {
+      if (defaultBandId) {
+        setSelectedBandId(defaultBandId)
+      }
       loadBands()
     }
-  }, [open])
+  }, [open, defaultBandId])
 
   async function loadBands() {
     setLoadingBands(true)
@@ -94,13 +97,16 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
         logo_url: b.logo_url,
       }))
       setMyBands(formatted)
-      if (formatted.length > 0 && !selectedBandId) {
-        setSelectedBandId(formatted[0].id)
-        if (!form.artistName) {
+
+      const targetId = defaultBandId || selectedBandId || (formatted[0]?.id ?? "")
+      if (targetId) {
+        setSelectedBandId(targetId)
+        const targetBand = formatted.find((b) => b.id === targetId)
+        if (targetBand && !form.artistName) {
           setForm((prev) => ({
             ...prev,
-            artistName: formatted[0].name,
-            coverArtUrl: prev.coverArtUrl || formatted[0].logo_url || "",
+            artistName: targetBand.name,
+            coverArtUrl: prev.coverArtUrl || targetBand.logo_url || "",
           }))
         }
       }

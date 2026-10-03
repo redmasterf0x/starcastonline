@@ -1,4 +1,23 @@
+import type { Metadata } from "next"
 import { ShowLanding } from "@/components/show-landing"
+
+export const metadata: Metadata = {
+  title: "The Observation Deck | StarCast Media Topeka",
+  description:
+    "The flagship talk show of StarCast Media in Topeka, KS. Hosted by Dirty Dave, featuring in-depth interviews with Kansas hip-hop legends, artists, creators, and community leaders.",
+  keywords: [
+    "the observation deck",
+    "the observation deck topeka",
+    "dirty dave starcast",
+    "topeka media company",
+    "topeka podcast",
+    "topeka hip hop talk show",
+    "starcast media",
+  ],
+  alternates: {
+    canonical: "https://starcast.online/shows/theobservationdeck",
+  },
+}
 
 export default function ObservationDeckPage() {
   return (

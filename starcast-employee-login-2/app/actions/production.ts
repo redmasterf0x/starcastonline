@@ -9,7 +9,7 @@ import {
   productionRequests,
   profiles,
 } from "@/lib/db/schema"
-import { desc, asc, eq } from "drizzle-orm"
+import { desc, asc, eq, or } from "drizzle-orm"
 
 async function getSession() {
   return auth.api.getSession({ headers: await headers() })
@@ -27,19 +27,22 @@ async function requireCrew() {
     .select({
       isEmployee: profiles.isEmployee,
       isAdmin: profiles.isAdmin,
+      role: profiles.role,
       canManageCalendar: profiles.canManageCalendar,
     })
     .from(profiles)
     .where(eq(profiles.userId, userId))
     .limit(1)
   const p = rows[0]
-  if (!p || (!p.isEmployee && !p.isAdmin)) throw new Error("Forbidden")
-  return { userId, isAdmin: p.isAdmin, canManageCalendar: p.isAdmin || p.canManageCalendar }
+  const isAdmin = Boolean(p?.isAdmin || p?.role === "admin")
+  const isCrew = Boolean(isAdmin || p?.isEmployee || p?.role === "staff")
+  if (!p || !isCrew) throw new Error("Forbidden")
+  return { userId, isAdmin, isCrew, canManageCalendar: Boolean(isAdmin || isCrew || p.canManageCalendar) }
 }
 
 /**
  * Requires the viewer to be staff AND have permission to add/edit calendar
- * events. Admins always pass. Used for every calendar mutation.
+ * events. Admins and crew members have calendar access.
  */
 async function requireCalendarManager() {
   const crew = await requireCrew()
@@ -59,17 +62,20 @@ export async function getProductionViewer() {
     .select({
       isEmployee: profiles.isEmployee,
       isAdmin: profiles.isAdmin,
+      role: profiles.role,
       canManageCalendar: profiles.canManageCalendar,
     })
     .from(profiles)
     .where(eq(profiles.userId, session.user.id))
     .limit(1)
   const p = rows[0]
+  const isAdmin = Boolean((p?.isAdmin ?? false) || p?.role === "admin")
+  const isCrew = Boolean(isAdmin || (p?.isEmployee ?? false) || p?.role === "staff")
   return {
     userId: session.user.id,
-    is_admin: p?.isAdmin ?? false,
-    is_employee: p?.isEmployee ?? false,
-    can_manage_calendar: (p?.isAdmin ?? false) || (p?.canManageCalendar ?? false),
+    is_admin: isAdmin,
+    is_employee: isCrew,
+    can_manage_calendar: Boolean(isAdmin || isCrew || p?.canManageCalendar),
   }
 }
 
@@ -142,13 +148,13 @@ export async function listProductionRequests() {
   }))
 }
 
-/** All crew members (employees) for the assignment picker. */
+/** All crew members (employees & staff) for the assignment picker. */
 export async function listCrewMembers() {
   await requireCrew()
   const rows = await db
     .select()
     .from(profiles)
-    .where(eq(profiles.isEmployee, true))
+    .where(or(eq(profiles.isEmployee, true), eq(profiles.role, "staff"), eq(profiles.isAdmin, true), eq(profiles.role, "admin")))
     .orderBy(asc(profiles.firstName))
   return rows.map((p) => ({
     user_id: p.userId,
@@ -255,7 +261,16 @@ export async function createProduction(
 export async function updateProduction(id: string, input: ProductionInput) {
   await requireCalendarManager()
   validateProductionInput(input)
-  await db
+
+  const baseId = id.split("--occurrence-")[0]
+
+  let recurrenceEndDate: Date | null = null
+  if (input.is_recurring && input.recurrence_end_date) {
+    const rawDate = input.recurrence_end_date.slice(0, 10)
+    recurrenceEndDate = new Date(`${rawDate}T23:59:59.999Z`)
+  }
+
+  const result = await db
     .update(productions)
     .set({
       title: input.title,
@@ -266,19 +281,34 @@ export async function updateProduction(id: string, input: ProductionInput) {
       status: input.status,
       isRecurring: input.is_recurring ?? false,
       recurrenceFrequency: input.is_recurring ? input.recurrence_frequency || null : null,
-      recurrenceEndDate:
-        input.is_recurring && input.recurrence_end_date
-          ? new Date(input.recurrence_end_date)
-          : null,
+      recurrenceEndDate,
     })
-    .where(eq(productions.id, id))
+    .where(eq(productions.id, baseId))
+    .returning()
+
+  if (!result || result.length === 0) {
+    throw new Error("Production not found in database or could not be updated")
+  }
+
+  return {
+    id: result[0].id,
+    title: result[0].title,
+    start_date: iso(result[0].startDate),
+  }
 }
 
 /** Delete a production and its crew assignments. */
 export async function deleteProduction(id: string) {
   await requireCalendarManager()
-  await db.delete(productionCrew).where(eq(productionCrew.productionId, id))
-  await db.delete(productions).where(eq(productions.id, id))
+  const baseId = id.split("--occurrence-")[0]
+  await db.delete(productionCrew).where(eq(productionCrew.productionId, baseId))
+  const result = await db.delete(productions).where(eq(productions.id, baseId)).returning()
+
+  if (!result || result.length === 0) {
+    throw new Error("Production not found or could not be deleted")
+  }
+
+  return { success: true }
 }
 
 /** Submit a new production request (any signed-in user). */
