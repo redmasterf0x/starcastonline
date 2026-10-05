@@ -309,7 +309,7 @@ export async function getAllPublicTracks(options?: {
   limit?: number
 }): Promise<BandTrackItem[]> {
   try {
-    const limit = options?.limit || 60
+    const limit = options?.limit || 200
 
     let baseQuery = db
       .select({
@@ -318,7 +318,6 @@ export async function getAllPublicTracks(options?: {
       })
       .from(bandTracks)
       .leftJoin(bands, eq(bandTracks.bandId, bands.id))
-      .where(eq(bands.isPublic, true))
 
     const rows = await baseQuery
       .orderBy(desc(bandTracks.createdAt))
@@ -513,6 +512,9 @@ export async function updateBandTrack(trackId: string, input: Partial<TrackInput
       })
       .where(eq(bandTracks.id, trackId))
 
+    revalidatePath("/music")
+    revalidatePath("/community")
+
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to update track." }
@@ -535,6 +537,9 @@ export async function deleteBandTrack(trackId: string) {
     await verifyBandOwnershipOrAdmin(existing[0].bandId)
 
     await db.delete(bandTracks).where(eq(bandTracks.id, trackId))
+
+    revalidatePath("/music")
+    revalidatePath("/community")
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to delete track." }

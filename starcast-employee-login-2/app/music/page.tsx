@@ -12,8 +12,10 @@ export const metadata: Metadata = {
   },
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function MusicPage() {
-  const tracks = await getAllPublicTracks({ limit: 100 })
+  const tracks = await getAllPublicTracks({ limit: 500 })
 
   return <MusicHubClient initialTracks={tracks} />
 }
