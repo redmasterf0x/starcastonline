@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { bands, bandPosts, bandPostComments, bandFollows, profiles } from "@/lib/db/schema"
+import { bands, bandPosts, bandPostComments, bandFollows, bandTracks, profiles } from "@/lib/db/schema"
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
@@ -518,6 +518,18 @@ export async function getBandPosts(bandId: string): Promise<BandPost[]> {
   }))
 }
 
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\-]+/g, "")
+    .replace(/\-\-+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "")
+}
+
 /**
  * Start a new thread on a band's discussion board. Open to any signed-in,
  * non-banned member — not just the band owner — so the board works like a
@@ -547,8 +559,64 @@ export async function createBandPost(
     images,
     audioTracks: audioTracks as any,
   })
+
+  // If audio tracks were included, automatically ensure they are registered in band_tracks catalog
+  if (Array.isArray(audioTracks) && audioTracks.length > 0) {
+    try {
+      for (const t of audioTracks) {
+        if (!t.audio_url) continue
+        const cleanUrl = t.audio_url.trim()
+        const trackTitle = (t.title || "Untitled Track").trim()
+        
+        // Check if track already exists for this band with the same audio URL
+        const existing = await db
+          .select({ id: bandTracks.id })
+          .from(bandTracks)
+          .where(and(eq(bandTracks.bandId, bandId), eq(bandTracks.audioUrl, cleanUrl)))
+          .limit(1)
+
+        if (existing.length === 0) {
+          const baseSlug = slugify(trackTitle) || "track"
+          const randomSuffix = Math.random().toString(36).substring(2, 7)
+          const uniqueSlug = `${baseSlug}-${randomSuffix}`
+
+          const posRows = await db
+            .select({ position: bandTracks.position })
+            .from(bandTracks)
+            .where(eq(bandTracks.bandId, bandId))
+            .orderBy(desc(bandTracks.position))
+            .limit(1)
+
+          const nextPos = (posRows[0]?.position ?? -1) + 1
+
+          await db.insert(bandTracks).values({
+            bandId,
+            title: trackTitle,
+            slug: uniqueSlug,
+            artistName: t.artist_name || band.name || null,
+            producer: t.producer || null,
+            audioUrl: cleanUrl,
+            durationSeconds: t.duration_seconds || 0,
+            coverArtUrl: t.cover_art_url || band.logoUrl || null,
+            allowDownload: t.allow_download !== false,
+            position: nextPos,
+          })
+        }
+      }
+
+      // Ensure catalog is turned on for the act
+      await db
+        .update(bands)
+        .set({ musicCatalogEnabled: true, updatedAt: new Date() })
+        .where(eq(bands.id, bandId))
+    } catch (trackSyncErr) {
+      console.error("Failed to auto-sync tracks to band_tracks:", trackSyncErr)
+    }
+  }
+
   if (band.slug) revalidatePath(`/bands/${band.slug}`)
   revalidatePath("/community")
+  revalidatePath("/music")
   return { success: true }
 }
 

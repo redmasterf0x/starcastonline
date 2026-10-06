@@ -153,31 +153,96 @@ export async function getBandTracks(bandId: string): Promise<BandTrackItem[]> {
       .where(eq(bandTracks.bandId, bandId))
       .orderBy(asc(bandTracks.position), asc(bandTracks.createdAt))
 
-    return rows.map(({ track: t, band: b }) => ({
-      id: t.id,
-      bandId: t.bandId,
-      title: t.title,
-      slug: t.slug,
-      artistName: t.artistName || b?.name || null,
-      producer: t.producer,
-      featuredArtists: t.featuredArtists,
-      audioUrl: t.audioUrl,
-      durationSeconds: t.durationSeconds || 0,
-      albumName: t.albumName,
-      coverArtUrl: t.coverArtUrl || b?.logoUrl || null,
-      releaseYear: t.releaseYear,
-      genre: t.genre || b?.genre || null,
-      description: t.description,
-      lyrics: t.lyrics,
-      allowDownload: t.allowDownload,
-      playCount: t.playCount || 0,
-      position: t.position || 0,
-      createdAt: t.createdAt.toISOString(),
-      updatedAt: t.updatedAt.toISOString(),
-      bandName: b?.name,
-      bandSlug: b?.slug,
-      bandLogo: b?.logoUrl || undefined,
-    }))
+    const existingAudioUrls = new Set<string>()
+
+    const results: BandTrackItem[] = rows.map(({ track: t, band: b }) => {
+      existingAudioUrls.add(t.audioUrl.trim())
+      return {
+        id: t.id,
+        bandId: t.bandId,
+        title: t.title,
+        slug: t.slug,
+        artistName: t.artistName || b?.name || null,
+        producer: t.producer,
+        featuredArtists: t.featuredArtists,
+        audioUrl: t.audioUrl,
+        durationSeconds: t.durationSeconds || 0,
+        albumName: t.albumName,
+        coverArtUrl: t.coverArtUrl || b?.logoUrl || null,
+        releaseYear: t.releaseYear,
+        genre: t.genre || b?.genre || null,
+        description: t.description,
+        lyrics: t.lyrics,
+        allowDownload: t.allowDownload,
+        playCount: t.playCount || 0,
+        position: t.position || 0,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+        bandName: b?.name,
+        bandSlug: b?.slug,
+        bandLogo: b?.logoUrl || undefined,
+      }
+    })
+
+    // Also fetch any audio tracks attached to band_posts for this band
+    try {
+      const postRows = await db
+        .select({
+          post: bandPosts,
+          band: bands,
+        })
+        .from(bandPosts)
+        .leftJoin(bands, eq(bandPosts.bandId, bands.id))
+        .where(
+          and(
+            eq(bandPosts.bandId, bandId),
+            sql`${bandPosts.audioTracks} IS NOT NULL AND jsonb_array_length(${bandPosts.audioTracks}) > 0`
+          )
+        )
+        .orderBy(desc(bandPosts.createdAt))
+
+      for (const { post: p, band: b } of postRows) {
+        const rawTracks = p.audioTracks as any[]
+        if (Array.isArray(rawTracks)) {
+          for (let i = 0; i < rawTracks.length; i++) {
+            const rt = rawTracks[i]
+            const audioUrl = (rt.audio_url || rt.audioUrl || "").trim()
+            if (!audioUrl || existingAudioUrls.has(audioUrl)) continue
+
+            existingAudioUrls.add(audioUrl)
+            results.push({
+              id: rt.id || p.id,
+              bandId: p.bandId,
+              title: rt.title || "Untitled Track",
+              slug: rt.slug || null,
+              artistName: rt.artist_name || rt.artistName || b?.name || null,
+              producer: rt.producer || null,
+              featuredArtists: rt.featured_artists || rt.featuredArtists || null,
+              audioUrl: audioUrl,
+              durationSeconds: rt.duration_seconds || rt.durationSeconds || 0,
+              albumName: rt.album_name || rt.albumName || null,
+              coverArtUrl: rt.cover_art_url || rt.coverArtUrl || b?.logoUrl || null,
+              releaseYear: rt.release_year || rt.releaseYear || null,
+              genre: rt.genre || b?.genre || null,
+              description: p.content || null,
+              lyrics: rt.lyrics || null,
+              allowDownload: rt.allow_download !== false && rt.allowDownload !== false,
+              playCount: 0,
+              position: results.length,
+              createdAt: p.createdAt.toISOString(),
+              updatedAt: p.createdAt.toISOString(),
+              bandName: b?.name,
+              bandSlug: b?.slug,
+              bandLogo: b?.logoUrl || undefined,
+            })
+          }
+        }
+      }
+    } catch (postErr) {
+      console.error("Error loading post audio fallback:", postErr)
+    }
+
+    return results
   } catch (err) {
     console.error("Error loading band tracks:", err)
     return []
@@ -323,31 +388,90 @@ export async function getAllPublicTracks(options?: {
       .orderBy(desc(bandTracks.createdAt))
       .limit(limit)
 
-    let results = rows.map(({ track: t, band: b }) => ({
-      id: t.id,
-      bandId: t.bandId,
-      title: t.title,
-      slug: t.slug,
-      artistName: t.artistName || b?.name || null,
-      producer: t.producer,
-      featuredArtists: t.featuredArtists,
-      audioUrl: t.audioUrl,
-      durationSeconds: t.durationSeconds || 0,
-      albumName: t.albumName,
-      coverArtUrl: t.coverArtUrl || b?.logoUrl || null,
-      releaseYear: t.releaseYear,
-      genre: t.genre || b?.genre || null,
-      description: t.description,
-      lyrics: t.lyrics,
-      allowDownload: t.allowDownload,
-      playCount: t.playCount || 0,
-      position: t.position || 0,
-      createdAt: t.createdAt.toISOString(),
-      updatedAt: t.updatedAt.toISOString(),
-      bandName: b?.name,
-      bandSlug: b?.slug,
-      bandLogo: b?.logoUrl || undefined,
-    }))
+    const existingAudioUrls = new Set<string>()
+
+    let results: BandTrackItem[] = rows.map(({ track: t, band: b }) => {
+      existingAudioUrls.add(t.audioUrl.trim())
+      return {
+        id: t.id,
+        bandId: t.bandId,
+        title: t.title,
+        slug: t.slug,
+        artistName: t.artistName || b?.name || null,
+        producer: t.producer,
+        featuredArtists: t.featuredArtists,
+        audioUrl: t.audioUrl,
+        durationSeconds: t.durationSeconds || 0,
+        albumName: t.albumName,
+        coverArtUrl: t.coverArtUrl || b?.logoUrl || null,
+        releaseYear: t.releaseYear,
+        genre: t.genre || b?.genre || null,
+        description: t.description,
+        lyrics: t.lyrics,
+        allowDownload: t.allowDownload,
+        playCount: t.playCount || 0,
+        position: t.position || 0,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+        bandName: b?.name,
+        bandSlug: b?.slug,
+        bandLogo: b?.logoUrl || undefined,
+      }
+    })
+
+    // Fallback: Also gather audio tracks from band_posts so nothing is ever missed
+    try {
+      const audioPosts = await db
+        .select({
+          post: bandPosts,
+          band: bands,
+        })
+        .from(bandPosts)
+        .leftJoin(bands, eq(bandPosts.bandId, bands.id))
+        .where(sql`${bandPosts.audioTracks} IS NOT NULL AND jsonb_array_length(${bandPosts.audioTracks}) > 0`)
+        .orderBy(desc(bandPosts.createdAt))
+        .limit(100)
+
+      for (const { post: p, band: b } of audioPosts) {
+        const rawTracks = p.audioTracks as any[]
+        if (Array.isArray(rawTracks)) {
+          for (let i = 0; i < rawTracks.length; i++) {
+            const rt = rawTracks[i]
+            const audioUrl = (rt.audio_url || rt.audioUrl || "").trim()
+            if (!audioUrl || existingAudioUrls.has(audioUrl)) continue
+
+            existingAudioUrls.add(audioUrl)
+            results.push({
+              id: rt.id || p.id,
+              bandId: p.bandId,
+              title: rt.title || "Untitled Track",
+              slug: rt.slug || null,
+              artistName: rt.artist_name || rt.artistName || b?.name || null,
+              producer: rt.producer || null,
+              featuredArtists: rt.featured_artists || rt.featuredArtists || null,
+              audioUrl: audioUrl,
+              durationSeconds: rt.duration_seconds || rt.durationSeconds || 0,
+              albumName: rt.album_name || rt.albumName || null,
+              coverArtUrl: rt.cover_art_url || rt.coverArtUrl || b?.logoUrl || null,
+              releaseYear: rt.release_year || rt.releaseYear || null,
+              genre: rt.genre || b?.genre || null,
+              description: p.content || null,
+              lyrics: rt.lyrics || null,
+              allowDownload: rt.allow_download !== false && rt.allowDownload !== false,
+              playCount: 0,
+              position: results.length,
+              createdAt: p.createdAt.toISOString(),
+              updatedAt: p.createdAt.toISOString(),
+              bandName: b?.name,
+              bandSlug: b?.slug,
+              bandLogo: b?.logoUrl || undefined,
+            })
+          }
+        }
+      }
+    } catch (postErr) {
+      console.error("Error gathering post audio in getAllPublicTracks:", postErr)
+    }
 
     if (options?.genre && options.genre !== "all") {
       const g = options.genre.toLowerCase()
