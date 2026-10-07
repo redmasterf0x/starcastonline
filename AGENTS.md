@@ -28,7 +28,7 @@ sponsorships, and merch.
 | Email | Resend (`lib/email.ts`, from `noreply@starcast.online`) |
 | SMS | Twilio (`lib/sms.ts`, REST + Verify) |
 | Secondary store | Firebase Firestore (project `starcastonline-live`) — **support inbox only** |
-| Merch | Printify API (`lib/printify.ts`) |
+| Merch / Shop | Shopify Storefront API (`lib/shopify.ts`) |
 | Video | YouTube public RSS feeds/scraping (`lib/youtube.ts`, no API key needed) |
 
 Styling rules: see `.agents/rules/styling.md` and the `starcast-brand-design` / `tailwind-v4-shadcn` skills.
@@ -147,7 +147,7 @@ URLs: `NEXT_PUBLIC_BASE_URL`, `NEXT_PUBLIC_APP_URL`.
 Stripe: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
 Resend: `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`.
 Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `TWILIO_VERIFY_SERVICE_SID`.
-Other: `CRON_SECRET`, `PRINTIFY_API_TOKEN` (+ optional `PRINTIFY_SHOP_ID`), `FIREBASE_SERVICE_ACCOUNT_KEY` (local only).
+Other: `CRON_SECRET`, `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_STOREFRONT_ACCESS_TOKEN` (+ optional `NEXT_PUBLIC_SHOPIFY_STORE_URL`), `FIREBASE_SERVICE_ACCOUNT_KEY` (local only).
 Local values live in `starcast-employee-login-2/.env.local` (never commit/print secrets). Template: `.env.example`.
 Production values: `apphosting.yaml` (+ Google Secret Manager).
 

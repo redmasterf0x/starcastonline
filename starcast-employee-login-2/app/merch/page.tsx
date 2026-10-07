@@ -1,13 +1,13 @@
 import { Metadata } from "next"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
-import { getPrintifyProducts, getPrintifyShops } from "@/lib/printify"
+import { getShopifyProducts, getShopifyStoreInfo } from "@/lib/shopify"
 import { MerchClient } from "./merch-client"
 
 export const metadata: Metadata = {
-  title: "Merchandise & Supply Co. | StarCast Online",
+  title: "Shop & Official Merchandise | StarCast Online",
   description:
-    "Official StarCast broadcast apparel, custom varsity jackets, snapback caps, mission tees, and cosmic gear. Shipped directly from StarCast Supply Company.",
+    "Official StarCast broadcast apparel, custom varsity jackets, snapback caps, mission tees, and cosmic gear. Powered by StarCast Shopify Storefront.",
   openGraph: {
     title: "StarCast Supply Co. | Official Merchandise & Gear",
     description:
@@ -22,12 +22,14 @@ export const metadata: Metadata = {
 export const revalidate = 300
 
 export default async function MerchPage() {
-  const [products, shops] = await Promise.all([
-    getPrintifyProducts(),
-    getPrintifyShops().catch(() => []),
+  const [products, storeInfo] = await Promise.all([
+    getShopifyProducts(),
+    getShopifyStoreInfo().catch(() => ({
+      name: "StarCast Supply Company",
+      domain: "starcastonline.myshopify.com",
+      storeUrl: "https://starcastonline.myshopify.com",
+    })),
   ])
-
-  const shopTitle = shops.find((s) => String(s.id) === "17404247")?.title || "StarCast Supply Company"
 
   return (
     <div className="public-shell min-h-screen text-[#f5f7ff] bg-[#05051f]">
@@ -35,7 +37,11 @@ export default async function MerchPage() {
         <ResponsiveHeader currentPage="/merch" />
 
         <main className="mx-auto max-w-7xl px-4 sm:px-6 pt-8 pb-16">
-          <MerchClient initialProducts={products} shopTitle={shopTitle} />
+          <MerchClient
+            initialProducts={products}
+            shopTitle={storeInfo.name}
+            storeUrl={storeInfo.storeUrl}
+          />
         </main>
 
         <Footer />

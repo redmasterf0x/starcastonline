@@ -10,15 +10,15 @@ import {
   Sparkles,
   SlidersHorizontal,
   X,
-  Check,
   ShieldCheck,
   Truck,
   RotateCcw,
   Eye,
   ChevronRight,
   ChevronLeft,
+  Store,
 } from "lucide-react"
-import { type PrintifyProduct } from "@/lib/printify"
+import { type ShopifyProduct } from "@/lib/shopify"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,18 +31,23 @@ import {
 } from "@/components/ui/dialog"
 
 interface MerchClientProps {
-  initialProducts: PrintifyProduct[]
+  initialProducts: ShopifyProduct[]
   shopTitle?: string
+  storeUrl?: string
 }
 
 const CATEGORIES = ["All", "T-Shirts", "Headwear", "Outerwear", "Accessories", "Gear"] as const
 type Category = (typeof CATEGORIES)[number]
 
-export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Company" }: MerchClientProps) {
+export function MerchClient({
+  initialProducts,
+  shopTitle = "StarCast Supply Company",
+  storeUrl = "https://starcastonline.myshopify.com",
+}: MerchClientProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<Category>("All")
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc" | "name">("featured")
-  const [selectedProduct, setSelectedProduct] = useState<PrintifyProduct | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<ShopifyProduct | null>(null)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
@@ -90,7 +95,7 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
       })
   }, [initialProducts, selectedCategory, searchQuery, sortBy])
 
-  const openProductModal = (product: PrintifyProduct) => {
+  const openProductModal = (product: ShopifyProduct) => {
     setSelectedProduct(product)
     setActiveImageIndex(0)
     setSelectedSize(product.sizes[0] || null)
@@ -110,7 +115,7 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
           {/* Dispatch Badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-[#ea6f2a]/40 bg-[#ea6f2a]/10 px-3.5 py-1 text-xs font-mono font-bold tracking-widest text-[#ea6f2a] uppercase shadow-[0_0_15px_rgba(234,111,42,0.2)]">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>OFFICIAL MERCHANDISE DISPATCH // {shopTitle.toUpperCase()}</span>
+            <span>OFFICIAL SHOPIFY STOREFRONT // {shopTitle.toUpperCase()}</span>
           </div>
 
           <h1 className="mt-4 text-3xl font-black tracking-tight text-[#f5f7ff] sm:text-5xl lg:text-6xl">
@@ -121,22 +126,34 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
           </h1>
 
           <p className="mt-4 text-base text-[#9a9fc4] sm:text-lg leading-relaxed">
-            Official StarCast broadcast apparel, snapbacks, custom varsity jackets, and accessories. Crafted on-demand with premium fabrics and printed with archival precision.
+            Official StarCast broadcast apparel, snapbacks, custom varsity jackets, and cosmic accessories. Powered by Shopify with secure multi-currency checkout and express worldwide delivery.
           </p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Button
+              asChild
+              className="bg-gradient-to-r from-[#ea6f2a] to-[#f7803b] hover:from-[#f7803b] hover:to-[#ea6f2a] text-white font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-[#ea6f2a]/25"
+            >
+              <a href={storeUrl} target="_blank" rel="noopener noreferrer">
+                <Store className="h-4 w-4 mr-2" />
+                Visit Full Shopify Store <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+              </a>
+            </Button>
+          </div>
 
           {/* Quick Perks / Trust Signals */}
           <div className="mt-6 flex flex-wrap gap-4 text-xs font-semibold text-[#c5caea]">
             <div className="flex items-center gap-1.5 rounded-lg border border-[#20205a] bg-[#05052d]/80 px-3 py-1.5">
               <ShieldCheck className="h-4 w-4 text-[#20efe0]" />
-              <span>Official Printify Fulfillment</span>
+              <span>Shopify Secure Checkout</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-[#20205a] bg-[#05052d]/80 px-3 py-1.5">
               <Truck className="h-4 w-4 text-[#ffd166]" />
-              <span>Direct Worldwide Shipping</span>
+              <span>Direct Worldwide Express</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-[#20205a] bg-[#05052d]/80 px-3 py-1.5">
               <RotateCcw className="h-4 w-4 text-[#ea6f2a]" />
-              <span>On-Demand Production</span>
+              <span>Official StarCast Gear</span>
             </div>
           </div>
         </div>
@@ -349,7 +366,7 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
                     className="flex-1 bg-[#ea6f2a] hover:bg-[#bc3f00] text-xs font-bold text-white shadow-md shadow-[#ea6f2a]/20"
                   >
                     <a href={product.checkoutUrl} target="_blank" rel="noopener noreferrer">
-                      Buy Now <ExternalLink className="h-3 w-3 ml-1" />
+                      Shop Now <ExternalLink className="h-3 w-3 ml-1" />
                     </a>
                   </Button>
                 </div>
@@ -442,7 +459,7 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
                       {selectedProduct.category}
                     </Badge>
                     <span className="text-xs text-[#7f84ad] font-mono">
-                      SKU: {selectedProduct.id.slice(0, 8)}
+                      SKU: {selectedProduct.handle || selectedProduct.id.slice(0, 8)}
                     </span>
                   </div>
 
@@ -456,7 +473,7 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
                     <span className="text-3xl font-black text-[#ffd166] drop-shadow-[0_0_12px_rgba(255,209,102,0.3)]">
                       {selectedProduct.price}
                     </span>
-                    <span className="text-xs text-[#7f84ad]">USD (on-demand fulfillment)</span>
+                    <span className="text-xs text-[#7f84ad]">USD (Shopify Checkout)</span>
                   </div>
 
                   {/* Sizes (if available) */}
@@ -529,12 +546,12 @@ export function MerchClient({ initialProducts, shopTitle = "StarCast Supply Comp
                   >
                     <a href={selectedProduct.checkoutUrl} target="_blank" rel="noopener noreferrer">
                       <ShoppingBag className="h-5 w-5 mr-2" />
-                      Order on StarCast Store <ExternalLink className="h-4 w-4 ml-2" />
+                      View &amp; Buy on Shopify <ExternalLink className="h-4 w-4 ml-2" />
                     </a>
                   </Button>
 
                   <p className="text-center text-[11px] text-[#7f84ad]">
-                    Order handled securely by StarCast Supply Co. via Printify. Fast production &amp; tracking provided upon checkout.
+                    Handled directly by StarCast Supply Co. via Shopify. Secure payment processing with tracking provided.
                   </p>
                 </div>
               </div>

@@ -41,4 +41,8 @@ env:
     secret: TWILIO_VERIFY_SERVICE_SID
   - variable: RESEND_WEBHOOK_SECRET
     value: "whsec_v1wFaHhwWpBh5huIQY7j/nY9RebAQxX4"
+  - variable: SHOPIFY_STORE_DOMAIN
+    value: "wzcs0f-rt.myshopify.com"
+  - variable: NEXT_PUBLIC_SHOPIFY_STORE_URL
+    value: "https://wzcs0f-rt.myshopify.com"
 

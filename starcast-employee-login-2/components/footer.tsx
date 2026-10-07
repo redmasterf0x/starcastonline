@@ -8,7 +8,7 @@ const socialLinks = [
   { name: "TikTok", url: "https://www.tiktok.com/@starcast.live", icon: Music2 },
   { name: "Instagram", url: "https://www.instagram.com/starcast.live.media/", icon: Instagram },
   { name: "Twitch", url: "https://www.twitch.tv/tomediaandbeyond", icon: Twitch },
-  { name: "Shop", url: "https://starcast-supply-company.printify.me/", icon: ShoppingBag },
+  { name: "Shop", url: "/merch", icon: ShoppingBag },
 ]
 
 const siteLinks = [
