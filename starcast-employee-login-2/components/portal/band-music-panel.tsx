@@ -46,6 +46,10 @@ import {
   Layers,
   FolderPlus,
   Info,
+  ShieldCheck,
+  Printer,
+  Award,
+  FileText,
 } from "lucide-react"
 
 interface BandMusicPanelProps {
@@ -80,6 +84,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
   const [catalogEnabled, setCatalogEnabled] = useState(Boolean(band.music_catalog_enabled))
   const [catalogTitle, setCatalogTitle] = useState(band.music_catalog_title || "Original Music & Tracks")
   const [savingSettings, setSavingSettings] = useState(false)
+  const [certTrack, setCertTrack] = useState<BandTrackItem | null>(null)
 
   // 1. Single Track Dialog (New / Edit)
   const [trackDialogOpen, setTrackDialogOpen] = useState(false)
@@ -598,6 +603,17 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 <CardTitle className="text-xl font-black text-[#f5f7ff] tracking-tight">
                   Music &amp; Audio Catalog
                 </CardTitle>
+                <a
+                  href="/music/agreement"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#20efe0]/40 bg-[#20efe0]/10 text-[#20efe0] text-xs font-mono font-semibold hover:bg-[#20efe0]/20 transition-all shadow-sm"
+                  title="View 100% Artist Rights & Anti-Theft Agreement"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Music Rights Agreement</span>
+                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                </a>
                 <Badge
                   className={
                     catalogEnabled
@@ -851,6 +867,15 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                         title="Move Down"
                       >
                         <ArrowDown className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCertTrack(track)}
+                        className="h-8 w-8 p-0 text-[#20efe0] hover:text-white hover:bg-[#20efe0]/20"
+                        title="View Certificate of Upload & Ownership"
+                      >
+                        <Award className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -1346,6 +1371,99 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
             </DialogFooter>
           </form>
         </DialogContent>
+      </Dialog>
+
+      {/* ── 4. OFFICIAL CERTIFICATE OF OWNERSHIP & UPLOAD CHAIN OF CUSTODY DIALOG ── */}
+      <Dialog open={Boolean(certTrack)} onOpenChange={(open) => !open && setCertTrack(null)}>
+        {certTrack && (
+          <DialogContent className="border-[#20205a] bg-[#070724] text-[#f5f7ff] sm:max-w-2xl max-h-[92vh] overflow-y-auto p-6 sm:p-8">
+            <DialogHeader className="border-b border-[#20205a] pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#ffd166]/20 border border-[#ffd166]/40 flex items-center justify-center text-[#ffd166]">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-black text-white">
+                      Certificate of Musical Work Upload
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-[#20efe0] font-mono">
+                      Official Proof of Custody &middot; StarCast Online Registry
+                    </DialogDescription>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (typeof window !== "undefined") window.print()
+                  }}
+                  size="sm"
+                  className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold text-xs gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print Certificate
+                </Button>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* Certificate Metadata Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-[#050519] border border-[#20205a]">
+                  <span className="text-[#7f84ad] block text-[10px] uppercase">Musical Work Title</span>
+                  <span className="font-bold text-white text-sm truncate block mt-0.5">{certTrack.title}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-[#050519] border border-[#20205a]">
+                  <span className="text-[#7f84ad] block text-[10px] uppercase">Registered Artist / Band</span>
+                  <span className="font-bold text-[#ffd166] text-sm truncate block mt-0.5">{certTrack.artistName || band.name}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-[#050519] border border-[#20205a]">
+                  <span className="text-[#7f84ad] block text-[10px] uppercase">Upload Date &amp; Ingestion</span>
+                  <span className="font-bold text-[#20efe0] text-xs block mt-0.5">
+                    {new Date(certTrack.createdAt).toLocaleString("en-US", {
+                      timeZone: "America/Chicago",
+                      dateStyle: "full",
+                      timeStyle: "medium",
+                    })} CST
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-[#050519] border border-[#20205a]">
+                  <span className="text-[#7f84ad] block text-[10px] uppercase">System Reference UUID</span>
+                  <span className="font-bold text-[#f5f7ff] text-[11px] truncate block mt-0.5 font-mono">{certTrack.id}</span>
+                </div>
+              </div>
+
+              {/* Legal Affirmation Box */}
+              <div className="p-4 rounded-xl border border-[#20efe0]/30 bg-[#20efe0]/10 text-xs text-[#c5caea] space-y-2 leading-relaxed">
+                <div className="flex items-center gap-1.5 font-bold text-[#20efe0]">
+                  <ShieldCheck className="w-4 h-4" />
+                  Proof of Ownership &amp; Prior-Art Record
+                </div>
+                <p>
+                  This record certifies that <strong>{certTrack.artistName || band.name}</strong> uploaded the sound recording <strong>&ldquo;{certTrack.title}&rdquo;</strong> to StarCast Online on the recorded timestamp above. 
+                </p>
+                <p>
+                  Under the <strong>StarCast Music Distribution &amp; Rights Agreement (SC-MRA-2026-V1)</strong>, the Artist retains <strong>100% of all master and publishing copyrights</strong>. Third-party theft, unauthorized sampling, re-recording, stems isolation, sync placement, or AI training without the Artist&apos;s direct commercial license are strictly unlawful.
+                </p>
+              </div>
+
+              {/* Actions & Links */}
+              <div className="flex items-center justify-between text-xs pt-2">
+                <a
+                  href="/music/agreement"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#ffd166] hover:underline flex items-center gap-1 font-mono"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  View Full Music Agreement &rarr;
+                </a>
+                <span className="text-[#7f84ad] font-mono text-[11px]">
+                  StarCast Live Media LLC &middot; Topeka, KS
+                </span>
+              </div>
+            </div>
+          </DialogContent>
+        )}
       </Dialog>
     </div>
   )

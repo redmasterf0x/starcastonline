@@ -103,16 +103,25 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl font-bold text-[#f5f7ff]">4. Artist, Band &amp; Content Rights</h2>
+            <h2 className="text-xl font-bold text-[#f5f7ff]">4. Artist, Band &amp; Music Rights (100% Artist Owned)</h2>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>
-                <strong>Ownership:</strong> Artists, musicians, and creators retain all copyright and proprietary rights to their original musical compositions, recordings, and media.
+                <strong>100% Artist Ownership:</strong> Artists, musicians, songwriters, and creators retain one hundred percent (100%) exclusive copyright ownership, title, and publishing rights to all original sound recordings and musical compositions uploaded to StarCast Online. StarCast Media takes ZERO equity, master rights, or royalties.
               </li>
               <li>
-                <strong>Soundstage Broadcast License:</strong> By creating an artist page, uploading music links, or participating in StarCast Live broadcasts, you grant StarCast Media a non-exclusive, revocable license to feature, promote, and broadcast your performance across StarCast platforms.
+                <strong>Ad-Free, Non-Exclusive Streaming License:</strong> Uploading music grants StarCast Media a non-exclusive, revocable license solely to stream and host your music ad-free for listeners on StarCast Online. You retain the unrestricted right to distribute or monetize your music anywhere else.
               </li>
               <li>
-                <strong>Conduct:</strong> You agree not to upload defamatory, infringing, unlawful, or abusive content to the StarCast community or soundstage discussion boards.
+                <strong>Anti-Theft, Anti-Sampling &amp; Anti-Derivative Protections:</strong> All music hosted on StarCast Online is strictly protected under U.S. and international copyright law. Visitors and third parties are strictly forbidden from stealing, sampling, chopping, re-recording over, synchronizing, or using your audio for AI training without your direct written commercial license.
+              </li>
+              <li>
+                <strong>Digital Proof of Ownership &amp; Upload Certificate:</strong> Every music upload generates an immutable, date-stamped digital record in our system ledger establishing prior-art and authorship. Artists can view and print their official Certificate of Ownership at any time to support DMCA takedowns and copyright enforcement.
+              </li>
+              <li>
+                <strong>Full Music Agreement:</strong> Read and print the complete legal contract at our{" "}
+                <Link href="/music/agreement" className="text-[#ffd166] underline font-bold">
+                  StarCast Music Distribution &amp; Rights Agreement (SC-MRA-2026-V1)
+                </Link>.
               </li>
             </ul>
           </section>

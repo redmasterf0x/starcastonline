@@ -99,7 +99,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 | Social | `friendships` (status pending/accepted), `messages` (DMs), `notifications` | notifications keyed by **profile ids** |
 | Bands / artists | `bands`, `band_links`, `band_posts`, `band_post_comments`, `band_follows` | `bands.slug` → `/bands/[slug]`; `type` band/artist; owner = `owner_user_id` |
 | Studio | `bookings`, `payments` | booking status requested→confirmed→checked_in→completed/cancelled; rate snapshot on booking |
-| Music | `band_tracks`, `track_comments` | `band_tracks.slug` → `/music/[slug]`; `bands.music_catalog_enabled` toggle; legacy audio also in `band_posts.audio_tracks` jsonb |
+| Music | `band_tracks`, `track_comments` | `band_tracks.slug` → `/music/[slug]`; `bands.music_catalog_enabled` toggle; legal agreement `/music/agreement` (100% artist master ownership retention, ad-free non-exclusive streaming, anti-theft/sampling protections, timestamped Proof of Ownership certificates printable in portal) |
 | Ticketing | `band_events`, `band_ticket_orders`, `band_ticket_instances` | bands apply (`ticketing_status`), Stripe Connect payout, escrow held until 24h after event; QR via `qr_token` → `/tickets/[token]` |
 | Staff ops | `productions`, `production_crew`, `production_requests`, `timesheets`, `payouts` | crew reminders via cron + SMS; staff mailbox in `/production` |
 | Business | `sponsors`, `inbox_messages` | sponsor checkout via Stripe; `inbox_messages` = official staff mailbox messages (`staff_profile_id`, `to_email`) |

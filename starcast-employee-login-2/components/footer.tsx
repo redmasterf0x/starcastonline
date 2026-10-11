@@ -22,6 +22,7 @@ const siteLinks = [
   { label: "Sponsor", href: "/sponsors" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
+  { label: "Music Agreement", href: "/music/agreement" },
 ]
 
 export function Footer() {
