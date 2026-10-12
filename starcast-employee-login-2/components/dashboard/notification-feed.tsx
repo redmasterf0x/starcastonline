@@ -93,11 +93,18 @@ export function NotificationFeed() {
   async function handleAcceptFriend(notifId: string, friendshipId?: string | null) {
     if (!friendshipId) return
     setBusyId(notifId)
+    const item = notifications.find((n) => n.id === notifId)
+    if (item && !item.isRead) {
+      setUnreadCount((prev) => Math.max(0, prev - 1))
+    }
+    // Optimistically clear the request from the list so it disappears immediately
+    setNotifications((prev) => prev.filter((n) => n.id !== notifId))
     try {
       await acceptFriendRequest(friendshipId)
-      await handleMarkRead(notifId)
+      await deleteNotification(notifId)
     } catch (err) {
       console.error(err)
+      await loadNotifications()
     } finally {
       setBusyId(null)
     }
@@ -106,11 +113,17 @@ export function NotificationFeed() {
   async function handleDeclineFriend(notifId: string, friendshipId?: string | null) {
     if (!friendshipId) return
     setBusyId(notifId)
+    const item = notifications.find((n) => n.id === notifId)
+    if (item && !item.isRead) {
+      setUnreadCount((prev) => Math.max(0, prev - 1))
+    }
+    setNotifications((prev) => prev.filter((n) => n.id !== notifId))
     try {
       await removeFriendship(friendshipId)
-      await handleDelete(notifId)
+      await deleteNotification(notifId)
     } catch (err) {
       console.error(err)
+      await loadNotifications()
     } finally {
       setBusyId(null)
     }

@@ -90,6 +90,21 @@ export async function getMyNotifications(limit: number = 30): Promise<Notificati
     const viewer = await getViewerProfile()
     if (!viewer) return []
 
+    // Auto-clean any stale friend requests where friendship is already accepted or gone
+    try {
+      await db.execute(sql`
+        DELETE FROM notifications
+        WHERE type = 'friend_request'
+          AND recipient_profile_id = ${viewer.id}
+          AND (
+            friendship_id IN (SELECT id FROM friendships WHERE status = 'accepted')
+            OR friendship_id NOT IN (SELECT id FROM friendships)
+          )
+      `)
+    } catch {
+      // Non-fatal
+    }
+
     const rows = await db
       .select({
         notification: notifications,

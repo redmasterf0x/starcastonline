@@ -32,10 +32,10 @@ import { INTEREST_OPTIONS } from "@/lib/onboarding-options"
 import {
   checkUsernameAvailable,
   saveOnboardingStep,
-  sendPhoneCode,
-  verifyPhoneCode,
   completeOnboarding,
 } from "@/app/actions/onboarding"
+import { useFirebasePhoneAuth } from "@/lib/firebase/use-phone-auth"
+import { verifyFirebasePhoneForProfile } from "@/app/actions/firebase-phone-auth"
 
 type OnboardingState = {
   email: string
@@ -221,12 +221,18 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
     }
   }
 
+  const phoneAuth = useFirebasePhoneAuth("recaptcha-onboarding-container")
+
   const handleSendCode = async () => {
     setError(null)
     setSaving(true)
     try {
-      await sendPhoneCode(phone)
-      setCodeSent(true)
+      const res = await phoneAuth.sendOtp(phone)
+      if (!res.success) {
+        setError(res.error || "Could not send the code.")
+      } else {
+        setCodeSent(true)
+      }
     } catch (err: any) {
       setError(err?.message || "Could not send the code.")
     } finally {
@@ -238,8 +244,20 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
     setError(null)
     setSaving(true)
     try {
-      await verifyPhoneCode(value)
+      const res = await phoneAuth.confirmOtp(value)
+      if (!res.success || !res.idToken) {
+        setError(res.error || "Could not verify that code.")
+        return
+      }
+      const linkRes = await verifyFirebasePhoneForProfile(res.idToken)
+      if (!linkRes.success) {
+        setError(linkRes.message || "Failed to link phone to profile.")
+        return
+      }
       setPhoneVerified(true)
+      if (linkRes.phone) {
+        setPhone(linkRes.phone)
+      }
     } catch (err: any) {
       setError(err?.message || "Could not verify that code.")
     } finally {
@@ -544,12 +562,6 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                   <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
                   <p className="text-sm text-[#f5f7ff]">{phone}</p>
                 </div>
-              ) : !initial.smsAvailable ? (
-                <div className="rounded-lg border border-[#20205a] bg-[#05052d] p-4">
-                  <p className="text-sm text-[#9a9fc4]">
-                    SMS verification is not available right now. You can finish setup and verify later from your profile settings.
-                  </p>
-                </div>
               ) : !codeSent ? (
                 <div className="flex flex-col gap-3">
                   <Label htmlFor="phone" className="text-[#f5f7ff]">Mobile number</Label>
@@ -571,7 +583,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                     Text me a code
                   </Button>
                   <p className="text-xs text-[#9a9fc4]">
-                    Standard messaging rates may apply. We&apos;ll send one text with your verification code.
+                    Powered by Google SMS delivery. We&apos;ll send a one-time verification code.
                   </p>
                 </div>
               ) : (
@@ -599,6 +611,7 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                     <button
                       type="button"
                       onClick={() => {
+                        phoneAuth.reset()
                         setCodeSent(false)
                         setCode("")
                       }}
@@ -620,6 +633,8 @@ export function OnboardingWizard({ initial }: { initial: OnboardingState }) {
                   </div>
                 </div>
               )}
+              {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
+              <div id="recaptcha-onboarding-container" />
             </div>
           )}
 

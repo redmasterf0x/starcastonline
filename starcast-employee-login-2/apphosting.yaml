@@ -45,4 +45,16 @@ env:
     value: "wzcs0f-rt.myshopify.com"
   - variable: NEXT_PUBLIC_SHOPIFY_STORE_URL
     value: "https://wzcs0f-rt.myshopify.com"
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyCMk5peWqDN70xr_BGFkNUFswFAQi1LRsg"
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "starcastonline-live.firebaseapp.com"
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "starcastonline-live"
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "starcastonline-live.firebasestorage.app"
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "713609005713"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:713609005713:web:e4305c32f8beae727ecd30"
 

@@ -123,8 +123,13 @@ export function ProfileView({ userId }: { userId: string }) {
 
   const handleAcceptRequest = async () => {
     if (!friendshipId) return
-    await acceptFriendRequest(friendshipId)
-    fetchPageData()
+    setFriendshipStatus("accepted")
+    try {
+      await acceptFriendRequest(friendshipId)
+      await fetchPageData()
+    } catch {
+      fetchPageData()
+    }
   }
 
   const handleUnfriend = async () => {

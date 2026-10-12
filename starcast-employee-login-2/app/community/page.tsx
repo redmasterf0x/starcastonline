@@ -142,7 +142,7 @@ export default function CommunityPage() {
 
   // Members & friends state
   const [activeTab, setActiveTab] = useState<
-    "deck" | "feed" | "explore" | "members" | "friends" | "messages" | "bands"
+    "deck" | "feed" | "explore" | "friends" | "messages" | "bands"
   >(searchParams.get("tab") === "bands" ? "bands" : "deck")
   const [members, setMembers] = useState<Member[]>([])
   const [memberSearch, setMemberSearch] = useState("")
@@ -214,7 +214,6 @@ export default function CommunityPage() {
   }, [])
 
   useEffect(() => {
-    if (activeTab === "members") fetchMembers()
     if (activeTab === "friends") fetchFriends()
     if (activeTab === "messages") fetchConversations()
     if (activeTab === "bands") fetchBands()
@@ -386,21 +385,77 @@ export default function CommunityPage() {
   }
 
   const handleAcceptFriendRequest = async (friendshipId: string) => {
-    await acceptFriendRequest(friendshipId)
-    fetchFriends()
-    fetchMembers()
+    // 1. Optimistically remove from incoming requests
+    const req = friendRequests.find((r) => r.id === friendshipId)
+    setFriendRequests((prev) => prev.filter((r) => r.id !== friendshipId))
+
+    // 2. Optimistically add to friends list
+    if (req?.requester) {
+      setFriends((prev) => {
+        if (prev.some((f) => f.id === req.requester!.id)) return prev
+        return [
+          {
+            ...req.requester!,
+            friendship_status: "accepted",
+            friendship_id: friendshipId,
+          },
+          ...prev,
+        ]
+      })
+    }
+
+    // 3. Optimistically update members tab
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.friendship_id === friendshipId
+          ? { ...m, friendship_status: "accepted" }
+          : m
+      )
+    )
+
+    try {
+      await acceptFriendRequest(friendshipId)
+      await Promise.all([fetchFriends(), fetchMembers()])
+    } catch (err) {
+      console.error(err)
+      await fetchFriends()
+    }
   }
 
   const handleDeclineFriendRequest = async (friendshipId: string) => {
-    await removeFriendship(friendshipId)
-    fetchFriends()
-    fetchMembers()
+    setFriendRequests((prev) => prev.filter((r) => r.id !== friendshipId))
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.friendship_id === friendshipId
+          ? { ...m, friendship_status: "none", friendship_id: undefined }
+          : m
+      )
+    )
+    try {
+      await removeFriendship(friendshipId)
+      await Promise.all([fetchFriends(), fetchMembers()])
+    } catch (err) {
+      console.error(err)
+      await fetchFriends()
+    }
   }
 
   const handleUnfriend = async (friendshipId: string) => {
-    await removeFriendship(friendshipId)
-    fetchFriends()
-    fetchMembers()
+    setFriends((prev) => prev.filter((f) => f.friendship_id !== friendshipId))
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.friendship_id === friendshipId
+          ? { ...m, friendship_status: "none", friendship_id: undefined }
+          : m
+      )
+    )
+    try {
+      await removeFriendship(friendshipId)
+      await Promise.all([fetchFriends(), fetchMembers()])
+    } catch (err) {
+      console.error(err)
+      await fetchFriends()
+    }
   }
 
   // Bands tab functions
@@ -528,7 +583,6 @@ export default function CommunityPage() {
             { id: "deck", label: "The DECK", icon: Sparkles },
             { id: "feed", label: "Discussions", icon: MessageSquare },
             { id: "bands", label: "Bands", icon: Music },
-            { id: "members", label: "Members", icon: Users },
             ...(currentUserId ? [
               { id: "friends", label: "Friends", icon: UserCheck, badge: friendRequests.length },
               { id: "messages", label: "Messages", icon: MessageCircle, badge: unreadCount }
@@ -1223,112 +1277,6 @@ export default function CommunityPage() {
           </div>
         )}
 
-        {/* Members Tab */}
-        {activeTab === "members" && (
-          <div className="space-y-6">
-            <div className="relative max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9a9fc4]" />
-              <Input
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search members..."
-                className="bg-[#0c0c3f]/60 border-[#20205a]/50 text-[#f5f7ff] pl-12 h-12 rounded-xl"
-              />
-            </div>
-
-            {membersLoading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-8 h-8 border-2 border-[#ea6f2a]/30 border-t-[#ea6f2a] rounded-full animate-spin" />
-              </div>
-            ) : filteredMembers.length === 0 ? (
-              <div className="text-center py-16">
-                <p className="text-[#9a9fc4]">No members found</p>
-              </div>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="bg-[#0c0c3f]/40 border border-[#20205a]/50 rounded-2xl p-5 hover:border-[#20205a] transition-colors"
-                  >
-                    <div className="flex items-start gap-4">
-                      <Link href={`/profile/${member.user_id}`}>
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#ea6f2a]/20 to-[#20205a] p-0.5 cursor-pointer hover:from-[#ea6f2a] transition-all">
-                          <div className="w-full h-full rounded-full bg-[#05052d] flex items-center justify-center overflow-hidden">
-                            {member.profile_pic ? (
-                              <img src={member.profile_pic} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-lg font-medium text-[#f5f7ff]">
-                                {member.first_name?.[0]}{member.last_name?.[0]}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/profile/${member.user_id}`} className="hover:text-[#ea6f2a] transition-colors">
-                          <h3 className="font-semibold text-[#f5f7ff] truncate">{member.first_name} {member.last_name}</h3>
-                        </Link>
-                        {member.is_employee && (
-                          <span className="inline-block text-[10px] bg-[#ea6f2a]/20 text-[#ea6f2a] px-2 py-0.5 rounded-full mt-1">
-                            Team
-                          </span>
-                        )}
-                        {member.location && (
-                          <p className="text-xs text-[#9a9fc4] mt-1 truncate">{member.location}</p>
-                        )}
-                      </div>
-                    </div>
-                    {member.bio && (
-                      <p className="text-sm text-[#9a9fc4] mt-3 line-clamp-2">{member.bio}</p>
-                    )}
-                    {currentUserId && (
-                      <div className="mt-4 pt-4 border-t border-[#20205a]/50 flex gap-2">
-                        {member.friendship_status === "none" && (
-                          <Button
-                            onClick={() => handleSendFriendRequest(member.id)}
-                            size="sm"
-                            className="flex-1 bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-lg"
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Add Friend
-                          </Button>
-                        )}
-                        {member.friendship_status === "pending_sent" && (
-                          <Button size="sm" variant="outline" disabled className="flex-1 border-[#20205a] text-[#9a9fc4] bg-transparent rounded-lg">
-                            <Clock className="w-4 h-4 mr-2" />
-                            Pending
-                          </Button>
-                        )}
-                        {member.friendship_status === "pending_received" && (
-                          <Button
-                            onClick={() => handleAcceptFriendRequest(member.friendship_id!)}
-                            size="sm"
-                            className="flex-1 bg-green-600 hover:bg-green-500 text-white rounded-lg"
-                          >
-                            Accept
-                          </Button>
-                        )}
-                        {member.friendship_status === "accepted" && (
-                          <Button
-                            onClick={() => startConversation(member.id)}
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 border-[#20205a] text-[#9a9fc4] hover:text-[#f5f7ff] bg-transparent rounded-lg"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            Message
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Friends Tab */}
         {activeTab === "friends" && currentUserId && (
           <div className="space-y-8">
@@ -1389,12 +1337,12 @@ export default function CommunityPage() {
                     <Users className="w-8 h-8 text-[#9a9fc4]" />
                   </div>
                   <p className="text-[#f5f7ff] font-medium mb-1">No friends yet</p>
-                  <p className="text-sm text-[#9a9fc4] mb-4">Find people to connect with in the Members tab</p>
+                  <p className="text-sm text-[#9a9fc4] mb-4">Connect with fellow music fans through discussions and The DECK</p>
                   <Button
-                    onClick={() => setActiveTab("members")}
+                    onClick={() => setActiveTab("deck")}
                     className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-full"
                   >
-                    Browse Members
+                    Explore The DECK
                   </Button>
                 </div>
               ) : (

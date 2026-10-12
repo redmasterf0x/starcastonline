@@ -11,9 +11,11 @@ import {
   commentStars,
   friendships,
   messages,
+  notifications,
 } from "@/lib/db/schema"
 import { and, asc, desc, eq, inArray, or, count, gte, ne } from "drizzle-orm"
 import { headers } from "next/headers"
+import { revalidatePath } from "next/cache"
 import { SOCIAL_BAN_MESSAGE } from "@/lib/permissions"
 import { createNotification } from "@/app/actions/notifications"
 
@@ -711,18 +713,51 @@ export async function acceptFriendRequest(friendshipId: string) {
     .where(and(eq(friendships.id, friendshipId), eq(friendships.addresseeId, viewer.id)))
     .returning()
 
+  // Clean up incoming friend_request notifications so requests never linger once accepted
+  try {
+    await db
+      .delete(notifications)
+      .where(
+        and(
+          eq(notifications.recipientProfileId, viewer.id),
+          eq(notifications.friendshipId, friendshipId),
+          eq(notifications.type, "friend_request"),
+        ),
+      )
+  } catch (err) {
+    console.error("Failed to delete incoming friend_request notification:", err)
+  }
+
   try {
     if (updated && updated.requesterId !== viewer.id) {
-      await createNotification({
-        recipientProfileId: updated.requesterId,
-        actorProfileId: viewer.id,
-        type: "friend_accepted",
-        friendshipId: updated.id,
-      })
+      // Prevent duplicate notifications if clicked multiple times
+      const existing = await db
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.friendshipId, updated.id),
+            eq(notifications.type, "friend_accepted"),
+          ),
+        )
+        .limit(1)
+
+      if (existing.length === 0) {
+        await createNotification({
+          recipientProfileId: updated.requesterId,
+          actorProfileId: viewer.id,
+          type: "friend_accepted",
+          friendshipId: updated.id,
+        })
+      }
     }
   } catch (err) {
     console.error("Failed to trigger friend_accepted notification:", err)
   }
+
+  revalidatePath("/community")
+  revalidatePath("/dashboard")
+  revalidatePath("/profile")
 }
 
 export async function removeFriendship(friendshipId: string) {
@@ -736,6 +771,19 @@ export async function removeFriendship(friendshipId: string) {
         or(eq(friendships.requesterId, viewer.id), eq(friendships.addresseeId, viewer.id)),
       ),
     )
+
+  // Clear any notifications associated with this friendship
+  try {
+    await db
+      .delete(notifications)
+      .where(eq(notifications.friendshipId, friendshipId))
+  } catch (err) {
+    console.error("Failed to delete friendship notifications:", err)
+  }
+
+  revalidatePath("/community")
+  revalidatePath("/dashboard")
+  revalidatePath("/profile")
 }
 
 // --- Direct messages ---------------------------------------------------------

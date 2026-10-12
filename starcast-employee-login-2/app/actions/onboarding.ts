@@ -153,7 +153,7 @@ export async function getOnboardingState() {
     phoneVerified: p.phoneVerified,
     interests: Array.isArray(p.interests) ? (p.interests as string[]) : [],
     onboardingCompleted: p.onboardingCompleted,
-    smsAvailable: isSmsConfigured(),
+    smsAvailable: true,
   }
 }
 

@@ -4,7 +4,9 @@ import React from "react"
 
 import { useEffect, useState } from "react"
 import { authClient } from "@/lib/auth-client"
-import { getMyProfile, updateMyProfile, getMySavedArticles, removeSavedArticle, sendProfilePhoneCode, verifyProfilePhoneCode } from "@/app/actions/profile"
+import { getMyProfile, updateMyProfile, getMySavedArticles, removeSavedArticle } from "@/app/actions/profile"
+import { useFirebasePhoneAuth } from "@/lib/firebase/use-phone-auth"
+import { verifyFirebasePhoneForProfile } from "@/app/actions/firebase-phone-auth"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -102,18 +104,24 @@ export default function DashboardPage() {
     }
   }
 
+  const phoneAuth = useFirebasePhoneAuth("recaptcha-dashboard-container")
+
   const handleSendPhoneCode = async () => {
     const clean = phoneVal.trim()
     if (!clean || clean.replace(/\D/g, "").length < 10) {
-      setPhoneMsg({ type: "error", text: "Please enter a valid phone number with country code (e.g. +1...)." })
+      setPhoneMsg({ type: "error", text: "Please enter a valid phone number with area code." })
       return
     }
     setPhoneSending(true)
     setPhoneMsg(null)
     try {
-      await sendProfilePhoneCode(clean)
-      setShowPhoneVerify(true)
-      setPhoneMsg({ type: "success", text: "SMS verification code sent! Enter the 6-digit code below." })
+      const res = await phoneAuth.sendOtp(clean)
+      if (!res.success) {
+        setPhoneMsg({ type: "error", text: res.error || "Could not send SMS code. Check the number and try again." })
+      } else {
+        setShowPhoneVerify(true)
+        setPhoneMsg({ type: "success", text: "SMS verification code sent! Enter the 6-digit code below." })
+      }
     } catch (err: any) {
       setPhoneMsg({ type: "error", text: err?.message || "Could not send SMS code. Check the number and try again." })
     } finally {
@@ -129,10 +137,20 @@ export default function DashboardPage() {
     setPhoneVerifying(true)
     setPhoneMsg(null)
     try {
-      await verifyProfilePhoneCode(phoneOtp.trim())
+      const confirmRes = await phoneAuth.confirmOtp(phoneOtp.trim())
+      if (!confirmRes.success || !confirmRes.idToken) {
+        setPhoneMsg({ type: "error", text: confirmRes.error || "Invalid or expired code. Please try again." })
+        return
+      }
+      const linkRes = await verifyFirebasePhoneForProfile(confirmRes.idToken)
+      if (!linkRes.success) {
+        setPhoneMsg({ type: "error", text: linkRes.message || "Could not link phone to account." })
+        return
+      }
       setPhoneVerified(true)
       setShowPhoneVerify(false)
       setPhoneOtp("")
+      phoneAuth.reset()
       setPhoneMsg({ type: "success", text: "Phone number verified and linked to your account successfully! ✓" })
       fetchProfile()
     } catch (err: any) {
@@ -700,6 +718,9 @@ export default function DashboardPage() {
                       {phoneMsg.text}
                     </p>
                   )}
+
+                  {/* Invisible reCAPTCHA container for Firebase Phone Auth */}
+                  <div id="recaptcha-dashboard-container" />
                 </div>
 
                 {/* Location */}

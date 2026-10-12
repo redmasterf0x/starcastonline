@@ -23,10 +23,10 @@ sponsorships, and merch.
 | Framework | Next.js 16 (App Router), React 19, TypeScript (`ignoreBuildErrors: true` in `next.config.mjs`) |
 | UI | Tailwind CSS v4 (no tailwind.config — theme in `app/globals.css`), shadcn/ui (`components/ui`), lucide-react, sonner |
 | DB | **Neon Postgres** via `pg` Pool + **Drizzle ORM** (`lib/db`) |
-| Auth | **Better Auth** (Google OAuth only + optional phone OTP plugin) |
+| Auth | **Better Auth** (Google OAuth + Firebase Phone Auth with Better Auth session linking) |
 | Payments | Stripe (Checkout, Connect for bands & staff payouts) |
 | Email | Resend (`lib/email.ts`, from `noreply@starcast.online`) |
-| SMS | Twilio (`lib/sms.ts`, REST + Verify) |
+| SMS / Phone | **Firebase Phone Auth** (Google enterprise carrier routes + reCAPTCHA) + Twilio fallback (`lib/sms.ts`) |
 | Secondary store | Firebase Firestore (project `starcastonline-live`) — **support inbox only** |
 | Merch / Shop | Shopify Storefront API (`lib/shopify.ts`) |
 | Video | YouTube public RSS feeds/scraping (`lib/youtube.ts`, no API key needed) |
@@ -62,7 +62,7 @@ lib/
   permissions.ts  Role/permission helpers (use these for authz!)
   require-admin-route.ts  Admin guard for API route handlers
   email.ts / sms.ts / stripe.ts / printify.ts / youtube.ts / products.ts (sponsor packages)
-  firebase/       admin.ts (Admin SDK init), firestore-service.ts
+  firebase/       admin.ts (Admin SDK init), client.ts (Client SDK init), use-phone-auth.ts (reCAPTCHA + phone verification hook), firestore-service.ts
 scripts/          migrate-*.js (current migration style) + old *.sql (LEGACY Supabase, don't use)
 netlify/database/migrations/  Drizzle-kit output (only the initial migration)
 ```
@@ -70,7 +70,8 @@ netlify/database/migrations/  Drizzle-kit output (only the initial migration)
 ## 5. Auth & identity (important!)
 
 - Better Auth tables: `user`, `session`, `account`, `verification` (camelCase columns, text ids).
-- **Email/password is disabled** — Google OAuth is the only sign-in. Phone OTP is optional (for SMS notifications).
+- **Email/password is disabled** — Google OAuth is the primary social sign-in.
+- **Firebase Phone Auth** (`lib/firebase/use-phone-auth.ts`, `app/actions/firebase-phone-auth.ts`) handles SMS verification & mobile phone sign-in across `/login`, `/signup`, `/onboarding`, and `/dashboard` profile settings, generating/linking Better Auth sessions and verifying phone records in Postgres.
 - On user creation, a `databaseHooks.user.create.after` hook inserts a **`profiles`** row with an auto-generated unique `username`.
 - **Two different ids exist:**
   - `user.id` (text) = Better Auth id. Most app tables store this in `userId` / `user_id` / `owner_user_id` etc.
@@ -142,7 +143,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 ## 9. Environment variables
 
 DB: `DATABASE_URL` / `NEON_DATABASE_URL` (must be `postgres://` wire URL — **not** Neon's Data API REST URL).
-Auth: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+Auth: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`.
 URLs: `NEXT_PUBLIC_BASE_URL`, `NEXT_PUBLIC_APP_URL`.
 Stripe: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
 Resend: `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`.

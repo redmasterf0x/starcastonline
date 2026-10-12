@@ -10,6 +10,8 @@ import Link from "next/link"
 import { brandAssets } from "@/lib/brand-assets"
 import { Sparkles, ShieldCheck, Zap, AlertCircle, ArrowRight, Phone, MessageSquare } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useFirebasePhoneAuth } from "@/lib/firebase/use-phone-auth"
+import { loginWithFirebasePhone } from "@/app/actions/firebase-phone-auth"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -20,6 +22,20 @@ export default function SignupPage() {
   const [step, setStep] = useState<"phone" | "otp">("phone")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
+
+  const {
+    sendOtp,
+    confirmOtp,
+    reset: resetPhone,
+    loading: phoneLoading,
+    error: phoneHookError,
+  } = useFirebasePhoneAuth("recaptcha-signup-container")
+
+  useEffect(() => {
+    if (phoneHookError) {
+      setError(phoneHookError)
+    }
+  }, [phoneHookError])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -61,21 +77,12 @@ export default function SignupPage() {
       setError("Please enter a valid phone number")
       return
     }
-    setLoading(true)
     setError(null)
-    try {
-      const { data, error: sendError } = await authClient.phoneNumber.sendOtp({
-        phoneNumber,
-      })
-      if (sendError) {
-        setError(sendError.message || "Failed to send verification code")
-      } else {
-        setStep("otp")
-      }
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to send verification code. Please try again.")
-    } finally {
-      setLoading(false)
+    const res = await sendOtp(phoneNumber)
+    if (res.success) {
+      setStep("otp")
+    } else {
+      setError(res.error || "Failed to send verification code")
     }
   }
 
@@ -85,21 +92,25 @@ export default function SignupPage() {
       setError("Please enter the verification code")
       return
     }
-    setLoading(true)
     setError(null)
+    setLoading(true)
+    const res = await confirmOtp(otp)
+    if (!res.success || !res.idToken) {
+      setError(res.error || "Invalid verification code")
+      setLoading(false)
+      return
+    }
+
     try {
-      const { data, error: verifyError } = await (authClient.signIn as any).phoneNumber({
-        phoneNumber,
-        code: otp,
-      })
-      if (verifyError) {
-        setError(verifyError.message || "Invalid verification code")
-        setLoading(false)
+      const loginRes = await loginWithFirebasePhone(res.idToken)
+      if (loginRes.success) {
+        window.location.href = loginRes.redirectUrl || "/onboarding"
       } else {
-        router.push("/onboarding")
+        setError(loginRes.message)
+        setLoading(false)
       }
     } catch (err: any) {
-      setError(err?.message ?? "Verification failed. Please try again.")
+      setError(err?.message || "Verification failed. Please try again.")
       setLoading(false)
     }
   }
@@ -192,6 +203,7 @@ export default function SignupPage() {
             {/* Phone Number Flow */}
             {step === "phone" ? (
               <form onSubmit={handleSendOtp} className="space-y-3">
+                <div id="recaptcha-signup-container" />
                 <div className="space-y-1.5">
                   <Label htmlFor="phone" className="text-[#d4d8ee] text-xs">Phone Number</Label>
                   <div className="relative">
@@ -209,10 +221,10 @@ export default function SignupPage() {
                 </div>
                 <Button 
                   type="submit" 
-                  disabled={loading || !phoneNumber}
+                  disabled={loading || phoneLoading || !phoneNumber}
                   className="w-full bg-[#20205a] hover:bg-[#2a2a6a] text-white h-11"
                 >
-                  {loading && phoneNumber ? "Sending..." : "Send Verification Code"}
+                  {phoneLoading ? "Sending SMS via Google..." : "Send Verification Code"}
                 </Button>
               </form>
             ) : (
@@ -237,16 +249,17 @@ export default function SignupPage() {
                 </div>
                 <Button 
                   type="submit" 
-                  disabled={loading || !otp}
+                  disabled={loading || phoneLoading || !otp}
                   className="w-full bg-gradient-to-r from-[#ea6f2a] to-[#f2a04a] hover:from-[#f2a04a] hover:to-[#ea6f2a] text-white shadow-lg h-11"
                 >
-                  {loading && otp ? "Verifying..." : "Verify & Sign In"}
+                  {loading || phoneLoading ? "Verifying..." : "Verify & Sign Up"}
                 </Button>
                 <button 
                   type="button" 
                   onClick={() => {
                     setStep("phone")
                     setOtp("")
+                    resetPhone()
                     setError(null)
                   }}
                   className="w-full text-center text-xs text-[#9a9fc4] hover:text-white transition-colors py-2"
