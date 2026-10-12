@@ -6,7 +6,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Send, Sparkles, CornerDownRight } from "lucide-react"
+import { Heart, MessageCircle, Send, Sparkles, CornerDownRight, Share2 } from "lucide-react"
+import { toast } from "sonner"
 import {
   listDeckPosts,
   createDeckPost,
@@ -41,6 +42,9 @@ interface DeckPost {
 interface TheDeckProps {
   currentUserId: string | null
   currentProfileId: string | null
+  refreshSignal?: number
+  onPostStatusChange?: (hasPosted: boolean) => void
+  hideInternalComposer?: boolean
 }
 
 function initials(first?: string, last?: string) {
@@ -51,7 +55,13 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
-export function TheDeck({ currentUserId, currentProfileId }: TheDeckProps) {
+export function TheDeck({
+  currentUserId,
+  currentProfileId,
+  refreshSignal = 0,
+  onPostStatusChange,
+  hideInternalComposer = false,
+}: TheDeckProps) {
   const router = useRouter()
   const [posts, setPosts] = useState<DeckPost[]>([])
   const [viewerHasPosted, setViewerHasPosted] = useState(false)
@@ -71,15 +81,16 @@ export function TheDeck({ currentUserId, currentProfileId }: TheDeckProps) {
       const data = await listDeckPosts()
       setPosts(data.posts as DeckPost[])
       setViewerHasPosted(data.viewerHasPosted)
+      onPostStatusChange?.(data.viewerHasPosted)
     } catch {
       setPosts([])
     }
     setLoading(false)
-  }, [])
+  }, [onPostStatusChange])
 
   useEffect(() => {
     load()
-  }, [load])
+  }, [load, refreshSignal])
 
   const requireAuth = () => {
     if (!currentUserId) {
@@ -106,8 +117,19 @@ export function TheDeck({ currentUserId, currentProfileId }: TheDeckProps) {
 
   const handleStar = async (postId: string) => {
     if (!requireAuth()) return
-    await togglePostStar(postId)
-    load()
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p
+        const nextStarred = !p.user_starred
+        const nextCount = (p.star_count || 0) + (nextStarred ? 1 : -1)
+        return { ...p, user_starred: nextStarred, star_count: Math.max(0, nextCount) }
+      })
+    )
+    try {
+      await togglePostStar(postId)
+    } catch {
+      load()
+    }
   }
 
   const handleComment = async (postId: string) => {
@@ -129,18 +151,41 @@ export function TheDeck({ currentUserId, currentProfileId }: TheDeckProps) {
 
   const handleCommentStar = async (commentId: string) => {
     if (!requireAuth()) return
-    await toggleCommentStar(commentId)
-    load()
+    setPosts((prev) =>
+      prev.map((p) => ({
+        ...p,
+        comments: p.comments?.map((c) => {
+          if (c.id !== commentId) return c
+          const nextStarred = !c.user_starred
+          const nextCount = (c.star_count || 0) + (nextStarred ? 1 : -1)
+          return { ...c, user_starred: nextStarred, star_count: Math.max(0, nextCount) }
+        }),
+      }))
+    )
+    try {
+      await toggleCommentStar(commentId)
+    } catch {
+      load()
+    }
+  }
+
+  const handleShare = (postId: string) => {
+    if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/community?tab=deck#post-${postId}`
+      navigator.clipboard.writeText(url)
+      toast.success("Link copied to clipboard!")
+    }
   }
 
   return (
     <div className="space-y-6">
-      {/* Composer (Enlarged Mobile Card) */}
-      <div className="rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/60 p-6 sm:p-8 shadow-xl">
-        <div className="flex items-center gap-2.5 mb-4">
-          <Sparkles className="w-5 h-5 text-[#ffd166]" />
-          <h2 className="text-sm sm:text-base font-bold uppercase tracking-[0.2em] text-[#ffd166]">Daily Dispatch on The DECK</h2>
-        </div>
+      {/* Composer (Optional if parent renders unified SocialComposer) */}
+      {!hideInternalComposer && (
+        <div className="rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/60 p-6 sm:p-8 shadow-xl">
+          <div className="flex items-center gap-2.5 mb-4">
+            <Sparkles className="w-5 h-5 text-[#ffd166]" />
+            <h2 className="text-sm sm:text-base font-bold uppercase tracking-[0.2em] text-[#ffd166]">Daily Dispatch on The DECK</h2>
+          </div>
 
         {!currentUserId ? (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-[#05052d]/80 border border-[#20205a]/60 p-5">
@@ -182,6 +227,7 @@ export function TheDeck({ currentUserId, currentProfileId }: TheDeckProps) {
           </div>
         )}
       </div>
+      )}
 
       {/* Wall */}
       {loading ? (
@@ -259,6 +305,14 @@ export function TheDeck({ currentUserId, currentProfileId }: TheDeckProps) {
                     >
                       <MessageCircle className="w-4 h-4 text-[#20efe0]" />
                       {post.comments?.length || 0} {post.comments?.length === 1 ? "reply" : "replies"}
+                    </button>
+                    <button
+                      onClick={() => handleShare(post.id)}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold text-[#9a9fc4] hover:text-[#20efe0] hover:bg-[#20205a]/60 transition-all ml-auto"
+                      title="Copy link to post"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Share</span>
                     </button>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { authClient } from "@/lib/auth-client"
 import {
   getCommunityViewer,
@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,9 @@ import { Footer } from "@/components/footer"
 import { SocialBanBanner } from "@/components/community/social-ban-banner"
 import { TheDeck } from "@/components/community/the-deck"
 import { BandQrModal } from "@/components/bands/band-qr-modal"
+import { CommunityLeftNav, type CommunityViewerInfo } from "@/components/community/community-left-nav"
+import { CommunityRightRail } from "@/components/community/community-right-rail"
+import { SocialComposer } from "@/components/community/social-composer"
 import { 
   Search, UserPlus, UserCheck, Clock, MessageSquare, Users, 
   ArrowBigUp, MessageCircle, ChevronRight, ChevronLeft, 
@@ -137,6 +141,10 @@ export default function CommunityPage() {
   const [currentUserDbId, setCurrentUserDbId] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isCrew, setIsCrew] = useState(false)
+  const [viewerProfile, setViewerProfile] = useState<CommunityViewerInfo | null>(null)
+  const [viewerHasPostedDeck, setViewerHasPostedDeck] = useState(false)
+  const [deckRefreshSignal, setDeckRefreshSignal] = useState(0)
+  const composerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -178,6 +186,10 @@ export default function CommunityPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState<Record<string, string>>({})
 
+  const suggestedBands = useMemo(() => {
+    return bandsList.filter((b) => !b.is_following)
+  }, [bandsList])
+
   const filteredMembers = useMemo(() => {
     if (!memberSearch.trim()) return members
     const search = memberSearch.toLowerCase()
@@ -211,7 +223,15 @@ export default function CommunityPage() {
   useEffect(() => {
     checkAuth()
     fetchCategories()
+    fetchBands()
   }, [])
+
+  useEffect(() => {
+    if (currentUserDbId) {
+      fetchFriends()
+      fetchConversations()
+    }
+  }, [currentUserDbId])
 
   useEffect(() => {
     if (activeTab === "friends") fetchFriends()
@@ -245,6 +265,7 @@ export default function CommunityPage() {
         setCurrentUserDbId(viewer.id)
         setIsAdmin(viewer.is_admin)
         setIsCrew(viewer.is_employee)
+        setViewerProfile(viewer)
       }
     } catch {
       // signed out
@@ -262,13 +283,46 @@ export default function CommunityPage() {
     setLoading(false)
   }
 
+  const handlePostSuccess = (type: "deck" | "discussion") => {
+    if (type === "deck") {
+      setDeckRefreshSignal((s) => s + 1)
+      setViewerHasPostedDeck(true)
+      setActiveTab("deck")
+      toast.success("Broadcast posted to The DECK!")
+    } else {
+      fetchPosts()
+      setActiveTab("feed")
+      toast.success("Discussion topic published!")
+    }
+  }
+
+  const handleFocusComposer = () => {
+    if (activeTab !== "deck" && activeTab !== "feed") {
+      setActiveTab("deck")
+    }
+    setTimeout(() => {
+      composerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 100)
+  }
+
   const handleToggleStar = async (postId: string, _currentlyStarred: boolean) => {
     if (!currentUserId) {
       router.push("/login")
       return
     }
-    await togglePostStar(postId)
-    fetchPosts()
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p
+        const nextStarred = !p.user_starred
+        const nextCount = (p.star_count || 0) + (nextStarred ? 1 : -1)
+        return { ...p, user_starred: nextStarred, star_count: Math.max(0, nextCount) }
+      })
+    )
+    try {
+      await togglePostStar(postId)
+    } catch {
+      fetchPosts()
+    }
   }
 
   const handleAddComment = async (postId: string) => {
@@ -558,18 +612,18 @@ export default function CommunityPage() {
         onLogin={() => router.push("/login")}
       />
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 md:py-12">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-6 md:py-10">
         {/* Hero Section */}
-        <div className="mb-8 md:mb-12">
-          <div className="flex items-center gap-3.5 mb-2.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ea6f2a] to-[#20efe0] p-0.5 flex items-center justify-center shadow-lg shadow-[#ea6f2a]/20">
+        <div className="mb-6 md:mb-8">
+          <div className="flex items-center gap-3.5 mb-2">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-[#ea6f2a] to-[#20efe0] p-0.5 flex items-center justify-center shadow-lg shadow-[#ea6f2a]/20">
               <div className="w-full h-full bg-[#05052d] rounded-[14px] flex items-center justify-center">
-                <Users className="w-6 h-6 text-[#20efe0]" />
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#20efe0]" />
               </div>
             </div>
-            <h1 className="text-3xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">Community Hub</h1>
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">Community Hub</h1>
           </div>
-          <p className="text-[#dbe0fb] text-base sm:text-lg max-w-xl leading-relaxed">
+          <p className="text-[#dbe0fb] text-sm sm:text-base max-w-xl leading-relaxed">
             Connect with fellow Kansas music fans, share reactions, support local bands, and join the conversation.
           </p>
         </div>
@@ -577,8 +631,8 @@ export default function CommunityPage() {
         {/* Explains missing interactions to socially banned members */}
         <SocialBanBanner className="mb-6" />
 
-        {/* Navigation Pills (Enlarged for Mobile Thumbs) */}
-        <div className="flex items-center gap-2.5 mb-8 overflow-x-auto pb-2 scrollbar-none">
+        {/* Navigation Pills (Visible on small screens only) */}
+        <div className="lg:hidden flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none">
           {[
             { id: "deck", label: "The DECK", icon: Sparkles },
             { id: "feed", label: "Discussions", icon: MessageSquare },
@@ -591,16 +645,16 @@ export default function CommunityPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm sm:text-base font-semibold whitespace-nowrap transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
                 activeTab === tab.id
                   ? "bg-[#ea6f2a] text-white shadow-lg shadow-[#ea6f2a]/25"
                   : "bg-[#0c0c3f]/70 text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/60"
               }`}
             >
-              <tab.icon className="w-4 h-4 text-[#20efe0]" />
+              <tab.icon className="w-3.5 h-3.5 text-[#20efe0]" />
               {tab.label}
               {tab.badge ? (
-                <span className="min-w-5 h-5 px-1.5 rounded-full bg-white/20 text-xs flex items-center justify-center font-bold">
+                <span className="min-w-4 h-4 px-1 rounded-full bg-white/20 text-[10px] flex items-center justify-center font-bold">
                   {tab.badge}
                 </span>
               ) : null}
@@ -611,18 +665,75 @@ export default function CommunityPage() {
           {currentUserId && (
             <Link
               href={`/profile/${currentUserId}`}
-              className="flex items-center gap-2 px-6 py-3 rounded-full text-sm sm:text-base font-semibold whitespace-nowrap transition-all bg-[#0c0c3f]/70 text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/60 ml-auto"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all bg-[#0c0c3f]/70 text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/60 ml-auto"
             >
-              <User className="w-4 h-4 text-[#20efe0]" />
-              My Profile
+              <User className="w-3.5 h-3.5 text-[#20efe0]" />
+              Profile
             </Link>
           )}
         </div>
 
-        {/* The DECK - main community wall (one post per day per member, unlimited replies) */}
-        {activeTab === "deck" && (
-          <TheDeck currentUserId={currentUserId} currentProfileId={currentUserDbId} />
-        )}
+        {/* 3-Column Social Framework */}
+        <div className="flex gap-6 xl:gap-8 items-start justify-center">
+          {/* Left Action & Profile Rail */}
+          <CommunityLeftNav
+            currentViewer={viewerProfile}
+            activeTab={activeTab}
+            onSelectTab={(tab) => setActiveTab(tab)}
+            friendRequestsCount={friendRequests.length}
+            unreadMessagesCount={unreadCount}
+            onFocusComposer={handleFocusComposer}
+          />
+
+          {/* Center Stream Column */}
+          <div className="flex-1 min-w-0 max-w-2xl xl:max-w-3xl space-y-6">
+            {/* Stream Selector Pills */}
+            {(activeTab === "deck" || activeTab === "feed" || activeTab === "bands") && (
+              <div className="p-1.5 rounded-2xl bg-[#0c0c3f]/80 border border-[#20205a]/70 backdrop-blur-md flex items-center gap-1.5 shadow-lg">
+                {[
+                  { id: "deck" as const, label: "The DECK", icon: Sparkles },
+                  { id: "feed" as const, label: "Discussions", icon: MessageSquare },
+                  { id: "bands" as const, label: "Kansas Bands", icon: Music },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    onClick={() => setActiveTab(st.id)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                      activeTab === st.id
+                        ? "bg-[#ea6f2a] text-white shadow-md shadow-[#ea6f2a]/25"
+                        : "text-[#cbd0f2] hover:bg-[#20205a]/50 hover:text-white"
+                    }`}
+                  >
+                    <st.icon className="w-3.5 h-3.5 text-[#20efe0]" />
+                    <span>{st.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Inline Rich Social Composer */}
+            {(activeTab === "deck" || activeTab === "feed") && (
+              <div ref={composerRef}>
+                <SocialComposer
+                  currentViewer={viewerProfile}
+                  categories={categories}
+                  viewerHasPostedDeck={viewerHasPostedDeck}
+                  onPostSuccess={handlePostSuccess}
+                  defaultMode={activeTab === "deck" ? "deck" : "discussion"}
+                />
+              </div>
+            )}
+
+            {/* The DECK - main community wall */}
+            {activeTab === "deck" && (
+              <TheDeck
+                currentUserId={currentUserId}
+                currentProfileId={currentUserDbId}
+                refreshSignal={deckRefreshSignal}
+                onPostStatusChange={setViewerHasPostedDeck}
+                hideInternalComposer={true}
+              />
+            )}
 
         {/* Feed Tab - Community Discussions & General Posting */}
         {activeTab === "feed" && (
@@ -1537,6 +1648,18 @@ export default function CommunityPage() {
             </div>
           </div>
         )}
+          </div>
+
+          {/* Right Discovery Rail */}
+          <CommunityRightRail
+            suggestedBands={suggestedBands}
+            onToggleFollow={handleToggleBandFollow}
+            friends={friends}
+            onStartChat={startConversation}
+            currentUserId={currentUserId}
+            onViewAllBands={() => setActiveTab("bands")}
+          />
+        </div>
 
         {/* Create Discussion Post Modal */}
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
