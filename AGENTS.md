@@ -96,7 +96,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 | Auth | `user`, `session`, `account`, `verification` | Better Auth managed |
 | Members | `profiles`, `phone_verifications` | profile = app user record, roles, onboarding, social ban, `staff_email` (e.g. `dave.staff@starcast.online`), Stripe payout account |
 | Articles | `articles`, `article_likes`, `saved_articles` | `approved` gate; admin approves |
-| Community | `community_categories`, `community_posts`, `post_stars`, `post_comments` (threaded via `parent_comment_id`), `comment_stars` | 3-column social stream (`CommunityLeftNav`, center feed with `SocialComposer` & `TheDeck` 1-post/24h wall, `CommunityRightRail` with broadcast spotlight, 1-click band follows, active friend DMs). Categories tagged per show (`show_id`, `topic` general/community). |
+| Community | `community_categories`, `community_posts`, `post_stars`, `post_comments` (threaded via `parent_comment_id`), `comment_stars` | Social stream with persistent `CommunityLeftNav` action rail and expansive feed (`SocialComposer` & `TheDeck` 1-post/24h wall, Discussions, Bands, Friends, DMs). Categories tagged per show (`show_id`, `topic` general/community). |
 | Social | `friendships` (status pending/accepted), `messages` (DMs), `notifications` | notifications keyed by **profile ids** |
 | Bands / artists | `bands`, `band_links`, `band_posts`, `band_post_comments`, `band_follows` | `bands.slug` → `/bands/[slug]`; `type` band/artist; owner = `owner_user_id` |
 | Studio | `bookings`, `payments` | booking status requested→confirmed→checked_in→completed/cancelled; rate snapshot on booking |
