@@ -71,7 +71,7 @@ export function CommunityLeftNav({
     },
     {
       id: "bands" as const,
-      label: "Kansas Bands",
+      label: "Bands",
       caption: "Artists, Shows & Audio",
       icon: Music,
       badge: 0,
@@ -169,7 +169,7 @@ export function CommunityLeftNav({
           </div>
           <h3 className="font-bold text-[#f5f7ff] text-base">Join the Stream</h3>
           <p className="text-xs text-[#9a9fc4] mt-1 mb-4 leading-relaxed">
-            Sign in to post to the DECK, comment, DM friends, and support local Kansas artists.
+            Sign in to post to the DECK, comment, DM friends, and support local artists.
           </p>
           <Button
             onClick={() => router.push("/login")}

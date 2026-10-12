@@ -53,7 +53,6 @@ import { SocialBanBanner } from "@/components/community/social-ban-banner"
 import { TheDeck } from "@/components/community/the-deck"
 import { BandQrModal } from "@/components/bands/band-qr-modal"
 import { CommunityLeftNav, type CommunityViewerInfo } from "@/components/community/community-left-nav"
-import { CommunityRightRail } from "@/components/community/community-right-rail"
 import { SocialComposer } from "@/components/community/social-composer"
 import { 
   Search, UserPlus, UserCheck, Clock, MessageSquare, Users, 
@@ -624,7 +623,7 @@ export default function CommunityPage() {
             <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">Community Hub</h1>
           </div>
           <p className="text-[#dbe0fb] text-sm sm:text-base max-w-xl leading-relaxed">
-            Connect with fellow Kansas music fans, share reactions, support local bands, and join the conversation.
+            Connect with fellow music fans, share reactions, support local bands, and join the conversation.
           </p>
         </div>
 
@@ -673,7 +672,7 @@ export default function CommunityPage() {
           )}
         </div>
 
-        {/* 3-Column Social Framework */}
+        {/* 2-Column Social Framework (Action Rail + Expansive Stream) */}
         <div className="flex gap-6 xl:gap-8 items-start justify-center">
           {/* Left Action & Profile Rail */}
           <CommunityLeftNav
@@ -685,15 +684,15 @@ export default function CommunityPage() {
             onFocusComposer={handleFocusComposer}
           />
 
-          {/* Center Stream Column */}
-          <div className="flex-1 min-w-0 max-w-2xl xl:max-w-3xl space-y-6">
+          {/* Center Stream Column (Expands across middle and right space) */}
+          <div className="flex-1 min-w-0 space-y-6">
             {/* Stream Selector Pills */}
             {(activeTab === "deck" || activeTab === "feed" || activeTab === "bands") && (
               <div className="p-1.5 rounded-2xl bg-[#0c0c3f]/80 border border-[#20205a]/70 backdrop-blur-md flex items-center gap-1.5 shadow-lg">
                 {[
                   { id: "deck" as const, label: "The DECK", icon: Sparkles },
                   { id: "feed" as const, label: "Discussions", icon: MessageSquare },
-                  { id: "bands" as const, label: "Kansas Bands", icon: Music },
+                  { id: "bands" as const, label: "Bands", icon: Music },
                 ].map((st) => (
                   <button
                     key={st.id}
@@ -1082,7 +1081,7 @@ export default function CommunityPage() {
                   Soundstage Bands &amp; Artist Roster
                 </h2>
                 <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-2xl leading-relaxed">
-                  Discover regional Kansas musicians, follow their soundstage updates, catch live set alerts, and grab direct QR code passes.
+                  Discover soundstage musicians, follow their updates, catch live set alerts, and grab direct QR code passes.
                 </p>
               </div>
 
@@ -1649,16 +1648,6 @@ export default function CommunityPage() {
           </div>
         )}
           </div>
-
-          {/* Right Discovery Rail */}
-          <CommunityRightRail
-            suggestedBands={suggestedBands}
-            onToggleFollow={handleToggleBandFollow}
-            friends={friends}
-            onStartChat={startConversation}
-            currentUserId={currentUserId}
-            onViewAllBands={() => setActiveTab("bands")}
-          />
         </div>
 
         {/* Create Discussion Post Modal */}
