@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
   import { authClient } from "@/lib/auth-client"
   import {
     getProductionViewer,
@@ -43,6 +44,7 @@ import {
   ChevronRight,
   DollarSign,
   Loader2,
+  Shield,
 } from "lucide-react"
 
 interface Production {
@@ -754,6 +756,17 @@ export default function ProductionPage() {
                 <DollarSign className="w-4 h-4 mr-2" />
                 Money
               </Button>
+            )}
+            {isAdmin && (
+              <Link href="/admin">
+                <Button
+                  variant="outline"
+                  className="border-[#ea6f2a]/60 bg-[#0c0c3f]/55 text-[#f5f7ff] hover:border-[#ea6f2a] hover:bg-[#ea6f2a]/15 shadow-sm"
+                >
+                  <Shield className="w-4 h-4 mr-2 text-[#ea6f2a]" />
+                  Admin Console
+                </Button>
+              </Link>
             )}
           </div>
         </div>

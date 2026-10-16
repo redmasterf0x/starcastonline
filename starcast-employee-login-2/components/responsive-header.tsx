@@ -35,11 +35,15 @@ export function ResponsiveHeader({
   const { data: session } = authClient.useSession()
 
   useEffect(() => {
+    if (isAdminProp !== undefined) setIsAdmin(isAdminProp)
+    if (isCrewProp !== undefined) setIsCrew(isCrewProp)
+    if (isLoggedInProp !== undefined) setLoggedIn(isLoggedInProp)
+
     if (session?.user) {
       setLoggedIn(true)
       getUnreadNotificationCount().then((count) => setUnreadNotifs(count)).catch(() => {})
-      // Only fetch role details if props didn't already tell us
-      if (!isAdminProp && !isCrewProp) {
+      // Only fetch role details if props didn't explicitly give us admin/crew status
+      if (isAdminProp === undefined && isCrewProp === undefined) {
         getMyProfile()
           .then((profile: any) => {
             if (profile) {
@@ -54,12 +58,12 @@ export function ResponsiveHeader({
           })
       }
     } else if (session === null) {
-      setLoggedIn(false)
-      setIsAdmin(false)
-      setIsCrew(false)
+      if (isLoggedInProp === undefined) setLoggedIn(false)
+      if (isAdminProp === undefined) setIsAdmin(false)
+      if (isCrewProp === undefined) setIsCrew(false)
       setUnreadNotifs(0)
     }
-  }, [session, isAdminProp, isCrewProp])
+  }, [session, isAdminProp, isCrewProp, isLoggedInProp])
 
   const handleLogin = () => {
     if (onLogin) {
