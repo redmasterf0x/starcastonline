@@ -17,6 +17,7 @@ import {
   releaseEscrowPayout,
 } from "@/app/actions/band-tickets"
 import { StudioManager } from "@/components/studio/studio-manager"
+import { AdminAnalyticsDashboard } from "@/components/admin/admin-analytics-dashboard"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -412,25 +413,9 @@ export default function AdminPage() {
 
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: "Total Members", value: users.length, icon: Users, color: "text-blue-400" },
-                { label: "Team Members", value: teamMembers.length, icon: Sparkles, color: "text-[#ea6f2a]" },
-                { label: "Pending Articles", value: pendingArticles.length, icon: FileText, color: "text-yellow-400" },
-                { label: "Active Sponsors", value: sponsors.filter(s => s.status === "paid").length, icon: Building2, color: "text-emerald-400" },
-              ].map((stat, i) => (
-                <div key={i} className="bg-[#0c0c3f]/60 border border-[#20205a]/50 rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                    <TrendingUp className="w-4 h-4 text-green-400" />
-                  </div>
-                  <p className="text-2xl font-bold text-[#f5f7ff]">{stat.value}</p>
-                  <p className="text-sm text-[#9a9fc4]">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-8">
+            {/* Live Visual Analytics Suite */}
+            <AdminAnalyticsDashboard />
 
             {/* Quick Actions */}
             <div className="grid md:grid-cols-2 gap-6">

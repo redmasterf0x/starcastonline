@@ -9,6 +9,8 @@ import {
   inboxMessages,
   sponsors,
   postStars,
+  bands,
+  bookings,
 } from "@/lib/db/schema"
 import { eq, desc, asc, and, inArray } from "drizzle-orm"
 import { auth } from "@/lib/auth"
@@ -468,4 +470,97 @@ export async function adminListSponsors() {
     status: s.status,
     created_at: s.createdAt.toISOString(),
   }))
+}
+
+// ── Analytics & Visualizations ───────────────────────────────────────────────
+
+export async function adminGetAnalyticsOverview() {
+  await requireAdmin()
+
+  let allProfiles: any[] = []
+  let allBookings: any[] = []
+  let allBands: any[] = []
+  let allSponsors: any[] = []
+  let allPosts: any[] = []
+  let allArticles: any[] = []
+
+  try {
+    allProfiles = await db.select().from(profiles)
+  } catch (e) {
+    console.error("adminGetAnalytics: profiles error", e)
+  }
+
+  try {
+    allBookings = await db.select().from(bookings)
+  } catch (e) {
+    console.error("adminGetAnalytics: bookings error", e)
+  }
+
+  try {
+    allBands = await db.select().from(bands)
+  } catch (e) {
+    console.error("adminGetAnalytics: bands error", e)
+  }
+
+  try {
+    allSponsors = await db.select().from(sponsors)
+  } catch (e) {
+    console.error("adminGetAnalytics: sponsors error", e)
+  }
+
+  try {
+    allPosts = await db.select().from(communityPosts)
+  } catch (e) {
+    console.error("adminGetAnalytics: communityPosts error", e)
+  }
+
+  try {
+    allArticles = await db.select().from(articles)
+  } catch (e) {
+    console.error("adminGetAnalytics: articles error", e)
+  }
+
+  return {
+    profiles: allProfiles.map((p) => ({
+      id: p.id,
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+      isAdmin: Boolean(p.isAdmin),
+      isEmployee: Boolean(p.isEmployee),
+      role: (p.role || (p.isAdmin ? "admin" : p.isEmployee ? "staff" : "user")) as "admin" | "staff" | "user",
+      socialBanned: Boolean(p.socialBanned),
+    })),
+    bookings: allBookings.map((b) => ({
+      id: b.id,
+      startsAt: b.startsAt ? new Date(b.startsAt).toISOString() : new Date().toISOString(),
+      createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
+      status: b.status || "requested",
+      totalAmount: Number(b.totalAmount || 0),
+      hours: Number(b.hours || 0),
+    })),
+    bands: allBands.map((b) => ({
+      id: b.id,
+      name: b.name || "",
+      type: b.type || "band",
+      ticketingStatus: b.ticketingStatus || "none",
+      hasActivePass: Boolean(b.hasActivePass),
+      musicCatalogEnabled: Boolean(b.musicCatalogEnabled),
+      createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
+    })),
+    sponsors: allSponsors.map((s) => ({
+      id: s.id,
+      packageName: s.packageName || "Sponsor",
+      amountCents: Number(s.amountCents || 0),
+      status: s.status || "active",
+      createdAt: s.createdAt ? new Date(s.createdAt).toISOString() : new Date().toISOString(),
+    })),
+    posts: allPosts.map((p) => ({
+      id: p.id,
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    })),
+    articles: allArticles.map((a) => ({
+      id: a.id,
+      approved: Boolean(a.approved),
+      createdAt: a.createdAt ? new Date(a.createdAt).toISOString() : new Date().toISOString(),
+    })),
+  }
 }
