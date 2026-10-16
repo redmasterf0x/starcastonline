@@ -116,6 +116,18 @@ function formatDateLocal(dateString: string | null) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+function localDateTimeToUtcIso(dateTimeLocalStr: string | null | undefined): string | null {
+  if (!dateTimeLocalStr || !dateTimeLocalStr.trim()) return null
+  const trimmed = dateTimeLocalStr.trim()
+  if (/Z|[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    const d = new Date(trimmed)
+    return isNaN(d.getTime()) ? null : d.toISOString()
+  }
+  const localDate = new Date(trimmed)
+  if (isNaN(localDate.getTime())) return null
+  return localDate.toISOString()
+}
+
 function addClampedMonths(date: Date, months: number, anchorDay: number) {
   const result = new Date(date)
   result.setDate(1)
@@ -190,6 +202,8 @@ export default function ProductionPage() {
   const [deleteDialog, setDeleteDialog] = useState(false)
   const [requestDialog, setRequestDialog] = useState(false)
   const [selectedProduction, setSelectedProduction] = useState<Production | null>(null)
+  const [selectedOccurrence, setSelectedOccurrence] = useState<Production | null>(null)
+  const [editScope, setEditScope] = useState<"series" | "occurrence">("series")
 
   const [payoutsDialog, setPayoutsDialog] = useState(false)
   const [payoutsLoading, setPayoutsLoading] = useState(false)
@@ -321,13 +335,22 @@ export default function ProductionPage() {
       toast({ title: "Missing information", description: "Add a title and start date.", variant: "destructive" })
       return false
     }
+    if (formData.end_date && new Date(formData.end_date) < new Date(formData.start_date)) {
+      toast({ title: "Invalid end date", description: "The end date must be on or after the start date.", variant: "destructive" })
+      return false
+    }
     if (formData.is_recurring && (!formData.recurrence_frequency || !formData.recurrence_end_date)) {
       toast({ title: "Repeat details required", description: "Choose a frequency and repeat end date.", variant: "destructive" })
       return false
     }
-    if (formData.is_recurring && new Date(`${formData.recurrence_end_date}T23:59:59`) < new Date(formData.start_date)) {
-      toast({ title: "Invalid repeat end date", description: "The repeat end date must be on or after the start date.", variant: "destructive" })
-      return false
+    if (formData.is_recurring) {
+      const rawEnd = formData.recurrence_end_date.slice(0, 10)
+      const recurrenceEnd = new Date(`${rawEnd}T23:59:59`)
+      const start = new Date(formData.start_date)
+      if (Number.isNaN(recurrenceEnd.getTime()) || recurrenceEnd < start) {
+        toast({ title: "Invalid repeat end date", description: "The repeat end date must be on or after the start date.", variant: "destructive" })
+        return false
+      }
     }
     return true
   }
@@ -335,24 +358,32 @@ export default function ProductionPage() {
   const handleSaveProduction = async () => {
     if (!validateForm()) return
 
+    const startIso = localDateTimeToUtcIso(formData.start_date)
+    if (!startIso) {
+      toast({ title: "Invalid start date", description: "Please enter a valid start date and time.", variant: "destructive" })
+      return
+    }
+    const endIso = localDateTimeToUtcIso(formData.end_date)
+    const recurrenceEndClean = formData.recurrence_end_date ? formData.recurrence_end_date.slice(0, 10) : null
+
     let newProduction: { id: string; title: string; start_date: string | null; location: string | null }
     try {
       newProduction = await createProduction(
         {
           title: formData.title,
           description: formData.description || null,
-          start_date: formData.start_date,
-          end_date: formData.end_date || null,
+          start_date: startIso,
+          end_date: endIso,
           location: formData.location || null,
           status: formData.status,
           is_recurring: formData.is_recurring,
           recurrence_frequency: formData.recurrence_frequency,
-          recurrence_end_date: formData.recurrence_end_date,
+          recurrence_end_date: recurrenceEndClean,
         },
         selectedCrew.map((c) => ({ user_id: c.user_id, role: c.role })),
       )
-    } catch {
-      toast({ title: "Error", description: "Failed to save production", variant: "destructive" })
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to save production", variant: "destructive" })
       return
     }
 
@@ -390,22 +421,86 @@ export default function ProductionPage() {
   const handleUpdateProduction = async () => {
     if (!selectedProduction || !validateForm()) return
     const baseId = selectedProduction.id.split("--occurrence-")[0]
+    const recurrenceEndClean = formData.recurrence_end_date ? formData.recurrence_end_date.slice(0, 10) : null
 
     try {
-      await updateProduction(baseId, {
-        title: formData.title,
-        description: formData.description || null,
-        start_date: formData.start_date,
-        end_date: formData.end_date || null,
-        location: formData.location || null,
-        status: formData.status,
-        is_recurring: formData.is_recurring,
-        recurrence_frequency: formData.recurrence_frequency,
-        recurrence_end_date: formData.recurrence_end_date,
-      })
-      toast({ title: "Success", description: "Production updated successfully" })
+      if (editScope === "occurrence" && selectedOccurrence) {
+        // Detach this specific occurrence and create as a standalone event on this date/time
+        const startIso = localDateTimeToUtcIso(formData.start_date)
+        if (!startIso) throw new Error("Invalid start date and time")
+        const endIso = localDateTimeToUtcIso(formData.end_date)
+
+        await createProduction(
+          {
+            title: formData.title,
+            description: formData.description || null,
+            start_date: startIso,
+            end_date: endIso,
+            location: formData.location || null,
+            status: formData.status,
+            is_recurring: false,
+          },
+          [],
+        )
+        toast({ title: "Success", description: "Episode detached and scheduled as a standalone event" })
+      } else if (selectedProduction.is_recurring && selectedOccurrence) {
+        // User opened from a specific occurrence (e.g. in October) and is updating the recurring series.
+        // If they changed the time or day-of-week, apply that adjustment cleanly to the series base start date:
+        const editedLocal = new Date(formData.start_date)
+        const baseLocal = new Date(selectedProduction.start_date)
+        baseLocal.setHours(editedLocal.getHours(), editedLocal.getMinutes(), 0, 0)
+
+        const occLocal = new Date(selectedOccurrence.start_date)
+        const dayShift = Math.round((editedLocal.getTime() - occLocal.getTime()) / 86400000)
+        if (dayShift !== 0) {
+          baseLocal.setDate(baseLocal.getDate() + dayShift)
+        }
+
+        const updatedSeriesStartIso = baseLocal.toISOString()
+        let updatedSeriesEndIso: string | null = null
+        if (formData.end_date) {
+          const editedEndLocal = new Date(formData.end_date)
+          const baseEndLocal = selectedProduction.end_date ? new Date(selectedProduction.end_date) : new Date(baseLocal)
+          baseEndLocal.setHours(editedEndLocal.getHours(), editedEndLocal.getMinutes(), 0, 0)
+          if (dayShift !== 0) baseEndLocal.setDate(baseEndLocal.getDate() + dayShift)
+          updatedSeriesEndIso = baseEndLocal.toISOString()
+        }
+
+        await updateProduction(baseId, {
+          title: formData.title,
+          description: formData.description || null,
+          start_date: updatedSeriesStartIso,
+          end_date: updatedSeriesEndIso,
+          location: formData.location || null,
+          status: formData.status,
+          is_recurring: formData.is_recurring,
+          recurrence_frequency: formData.recurrence_frequency,
+          recurrence_end_date: recurrenceEndClean,
+        })
+        toast({ title: "Success", description: "Recurring series updated successfully" })
+      } else {
+        // Standard non-recurring or direct series update from list view
+        const startIso = localDateTimeToUtcIso(formData.start_date)
+        if (!startIso) throw new Error("Invalid start date and time")
+        const endIso = localDateTimeToUtcIso(formData.end_date)
+
+        await updateProduction(baseId, {
+          title: formData.title,
+          description: formData.description || null,
+          start_date: startIso,
+          end_date: endIso,
+          location: formData.location || null,
+          status: formData.status,
+          is_recurring: formData.is_recurring,
+          recurrence_frequency: formData.recurrence_frequency,
+          recurrence_end_date: recurrenceEndClean,
+        })
+        toast({ title: "Success", description: "Production updated successfully" })
+      }
+
       setEditDialog(false)
       setSelectedProduction(null)
+      setSelectedOccurrence(null)
       await fetchProductions()
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to update production", variant: "destructive" })
@@ -421,6 +516,7 @@ export default function ProductionPage() {
       toast({ title: "Success", description: "Production deleted successfully" })
       setDeleteDialog(false)
       setSelectedProduction(null)
+      setSelectedOccurrence(null)
       await fetchProductions()
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to delete production", variant: "destructive" })
@@ -429,16 +525,23 @@ export default function ProductionPage() {
 
   const handleSubmitRequest = async () => {
     if (!validateForm()) return
+    const startIso = localDateTimeToUtcIso(formData.start_date)
+    if (!startIso) {
+      toast({ title: "Invalid date", description: "Please enter a valid date and time.", variant: "destructive" })
+      return
+    }
+    const recurrenceEndClean = formData.recurrence_end_date ? formData.recurrence_end_date.slice(0, 10) : null
     try {
       await submitProductionRequest({
         title: formData.title,
         description: formData.description || null,
-        start_date: formData.start_date,
+        start_date: startIso,
+        end_date: localDateTimeToUtcIso(formData.end_date),
         location: formData.location || null,
         status: "pending",
         is_recurring: formData.is_recurring,
         recurrence_frequency: formData.recurrence_frequency,
-        recurrence_end_date: formData.recurrence_end_date,
+        recurrence_end_date: recurrenceEndClean,
       })
       toast({ title: "Success", description: "Request submitted successfully" })
       setRequestDialog(false)
@@ -480,15 +583,22 @@ export default function ProductionPage() {
   }
 
   const openEditDialog = (prod: Production) => {
+    const isOccurrence = prod.id.includes("--occurrence-")
     const baseId = prod.id.split("--occurrence-")[0]
     const baseProd = productions.find((item) => item.id === baseId) || prod
 
     setSelectedProduction(baseProd)
+    setSelectedOccurrence(isOccurrence ? prod : null)
+    setEditScope("series")
+
+    const effectiveStart = isOccurrence ? prod.start_date : baseProd.start_date
+    const effectiveEnd = isOccurrence ? prod.end_date : baseProd.end_date
+
     setFormData({
       title: baseProd.title,
       description: baseProd.description || "",
-      start_date: formatDateTimeLocal(baseProd.start_date),
-      end_date: formatDateTimeLocal(baseProd.end_date),
+      start_date: formatDateTimeLocal(effectiveStart),
+      end_date: formatDateTimeLocal(effectiveEnd),
       location: baseProd.location || "",
       status: baseProd.status,
       is_recurring: baseProd.is_recurring,
@@ -502,6 +612,7 @@ export default function ProductionPage() {
     const baseId = prod.id.split("--occurrence-")[0]
     const baseProd = productions.find((item) => item.id === baseId) || prod
     setSelectedProduction(baseProd)
+    setSelectedOccurrence(prod.id.includes("--occurrence-") ? prod : null)
     setDeleteDialog(true)
   }
 
@@ -518,6 +629,8 @@ export default function ProductionPage() {
       recurrence_end_date: ""
     })
     setSelectedProduction(null)
+    setSelectedOccurrence(null)
+    setEditScope("series")
   }
 
   const formatDate = (dateString: string) => {
@@ -578,8 +691,9 @@ export default function ProductionPage() {
     if (!canManageCalendar) return
     const pad = (n: number) => String(n).padStart(2, "0")
     const dateStr = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}T09:00`
+    const endDateStr = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}T11:00`
     resetForm()
-    setFormData((prev) => ({ ...prev, start_date: dateStr }))
+    setFormData((prev) => ({ ...prev, start_date: dateStr, end_date: endDateStr }))
     setSelectedCrew([])
     setAddDialog(true)
   }
@@ -951,7 +1065,7 @@ export default function ProductionPage() {
                           key={prod.id}
                           onClick={(e) => {
                             e.stopPropagation()
-                            if (canManageCalendar) openEditDialog(productions.find((item) => item.id === prod.id.split("--occurrence-")[0]) ?? prod)
+                            if (canManageCalendar) openEditDialog(prod)
                           }}
                           className={`truncate rounded border px-1.5 py-1 text-left text-[10px] leading-tight shadow-[0_0_10px_rgba(234,111,42,0.07)] transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#20efe0] sm:text-xs ${getStatusColor(prod.status)}`}
                           title={`${prod.title} — ${formatTime(prod.start_date)}${crewCounts[prod.id] ? ` · ${crewCounts[prod.id]} crew` : ""}`}
@@ -1019,6 +1133,16 @@ export default function ProductionPage() {
                 type="datetime-local"
                 value={formData.start_date}
                 onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+              />
+            </div>
+            <div>
+              <Label htmlFor="add-end-date" className="text-[#f5f7ff]">End Date & Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span></Label>
+              <Input
+                id="add-end-date"
+                type="datetime-local"
+                value={formData.end_date}
+                onChange={(e) => setFormData({...formData, end_date: e.target.value})}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
@@ -1168,6 +1292,63 @@ export default function ProductionPage() {
               />
             </div>
             <div>
+              <Label htmlFor="edit-end-date" className="text-[#f5f7ff]">End Date & Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span></Label>
+              <Input
+                id="edit-end-date"
+                type="datetime-local"
+                value={formData.end_date}
+                onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+              />
+            </div>
+
+            {selectedProduction?.is_recurring && (
+              <div className="rounded-lg border border-[#20efe0]/30 bg-[#080936]/80 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#20efe0]">
+                  <Calendar className="w-4 h-4 text-[#20efe0] flex-shrink-0" />
+                  <span>Repeating {selectedProduction.recurrence_frequency} show (through {formatDate(selectedProduction.recurrence_end_date || "")})</span>
+                </div>
+                {selectedOccurrence ? (
+                  <div className="pt-1 flex flex-col gap-2">
+                    <label className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-xs transition-colors ${
+                      editScope === "series" ? "border-[#20efe0] bg-[#20efe0]/15 text-[#f5f7ff]" : "border-[#20205a] text-[#9a9fc4]"
+                    }`}>
+                      <input
+                        type="radio"
+                        name="edit-scope"
+                        checked={editScope === "series"}
+                        onChange={() => setEditScope("series")}
+                        className="accent-[#20efe0] mt-0.5"
+                      />
+                      <div>
+                        <span className="font-medium text-[#f5f7ff]">Update all shows in series</span>
+                        <p className="text-[11px] text-[#9a9fc4]">Applies the new time and details across every scheduled episode.</p>
+                      </div>
+                    </label>
+                    <label className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-xs transition-colors ${
+                      editScope === "occurrence" ? "border-[#ea6f2a] bg-[#ea6f2a]/15 text-[#f5f7ff]" : "border-[#20205a] text-[#9a9fc4]"
+                    }`}>
+                      <input
+                        type="radio"
+                        name="edit-scope"
+                        checked={editScope === "occurrence"}
+                        onChange={() => setEditScope("occurrence")}
+                        className="accent-[#ea6f2a] mt-0.5"
+                      />
+                      <div>
+                        <span className="font-medium text-[#f5f7ff]">Change this single episode only ({formatDate(selectedOccurrence.start_date)})</span>
+                        <p className="text-[11px] text-[#9a9fc4]">Detaches this specific date and schedules it as a standalone show.</p>
+                      </div>
+                    </label>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-[#9a9fc4]">
+                    Changes will apply to the repeating schedule across all occurrences.
+                  </p>
+                )}
+              </div>
+            )}
+            <div>
               <Label htmlFor="edit-location" className="text-[#f5f7ff]">Location</Label>
               <Input
                 id="edit-location"
@@ -1242,7 +1423,9 @@ export default function ProductionPage() {
           <DialogHeader>
             <DialogTitle className="text-[#f5f7ff]">Delete Production</DialogTitle>
             <DialogDescription className="text-[#9a9fc4]">
-              Are you sure you want to delete this production? This action cannot be undone.
+              {selectedProduction?.is_recurring
+                ? "Are you sure you want to delete this repeating production? This will delete all scheduled occurrences in this series. This action cannot be undone."
+                : "Are you sure you want to delete this production? This action cannot be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

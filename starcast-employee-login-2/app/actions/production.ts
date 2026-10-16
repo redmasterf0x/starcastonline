@@ -184,6 +184,13 @@ type ProductionInput = {
   recurrence_end_date?: string | null
 }
 
+function parseRecurrenceEndDate(dateStr: string | null | undefined): Date | null {
+  if (!dateStr || !dateStr.trim()) return null
+  const rawDate = dateStr.trim().slice(0, 10)
+  const d = new Date(`${rawDate}T23:59:59.999Z`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 function getApproximateOccurrenceCount(start: Date, end: Date, frequency: RecurrenceFrequency) {
   const days = Math.floor((end.getTime() - start.getTime()) / 86_400_000)
   if (frequency === "daily") return days + 1
@@ -197,6 +204,14 @@ function validateProductionInput(input: ProductionInput) {
   if (!input.title.trim()) throw new Error("A title is required")
   const start = new Date(input.start_date)
   if (Number.isNaN(start.getTime())) throw new Error("A valid start date is required")
+
+  if (input.end_date) {
+    const end = new Date(input.end_date)
+    if (!Number.isNaN(end.getTime()) && end < start) {
+      throw new Error("The end date must be on or after the start date")
+    }
+  }
+
   if (!input.is_recurring) return
 
   if (!recurrenceFrequencies.includes(input.recurrence_frequency as RecurrenceFrequency)) {
@@ -204,8 +219,8 @@ function validateProductionInput(input: ProductionInput) {
   }
   if (!input.recurrence_end_date) throw new Error("A repeat end date is required")
 
-  const recurrenceEnd = new Date(`${input.recurrence_end_date}T23:59:59`)
-  if (Number.isNaN(recurrenceEnd.getTime()) || recurrenceEnd < start) {
+  const recurrenceEnd = parseRecurrenceEndDate(input.recurrence_end_date)
+  if (!recurrenceEnd || recurrenceEnd < start) {
     throw new Error("The repeat end date must be on or after the start date")
   }
   if (getApproximateOccurrenceCount(start, recurrenceEnd, input.recurrence_frequency as RecurrenceFrequency) > MAX_RECURRENCE_OCCURRENCES) {
@@ -233,7 +248,7 @@ export async function createProduction(
       recurrenceFrequency: input.is_recurring ? input.recurrence_frequency || null : null,
       recurrenceEndDate:
         input.is_recurring && input.recurrence_end_date
-          ? new Date(input.recurrence_end_date)
+          ? parseRecurrenceEndDate(input.recurrence_end_date)
           : null,
     })
     .returning()
@@ -263,12 +278,10 @@ export async function updateProduction(id: string, input: ProductionInput) {
   validateProductionInput(input)
 
   const baseId = id.split("--occurrence-")[0]
-
-  let recurrenceEndDate: Date | null = null
-  if (input.is_recurring && input.recurrence_end_date) {
-    const rawDate = input.recurrence_end_date.slice(0, 10)
-    recurrenceEndDate = new Date(`${rawDate}T23:59:59.999Z`)
-  }
+  const recurrenceEndDate =
+    input.is_recurring && input.recurrence_end_date
+      ? parseRecurrenceEndDate(input.recurrence_end_date)
+      : null
 
   const result = await db
     .update(productions)
@@ -325,7 +338,7 @@ export async function submitProductionRequest(input: ProductionInput) {
     recurrenceFrequency: input.is_recurring ? input.recurrence_frequency || null : null,
     recurrenceEndDate:
       input.is_recurring && input.recurrence_end_date
-        ? new Date(input.recurrence_end_date)
+        ? parseRecurrenceEndDate(input.recurrence_end_date)
         : null,
   })
 }
@@ -363,7 +376,7 @@ export async function approveProductionRequest(request: {
     recurrenceFrequency: request.is_recurring ? request.recurrence_frequency || null : null,
     recurrenceEndDate:
       request.is_recurring && request.recurrence_end_date
-        ? new Date(request.recurrence_end_date)
+        ? parseRecurrenceEndDate(request.recurrence_end_date)
         : null,
   })
   await db
