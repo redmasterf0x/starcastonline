@@ -402,13 +402,6 @@ export default function AdminPage() {
               ) : null}
             </button>
           ))}
-          <Link
-            href="/admin/support"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-[#0c0c3f]/60 text-[#ffd166] hover:bg-[#ffd166]/15 hover:text-white border border-[#ffd166]/40 ml-auto"
-          >
-            <LifeBuoy className="w-4 h-4 text-[#ffd166]" />
-            Support Inbox →
-          </Link>
         </div>
 
         {/* OVERVIEW TAB */}
