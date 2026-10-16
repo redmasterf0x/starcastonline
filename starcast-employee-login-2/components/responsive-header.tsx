@@ -88,6 +88,7 @@ export function ResponsiveHeader({
     { href: "/merch", label: "Merch", show: true },
     { href: "/production", label: "Production", show: isCrew || isAdmin },
     { href: "/dashboard", label: "Dashboard", show: loggedIn },
+    { href: "/admin", label: "Admin", show: isAdmin },
   ]
 
   return (
