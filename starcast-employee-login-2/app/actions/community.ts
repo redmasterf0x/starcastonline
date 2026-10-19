@@ -14,6 +14,7 @@ import {
   notifications,
   bands,
   bandTicketOrders,
+  communityPollVotes,
 } from "@/lib/db/schema"
 import { and, asc, desc, eq, inArray, or, count, gte, ne, sql } from "drizzle-orm"
 import { headers } from "next/headers"
@@ -366,19 +367,67 @@ async function decoratePost(
 ) {
   const authorProfile = post.authorId ? profileById.get(post.authorId) : undefined
 
-  const [{ value: starCount }] = await db
-    .select({ value: count() })
+  // Fetch cosmic reactions on this post
+  const postReactionRows = await db
+    .select({ reactionType: postStars.reactionType, userId: postStars.userId })
     .from(postStars)
     .where(eq(postStars.postId, post.id))
 
-  let userStarred = false
-  if (viewerProfileId) {
-    const rows = await db
-      .select({ id: postStars.id })
-      .from(postStars)
-      .where(and(eq(postStars.postId, post.id), eq(postStars.userId, viewerProfileId)))
-      .limit(1)
-    userStarred = rows.length > 0
+  const reactionCounts: Record<string, number> = {}
+  const userReactions: string[] = []
+  for (const r of postReactionRows) {
+    const t = r.reactionType || "love"
+    reactionCounts[t] = (reactionCounts[t] || 0) + 1
+    if (viewerProfileId && r.userId === viewerProfileId) {
+      userReactions.push(t)
+    }
+  }
+  const totalReactions = postReactionRows.length
+  const userStarred = userReactions.length > 0
+
+  // Fetch poll data & votes if this post has an attached poll
+  let poll: {
+    question: string
+    options: { id: string; text: string; votes: number; percentage: number }[]
+    totalVotes: number
+    userVotedOptionId: string | null
+  } | null = null
+
+  if (post.pollData && typeof post.pollData === "object" && "question" in (post.pollData as any)) {
+    try {
+      const pData = post.pollData as { question: string; options: { id: string; text: string }[] }
+      const voteRows = await db
+        .select({ optionId: communityPollVotes.optionId, userId: communityPollVotes.userId })
+        .from(communityPollVotes)
+        .where(eq(communityPollVotes.postId, post.id))
+
+      const votesByOption: Record<string, number> = {}
+      let userVotedOptionId: string | null = null
+      for (const v of voteRows) {
+        votesByOption[v.optionId] = (votesByOption[v.optionId] || 0) + 1
+        if (viewerProfileId && v.userId === viewerProfileId) {
+          userVotedOptionId = v.optionId
+        }
+      }
+      const totalVotes = voteRows.length
+      poll = {
+        question: pData.question,
+        options: (pData.options || []).map((opt) => {
+          const count = votesByOption[opt.id] || 0
+          const percentage = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0
+          return {
+            id: opt.id,
+            text: opt.text,
+            votes: count,
+            percentage,
+          }
+        }),
+        totalVotes,
+        userVotedOptionId,
+      }
+    } catch (err) {
+      console.error("Error decorating poll:", err)
+    }
   }
 
   const allComments = await db
@@ -402,21 +451,29 @@ async function decoratePost(
   const badgeSets = await getBadgeSets(allProfiles)
 
   const commentIds = allComments.map((c) => c.id)
-  const starsByComment = new Map<string, number>()
-  const viewerStarredComments = new Set<string>()
+  const commentReactionsMap = new Map<string, { counts: Record<string, number>; userReactions: string[]; total: number }>()
   if (commentIds.length > 0) {
     const starRows = await db
-      .select({ commentId: commentStars.commentId, userId: commentStars.userId })
+      .select({ commentId: commentStars.commentId, reactionType: commentStars.reactionType, userId: commentStars.userId })
       .from(commentStars)
       .where(inArray(commentStars.commentId, commentIds))
     for (const s of starRows) {
-      starsByComment.set(s.commentId, (starsByComment.get(s.commentId) ?? 0) + 1)
-      if (viewerProfileId && s.userId === viewerProfileId) viewerStarredComments.add(s.commentId)
+      if (!commentReactionsMap.has(s.commentId)) {
+        commentReactionsMap.set(s.commentId, { counts: {}, userReactions: [], total: 0 })
+      }
+      const cData = commentReactionsMap.get(s.commentId)!
+      const t = s.reactionType || "love"
+      cData.counts[t] = (cData.counts[t] || 0) + 1
+      cData.total++
+      if (viewerProfileId && s.userId === viewerProfileId) {
+        cData.userReactions.push(t)
+      }
     }
   }
 
   const toCommentShape = (c: typeof postComments.$inferSelect) => {
     const cp = commenterById.get(c.userId)
+    const cReactions = commentReactionsMap.get(c.id) ?? { counts: {}, userReactions: [], total: 0 }
     return {
       id: c.id,
       user_id: c.userId,
@@ -435,8 +492,9 @@ async function decoratePost(
             badges: computeBadges(cp, badgeSets),
           }
         : undefined,
-      star_count: starsByComment.get(c.id) ?? 0,
-      user_starred: viewerStarredComments.has(c.id),
+      reactions: cReactions,
+      star_count: cReactions.total,
+      user_starred: cReactions.userReactions.length > 0,
     }
   }
 
@@ -467,8 +525,14 @@ async function decoratePost(
           badges: computeBadges(authorProfile, badgeSets),
         }
       : undefined,
-    star_count: starCount,
+    reactions: {
+      counts: reactionCounts,
+      userReactions,
+      total: totalReactions,
+    },
+    star_count: totalReactions,
     user_starred: userStarred,
+    poll,
     comments: withReplies,
   }
 }
@@ -533,8 +597,27 @@ export async function createCommunityPost(input: {
   content: string
   category: string
   images: { url: string; credit: string }[]
+  poll?: { question: string; options: string[] } | null
 }) {
   const viewer = await requireSocialViewer()
+  let pollData = null
+  if (
+    input.poll &&
+    input.poll.question?.trim() &&
+    Array.isArray(input.poll.options) &&
+    input.poll.options.filter((o) => o.trim().length > 0).length >= 2
+  ) {
+    pollData = {
+      question: input.poll.question.trim(),
+      options: input.poll.options
+        .filter((o) => o.trim().length > 0)
+        .map((opt, idx) => ({
+          id: `opt_${idx + 1}`,
+          text: opt.trim(),
+        })),
+    }
+  }
+
   const [newPost] = await db
     .insert(communityPosts)
     .values({
@@ -544,6 +627,7 @@ export async function createCommunityPost(input: {
       content: input.content.trim(),
       category: input.category,
       images: input.images,
+      pollData,
     })
     .returning()
 
@@ -554,19 +638,31 @@ export async function createCommunityPost(input: {
   )
 }
 
-/** Toggle a star on a post for the signed-in user. */
-export async function togglePostStar(postId: string) {
+/** Toggle a cosmic reaction on a post ('love' | 'fire' | 'riff' | 'cosmic' | 'legend' | 'hype') */
+export async function togglePostReaction(postId: string, reactionType: string = "love") {
   const viewer = await requireSocialViewer()
   const existing = await db
     .select({ id: postStars.id })
     .from(postStars)
-    .where(and(eq(postStars.postId, postId), eq(postStars.userId, viewer.id)))
+    .where(
+      and(
+        eq(postStars.postId, postId),
+        eq(postStars.userId, viewer.id),
+        eq(postStars.reactionType, reactionType)
+      )
+    )
     .limit(1)
+
   if (existing.length > 0) {
     await db.delete(postStars).where(eq(postStars.id, existing[0].id))
-    return { starred: false }
+    return { reacted: false, reactionType }
   }
-  await db.insert(postStars).values({ postId, userId: viewer.id })
+
+  await db.insert(postStars).values({
+    postId,
+    userId: viewer.id,
+    reactionType,
+  })
 
   // Trigger notification to post author
   try {
@@ -583,13 +679,60 @@ export async function togglePostStar(postId: string) {
         type: "post_star",
         postId,
         postTitle: post.title,
+        snippet: `Reacted with ${reactionType}`,
       })
     }
   } catch (err) {
     console.error("Failed to trigger post_star notification:", err)
   }
 
-  return { starred: true }
+  return { reacted: true, reactionType }
+}
+
+/** Toggle a star on a post for the signed-in user (legacy compatibility). */
+export async function togglePostStar(postId: string) {
+  const res = await togglePostReaction(postId, "love")
+  return { starred: res.reacted }
+}
+
+/** Vote or retract vote on a community poll */
+export async function voteOnPoll(postId: string, optionId: string) {
+  const viewer = await requireSocialViewer()
+
+  const existingVote = await db
+    .select({ id: communityPollVotes.id, optionId: communityPollVotes.optionId })
+    .from(communityPollVotes)
+    .where(
+      and(
+        eq(communityPollVotes.postId, postId),
+        eq(communityPollVotes.userId, viewer.id)
+      )
+    )
+    .limit(1)
+
+  if (existingVote.length > 0) {
+    if (existingVote[0].optionId === optionId) {
+      await db.delete(communityPollVotes).where(eq(communityPollVotes.id, existingVote[0].id))
+      revalidatePath("/community")
+      return { voted: false, optionId: null }
+    } else {
+      await db
+        .update(communityPollVotes)
+        .set({ optionId })
+        .where(eq(communityPollVotes.id, existingVote[0].id))
+      revalidatePath("/community")
+      return { voted: true, optionId }
+    }
+  }
+
+  await db.insert(communityPollVotes).values({
+    postId,
+    optionId,
+    userId: viewer.id,
+  })
+
+  revalidatePath("/community")
+  return { voted: true, optionId }
 }
 
 /** Add a comment (or threaded reply) to a post. */
@@ -670,19 +813,31 @@ export async function addPostComment(postId: string, comment: string, parentComm
   }
 }
 
-/** Toggle a star on a comment for the signed-in user. */
-export async function toggleCommentStar(commentId: string) {
+/** Toggle a cosmic reaction on a comment ('love' | 'fire' | 'riff' | 'cosmic' | 'legend' | 'hype') */
+export async function toggleCommentReaction(commentId: string, reactionType: string = "love") {
   const viewer = await requireSocialViewer()
   const existing = await db
     .select({ id: commentStars.id })
     .from(commentStars)
-    .where(and(eq(commentStars.commentId, commentId), eq(commentStars.userId, viewer.id)))
+    .where(
+      and(
+        eq(commentStars.commentId, commentId),
+        eq(commentStars.userId, viewer.id),
+        eq(commentStars.reactionType, reactionType)
+      )
+    )
     .limit(1)
+
   if (existing.length > 0) {
     await db.delete(commentStars).where(eq(commentStars.id, existing[0].id))
-    return { starred: false }
+    return { reacted: false, reactionType }
   }
-  await db.insert(commentStars).values({ commentId, userId: viewer.id })
+
+  await db.insert(commentStars).values({
+    commentId,
+    userId: viewer.id,
+    reactionType,
+  })
 
   try {
     const [c] = await db
@@ -698,14 +853,20 @@ export async function toggleCommentStar(commentId: string) {
         type: "comment_star",
         commentId,
         postId: c.postId,
-        snippet: c.content,
+        snippet: `Reacted with ${reactionType}: ${c.content.slice(0, 50)}`,
       })
     }
   } catch (err) {
     console.error("Failed to trigger comment_star notification:", err)
   }
 
-  return { starred: true }
+  return { reacted: true, reactionType }
+}
+
+/** Toggle a star on a comment for the signed-in user (legacy compatibility). */
+export async function toggleCommentStar(commentId: string) {
+  const res = await toggleCommentReaction(commentId, "love")
+  return { starred: res.reacted }
 }
 
 // --- Members & friendships ---------------------------------------------------
@@ -1077,7 +1238,10 @@ export async function listDeckPosts() {
  * Create the viewer's daily DECK post. Throws if they have already posted in the
  * past 24 hours so the 1-post-per-day rule holds even if the client UI is bypassed.
  */
-export async function createDeckPost(content: string) {
+export async function createDeckPost(
+  content: string,
+  poll?: { question: string; options: string[] } | null
+) {
   const viewer = await requireSocialViewer()
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -1099,6 +1263,24 @@ export async function createDeckPost(content: string) {
   const trimmed = content.trim()
   if (!trimmed) throw new Error("Your post can't be empty.")
 
+  let pollData = null
+  if (
+    poll &&
+    poll.question?.trim() &&
+    Array.isArray(poll.options) &&
+    poll.options.filter((o) => o.trim().length > 0).length >= 2
+  ) {
+    pollData = {
+      question: poll.question.trim(),
+      options: poll.options
+        .filter((o) => o.trim().length > 0)
+        .map((opt, idx) => ({
+          id: `opt_${idx + 1}`,
+          text: opt.trim(),
+        })),
+    }
+  }
+
   const [newPost] = await db
     .insert(communityPosts)
     .values({
@@ -1108,6 +1290,7 @@ export async function createDeckPost(content: string) {
       content: trimmed,
       category: DECK_SLUG,
       images: [],
+      pollData,
     })
     .returning()
 

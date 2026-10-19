@@ -168,6 +168,7 @@ export const communityPosts = pgTable("community_posts", {
   title: text("title").notNull(),
   content: text("content").notNull().default(""),
   images: jsonb("images").default([]),
+  pollData: jsonb("poll_data"),
   pinned: boolean("pinned").notNull().default(false),
   upvoteCount: integer("upvote_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -177,6 +178,7 @@ export const postStars = pgTable("post_stars", {
   id: uuid("id").primaryKey().defaultRandom(),
   postId: uuid("post_id").notNull(),
   userId: text("userId").notNull(),
+  reactionType: text("reaction_type").notNull().default("love"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
@@ -193,7 +195,16 @@ export const commentStars = pgTable("comment_stars", {
   id: uuid("id").primaryKey().defaultRandom(),
   commentId: uuid("comment_id").notNull(),
   userId: text("userId").notNull(),
+  reactionType: text("reaction_type").notNull().default("love"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+export const communityPollVotes = pgTable("community_poll_votes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id").notNull(),
+  optionId: text("option_id").notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const friendships = pgTable("friendships", {

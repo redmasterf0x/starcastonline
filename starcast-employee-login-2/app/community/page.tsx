@@ -56,6 +56,8 @@ import { CommunityLeftNav, type CommunityViewerInfo } from "@/components/communi
 import { SocialComposer } from "@/components/community/social-composer"
 import { SceneBadges, type SceneBadgeFlags } from "@/components/community/scene-badge"
 import { SocialContent } from "@/components/community/social-content"
+import { CommunityPoll } from "@/components/community/community-poll"
+import { CosmicReactions } from "@/components/community/cosmic-reactions"
 import { 
   Search, UserPlus, UserCheck, Clock, MessageSquare, Users, 
   ArrowBigUp, MessageCircle, ChevronRight, ChevronLeft, 
@@ -79,6 +81,17 @@ interface CommunityPost {
     username?: string | null
     badges?: SceneBadgeFlags
   }
+  poll?: {
+    question: string
+    options: { id: string; text: string; votes: number; percentage: number }[]
+    totalVotes: number
+    userVotedOptionId: string | null
+  } | null
+  reactions?: {
+    counts: Record<string, number>
+    userReactions: string[]
+    total: number
+  }
   star_count?: number
   user_starred?: boolean
   comments?: Comment[]
@@ -96,6 +109,11 @@ interface Comment {
     profile_pic: string
     username?: string | null
     badges?: SceneBadgeFlags
+  }
+  reactions?: {
+    counts: Record<string, number>
+    userReactions: string[]
+    total: number
   }
   star_count?: number
   user_starred?: boolean
@@ -919,19 +937,25 @@ export default function CommunityPage() {
                         </div>
                       )}
 
+                      {/* StarVote Poll */}
+                      {post.poll && (
+                        <div className="mb-5">
+                          <CommunityPoll
+                            postId={post.id}
+                            poll={post.poll}
+                            currentViewerId={currentUserDbId}
+                          />
+                        </div>
+                      )}
+
                       {/* Actions */}
-                      <div className="flex items-center gap-2.5 pt-4 border-t border-[#20205a]/60">
-                        <button
-                          onClick={() => handleToggleStar(post.id, post.user_starred || false)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                            post.user_starred 
-                              ? "bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40" 
-                              : "text-[#cbd0f2] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-transparent"
-                          }`}
-                        >
-                          <Heart className="w-4 h-4" fill={post.user_starred ? "currentColor" : "none"} />
-                          <span>{post.star_count || 0}</span>
-                        </button>
+                      <div className="flex items-center gap-2.5 pt-4 border-t border-[#20205a]/60 flex-wrap">
+                        <CosmicReactions
+                          targetId={post.id}
+                          targetType="post"
+                          initialReactions={post.reactions}
+                          currentViewerId={currentUserDbId}
+                        />
                         <button
                           onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
                           className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
@@ -986,14 +1010,15 @@ export default function CommunityPage() {
                                         <SocialContent text={comment.comment} className="text-sm sm:text-base text-[#dbe0fb]" />
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-4 mt-1.5 ml-2 text-xs text-[#cbd0f2]">
-                                      <button
-                                        onClick={() => handleToggleCommentStar(comment.id, comment.user_starred || false)}
-                                        className="hover:text-[#ea6f2a] flex items-center gap-1 font-semibold"
-                                      >
-                                        <Heart className="w-3.5 h-3.5" fill={comment.user_starred ? "currentColor" : "none"} />
-                                        {comment.star_count || 0}
-                                      </button>
+                                    <div className="flex items-center gap-4 mt-1.5 ml-2 text-xs text-[#cbd0f2] flex-wrap">
+                                      <CosmicReactions
+                                        targetId={comment.id}
+                                        targetType="comment"
+                                        initialReactions={comment.reactions}
+                                        currentViewerId={currentUserDbId}
+                                        size="sm"
+                                        compact
+                                      />
                                       <button
                                         onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
                                         className="text-[#20efe0] hover:underline font-semibold"

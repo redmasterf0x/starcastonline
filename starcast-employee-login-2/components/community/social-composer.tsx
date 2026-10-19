@@ -13,6 +13,8 @@ import {
   Lock,
   Clock,
   Plus,
+  BarChart2,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -63,6 +65,9 @@ export function SocialComposer({
   const [deckContent, setDeckContent] = useState("")
   const [deckSubmitting, setDeckSubmitting] = useState(false)
   const [deckError, setDeckError] = useState<string | null>(null)
+  const [deckShowPoll, setDeckShowPoll] = useState(false)
+  const [deckPollQuestion, setDeckPollQuestion] = useState("")
+  const [deckPollOptions, setDeckPollOptions] = useState<string[]>(["", ""])
 
   // Discussion state
   const [discussionTitle, setDiscussionTitle] = useState("")
@@ -75,6 +80,9 @@ export function SocialComposer({
   >([])
   const [discussionSubmitting, setDiscussionSubmitting] = useState(false)
   const [discussionError, setDiscussionError] = useState<string | null>(null)
+  const [discussionShowPoll, setDiscussionShowPoll] = useState(false)
+  const [discussionPollQuestion, setDiscussionPollQuestion] = useState("")
+  const [discussionPollOptions, setDiscussionPollOptions] = useState<string[]>(["", ""])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -90,8 +98,20 @@ export function SocialComposer({
     setDeckError(null)
 
     try {
-      await createDeckPost(text)
+      const validOptions = deckPollOptions.map((o) => o.trim()).filter(Boolean)
+      const pollPayload =
+        deckShowPoll && deckPollQuestion.trim() && validOptions.length >= 2
+          ? {
+              question: deckPollQuestion.trim(),
+              options: validOptions,
+            }
+          : undefined
+
+      await createDeckPost(text, pollPayload)
       setDeckContent("")
+      setDeckShowPoll(false)
+      setDeckPollQuestion("")
+      setDeckPollOptions(["", ""])
       onPostSuccess("deck")
     } catch (err: any) {
       setDeckError(err?.message || "Failed to post to the DECK. Please try again.")
@@ -126,16 +146,29 @@ export function SocialComposer({
         }
       }
 
+      const validOptions = discussionPollOptions.map((o) => o.trim()).filter(Boolean)
+      const pollPayload =
+        discussionShowPoll && discussionPollQuestion.trim() && validOptions.length >= 2
+          ? {
+              question: discussionPollQuestion.trim(),
+              options: validOptions,
+            }
+          : undefined
+
       await createCommunityPost({
         title: discussionTitle.trim(),
         content: discussionContent.trim(),
         category: discussionCategory || "general",
         images: uploadedImages,
+        poll: pollPayload,
       })
 
       setDiscussionTitle("")
       setDiscussionContent("")
       setSelectedImages([])
+      setDiscussionShowPoll(false)
+      setDiscussionPollQuestion("")
+      setDiscussionPollOptions(["", ""])
       onPostSuccess("discussion")
     } catch (err: any) {
       setDiscussionError(err?.message || "Failed to publish discussion. Please try again.")
@@ -258,19 +291,103 @@ export function SocialComposer({
                   <Textarea
                     value={deckContent}
                     onChange={(e) => setDeckContent(e.target.value)}
-                    placeholder="Broadcast to the network... What are you listening to, watching, or creating?"
+                    placeholder="Broadcast to the network... Paste YouTube, Spotify, or Soundstage links, or attach a StarVote poll!"
                     maxLength={2000}
                     className="w-full bg-[#05052d]/90 border-[#20205a] text-[#f5f7ff] rounded-2xl min-h-[90px] resize-none text-sm sm:text-base p-3.5 placeholder:text-[#6b7299] focus-visible:ring-[#ffd166]/50"
                   />
                 </div>
               </div>
 
+              {/* StarVote Poll Builder for DECK */}
+              {deckShowPoll && (
+                <div className="rounded-2xl border border-[#20efe0]/30 bg-[#05052d]/90 p-4 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4 text-[#20efe0]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#20efe0]">
+                        StarVote Poll
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeckShowPoll(false)}
+                      className="text-[#9a9fc4] hover:text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <Input
+                    value={deckPollQuestion}
+                    onChange={(e) => setDeckPollQuestion(e.target.value)}
+                    placeholder="Ask a question..."
+                    className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] rounded-xl h-10 text-xs sm:text-sm"
+                  />
+
+                  <div className="space-y-2">
+                    {deckPollOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={opt}
+                          onChange={(e) => {
+                            const copy = [...deckPollOptions]
+                            copy[idx] = e.target.value
+                            setDeckPollOptions(copy)
+                          }}
+                          placeholder={`Option ${idx + 1}`}
+                          className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] rounded-xl h-9 text-xs flex-1"
+                        />
+                        {deckPollOptions.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeckPollOptions(deckPollOptions.filter((_, i) => i !== idx))
+                            }
+                            className="text-[#9a9fc4] hover:text-red-400 p-1 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {deckPollOptions.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setDeckPollOptions([...deckPollOptions, ""])}
+                      className="text-xs font-bold text-[#20efe0] hover:text-[#72fff6] flex items-center gap-1 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Option
+                    </button>
+                  )}
+                </div>
+              )}
+
               {deckError && <p className="text-xs text-red-400 pl-1">{deckError}</p>}
 
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-[#9a9fc4] font-mono">
-                  {deckContent.length} / 2000 chars
-                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeckShowPoll(!deckShowPoll)}
+                    className={`border-[#20205a] bg-[#05052d] text-xs h-9 px-3 gap-1.5 transition-all ${
+                      deckShowPoll
+                        ? "text-[#20efe0] border-[#20efe0]/50 bg-[#20efe0]/10"
+                        : "text-[#cbd0f2] hover:text-[#20efe0] hover:bg-[#20205a]"
+                    }`}
+                  >
+                    <BarChart2 className="w-3.5 h-3.5" />
+                    <span>{deckShowPoll ? "Poll Added" : "StarVote Poll"}</span>
+                  </Button>
+                  <span className="text-[11px] text-[#9a9fc4] font-mono hidden sm:inline">
+                    {deckContent.length} / 2000 chars
+                  </span>
+                </div>
+
                 <Button
                   onClick={handleDeckSubmit}
                   disabled={deckSubmitting || !deckContent.trim()}
@@ -337,9 +454,78 @@ export function SocialComposer({
               <Textarea
                 value={discussionContent}
                 onChange={(e) => setDiscussionContent(e.target.value)}
-                placeholder="Share your thoughts, review a soundstage track, or start a thread..."
+                placeholder="Share your thoughts, review a soundstage track, or start a thread... Links to YouTube & Spotify embed automatically!"
                 className="w-full bg-[#05052d]/90 border-[#20205a] text-[#f5f7ff] rounded-2xl min-h-[100px] resize-none text-sm p-3.5 placeholder:text-[#6b7299] focus-visible:ring-[#ea6f2a]/50"
               />
+
+              {/* StarVote Poll Builder for Discussion */}
+              {discussionShowPoll && (
+                <div className="rounded-2xl border border-[#20efe0]/30 bg-[#05052d]/90 p-4 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4 text-[#20efe0]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#20efe0]">
+                        StarVote Poll
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDiscussionShowPoll(false)}
+                      className="text-[#9a9fc4] hover:text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <Input
+                    value={discussionPollQuestion}
+                    onChange={(e) => setDiscussionPollQuestion(e.target.value)}
+                    placeholder="Ask a community question..."
+                    className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] rounded-xl h-10 text-xs sm:text-sm"
+                  />
+
+                  <div className="space-y-2">
+                    {discussionPollOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={opt}
+                          onChange={(e) => {
+                            const copy = [...discussionPollOptions]
+                            copy[idx] = e.target.value
+                            setDiscussionPollOptions(copy)
+                          }}
+                          placeholder={`Option ${idx + 1}`}
+                          className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] rounded-xl h-9 text-xs flex-1"
+                        />
+                        {discussionPollOptions.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDiscussionPollOptions(
+                                discussionPollOptions.filter((_, i) => i !== idx)
+                              )
+                            }
+                            className="text-[#9a9fc4] hover:text-red-400 p-1 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {discussionPollOptions.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setDiscussionPollOptions([...discussionPollOptions, ""])}
+                      className="text-xs font-bold text-[#20efe0] hover:text-[#72fff6] flex items-center gap-1 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Option
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Image Previews */}
               {selectedImages.length > 0 && (
@@ -392,6 +578,21 @@ export function SocialComposer({
                   >
                     <ImageIcon className="w-4 h-4" />
                     Attach Image ({selectedImages.length}/4)
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDiscussionShowPoll(!discussionShowPoll)}
+                    className={`border-[#20205a] bg-[#05052d] text-xs h-9 px-3 gap-1.5 transition-all ${
+                      discussionShowPoll
+                        ? "text-[#20efe0] border-[#20efe0]/50 bg-[#20efe0]/10"
+                        : "text-[#cbd0f2] hover:text-[#20efe0] hover:bg-[#20205a]"
+                    }`}
+                  >
+                    <BarChart2 className="w-3.5 h-3.5" />
+                    <span>{discussionShowPoll ? "Poll Added" : "StarVote Poll"}</span>
                   </Button>
                 </div>
 

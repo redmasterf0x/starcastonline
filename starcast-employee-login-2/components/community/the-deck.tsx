@@ -17,6 +17,8 @@ import {
 } from "@/app/actions/community"
 import { SceneBadges, type SceneBadgeFlags } from "./scene-badge"
 import { SocialContent } from "./social-content"
+import { CommunityPoll } from "./community-poll"
+import { CosmicReactions } from "./cosmic-reactions"
 
 interface DeckComment {
   id: string
@@ -30,6 +32,11 @@ interface DeckComment {
     profile_pic: string
     username?: string | null
     badges?: SceneBadgeFlags
+  }
+  reactions?: {
+    counts: Record<string, number>
+    userReactions: string[]
+    total: number
   }
   star_count?: number
   user_starred?: boolean
@@ -47,6 +54,17 @@ interface DeckPost {
     profile_pic: string
     username?: string | null
     badges?: SceneBadgeFlags
+  }
+  poll?: {
+    question: string
+    options: { id: string; text: string; votes: number; percentage: number }[]
+    totalVotes: number
+    userVotedOptionId: string | null
+  } | null
+  reactions?: {
+    counts: Record<string, number>
+    userReactions: string[]
+    total: number
   }
   star_count?: number
   user_starred?: boolean
@@ -311,19 +329,24 @@ export function TheDeck({
                     <SocialContent text={post.content} className="text-[#f5f7ff] text-base sm:text-lg" />
                   </div>
 
+                  {post.poll && (
+                    <div className="mb-5">
+                      <CommunityPoll
+                        postId={post.id}
+                        poll={post.poll}
+                        currentViewerId={currentProfileId}
+                      />
+                    </div>
+                  )}
+
                   {/* Actions */}
-                  <div className="flex items-center gap-2 pt-4 border-t border-[#20205a]/60">
-                    <button
-                      onClick={() => handleStar(post.id)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                        post.user_starred
-                          ? "bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40"
-                          : "text-[#dbe0fb] hover:bg-[#20205a]/60 hover:text-[#f5f7ff]"
-                      }`}
-                    >
-                      <Heart className="w-4 h-4" fill={post.user_starred ? "currentColor" : "none"} />
-                      {post.star_count || 0}
-                    </button>
+                  <div className="flex items-center gap-2 pt-4 border-t border-[#20205a]/60 flex-wrap">
+                    <CosmicReactions
+                      targetId={post.id}
+                      targetType="post"
+                      initialReactions={post.reactions}
+                      currentViewerId={currentProfileId}
+                    />
                     <button
                       onClick={() => setOpenComments({ ...openComments, [post.id]: !openComments[post.id] })}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-[#dbe0fb] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] transition-all"
@@ -375,15 +398,15 @@ export function TheDeck({
                                   </div>
                                   <SocialContent text={comment.comment} className="text-sm sm:text-base text-[#dbe0fb]" />
                                 </div>
-                                <div className="flex items-center gap-4 mt-1.5 px-2 text-xs">
-                                  <button
-                                    onClick={() => handleCommentStar(comment.id)}
-                                    className={`font-semibold transition-colors ${
-                                      comment.user_starred ? "text-[#ea6f2a]" : "text-[#cbd0f2] hover:text-[#f5f7ff]"
-                                    }`}
-                                  >
-                                    Like {comment.star_count ? `(${comment.star_count})` : ""}
-                                  </button>
+                                <div className="flex items-center gap-4 mt-1.5 px-2 text-xs flex-wrap">
+                                  <CosmicReactions
+                                    targetId={comment.id}
+                                    targetType="comment"
+                                    initialReactions={comment.reactions}
+                                    currentViewerId={currentProfileId}
+                                    size="sm"
+                                    compact
+                                  />
                                   <button
                                     onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
                                     className="font-semibold text-[#20efe0] hover:underline"
