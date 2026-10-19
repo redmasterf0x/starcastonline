@@ -27,6 +27,7 @@ import {
   ExternalLink,
   RefreshCw,
   Loader2,
+  AtSign,
 } from "lucide-react"
 
 function timeAgo(iso: string) {
@@ -252,7 +253,9 @@ export function NotificationFeed() {
 
                   {/* Type Icon Pin */}
                   <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-[#0c0c3f] border border-[#20205a]">
-                    {n.type === "post_star" || n.type === "comment_star" ? (
+                    {n.type === "mention" ? (
+                      <AtSign className="w-3 h-3 text-[#20efe0]" />
+                    ) : n.type === "post_star" || n.type === "comment_star" ? (
                       <Star className="w-3 h-3 text-[#ea6f2a] fill-[#ea6f2a]" />
                     ) : n.type === "friend_request" || n.type === "friend_accepted" ? (
                       <UserPlus className="w-3 h-3 text-[#20efe0]" />
@@ -271,6 +274,9 @@ export function NotificationFeed() {
                       <span className="font-bold text-[#f5f7ff] hover:underline cursor-pointer">
                         {actorName}
                       </span>{" "}
+                      {n.type === "mention" && (
+                        <span className="text-[#20efe0] font-medium">mentioned you in a post or comment:</span>
+                      )}
                       {n.type === "post_star" && (
                         <span>starred your post:</span>
                       )}

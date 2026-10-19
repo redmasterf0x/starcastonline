@@ -12,8 +12,10 @@ import {
   friendships,
   messages,
   notifications,
+  bands,
+  bandTicketOrders,
 } from "@/lib/db/schema"
-import { and, asc, desc, eq, inArray, or, count, gte, ne } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, or, count, gte, ne, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { SOCIAL_BAN_MESSAGE } from "@/lib/permissions"
@@ -80,6 +82,8 @@ function profileToMember(p: typeof profiles.$inferSelect) {
     website: p.website ?? "",
     is_employee: p.isEmployee,
     is_admin: p.isAdmin,
+    username: p.username ?? "",
+    role: p.role ?? "user",
     created_at: p.createdAt.toISOString(),
   }
 }
@@ -250,6 +254,111 @@ export async function getProfilePageData(id: string) {
   }
 }
 
+async function getBadgeSets(profilesList: (typeof profiles.$inferSelect)[]) {
+  if (profilesList.length === 0) {
+    return {
+      artistUserIds: new Set<string>(),
+      vipUserIds: new Set<string>(),
+      regularProfileIds: new Set<string>(),
+    }
+  }
+
+  const userIds = [...new Set(profilesList.map((p) => p.userId).filter(Boolean))]
+  const profileIds = [...new Set(profilesList.map((p) => p.id))]
+
+  try {
+    const [bandRows, ticketRows, postCountRows] = await Promise.all([
+      userIds.length > 0
+        ? db
+            .select({ ownerUserId: bands.ownerUserId })
+            .from(bands)
+            .where(inArray(bands.ownerUserId, userIds))
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? db
+            .select({ buyerUserId: bandTicketOrders.buyerUserId })
+            .from(bandTicketOrders)
+            .where(
+              and(
+                inArray(bandTicketOrders.buyerUserId, userIds),
+                eq(bandTicketOrders.status, "paid")
+              )
+            )
+        : Promise.resolve([]),
+      profileIds.length > 0
+        ? db
+            .select({ authorId: communityPosts.authorId, val: count() })
+            .from(communityPosts)
+            .where(inArray(communityPosts.authorId, profileIds))
+            .groupBy(communityPosts.authorId)
+        : Promise.resolve([]),
+    ])
+
+    const artistUserIds = new Set(bandRows.map((b) => b.ownerUserId))
+    const vipUserIds = new Set(ticketRows.map((t) => t.buyerUserId).filter(Boolean) as string[])
+    const regularProfileIds = new Set(
+      postCountRows.filter((p) => Number(p.val) >= 2).map((p) => p.authorId).filter(Boolean) as string[]
+    )
+
+    return { artistUserIds, vipUserIds, regularProfileIds }
+  } catch (err) {
+    console.error("getBadgeSets error:", err)
+    return {
+      artistUserIds: new Set<string>(),
+      vipUserIds: new Set<string>(),
+      regularProfileIds: new Set<string>(),
+    }
+  }
+}
+
+function computeBadges(
+  p: typeof profiles.$inferSelect,
+  sets: { artistUserIds: Set<string>; vipUserIds: Set<string>; regularProfileIds: Set<string> }
+) {
+  return {
+    isAdmin: !!p.isAdmin || p.role === "admin",
+    isStaff: !!p.isEmployee || p.role === "staff",
+    isArtist: sets.artistUserIds.has(p.userId),
+    isVip: sets.vipUserIds.has(p.userId),
+    isRegular: sets.regularProfileIds.has(p.id),
+  }
+}
+
+async function dispatchMentionNotifications(
+  text: string,
+  actorProfileId: string,
+  context: { postId?: string; commentId?: string; postTitle?: string }
+) {
+  try {
+    const mentionMatches = text.match(/@([a-zA-Z0-9_-]{2,30})/g)
+    if (!mentionMatches || mentionMatches.length === 0) return
+
+    const handles = [...new Set(mentionMatches.map((m) => m.slice(1).toLowerCase()))]
+    if (handles.length === 0) return
+
+    const matched = await db
+      .select({ id: profiles.id, username: profiles.username })
+      .from(profiles)
+      .where(sql`lower(${profiles.username}) IN ${handles}`)
+
+    for (const target of matched) {
+      if (target.id !== actorProfileId) {
+        await createNotification({
+          recipientProfileId: target.id,
+          actorProfileId,
+          type: "mention",
+          postId: context.postId,
+          commentId: context.commentId,
+          postTitle: context.postTitle || "Community discussion",
+          snippet: text,
+        })
+      }
+    }
+  } catch (err) {
+    console.error("dispatchMentionNotifications error:", err)
+  }
+}
+
 async function decoratePost(
   post: typeof communityPosts.$inferSelect,
   viewerProfileId: string | null,
@@ -285,6 +394,13 @@ async function decoratePost(
       : []
   const commenterById = new Map(commenterProfiles.map((p) => [p.id, p]))
 
+  // Resolve scene badges for author & commenters
+  const allProfiles = [
+    ...(authorProfile ? [authorProfile] : []),
+    ...commenterProfiles,
+  ]
+  const badgeSets = await getBadgeSets(allProfiles)
+
   const commentIds = allComments.map((c) => c.id)
   const starsByComment = new Map<string, number>()
   const viewerStarredComments = new Set<string>()
@@ -308,7 +424,16 @@ async function decoratePost(
       created_at: c.createdAt.toISOString(),
       parent_comment_id: c.parentCommentId,
       user: cp
-        ? { first_name: cp.firstName, last_name: cp.lastName, profile_pic: cp.profilePic ?? "" }
+        ? {
+            first_name: cp.firstName,
+            last_name: cp.lastName,
+            profile_pic: cp.profilePic ?? "",
+            username: cp.username ?? null,
+            is_admin: cp.isAdmin,
+            is_employee: cp.isEmployee,
+            role: cp.role,
+            badges: computeBadges(cp, badgeSets),
+          }
         : undefined,
       star_count: starsByComment.get(c.id) ?? 0,
       user_starred: viewerStarredComments.has(c.id),
@@ -335,6 +460,11 @@ async function decoratePost(
           first_name: authorProfile.firstName,
           last_name: authorProfile.lastName,
           profile_pic: authorProfile.profilePic ?? "",
+          username: authorProfile.username ?? null,
+          is_admin: authorProfile.isAdmin,
+          is_employee: authorProfile.isEmployee,
+          role: authorProfile.role,
+          badges: computeBadges(authorProfile, badgeSets),
         }
       : undefined,
     star_count: starCount,
@@ -405,14 +535,23 @@ export async function createCommunityPost(input: {
   images: { url: string; credit: string }[]
 }) {
   const viewer = await requireSocialViewer()
-  await db.insert(communityPosts).values({
-    userId: viewer.userId,
-    authorId: viewer.id,
-    title: input.title.trim(),
-    content: input.content.trim(),
-    category: input.category,
-    images: input.images,
-  })
+  const [newPost] = await db
+    .insert(communityPosts)
+    .values({
+      userId: viewer.userId,
+      authorId: viewer.id,
+      title: input.title.trim(),
+      content: input.content.trim(),
+      category: input.category,
+      images: input.images,
+    })
+    .returning()
+
+  await dispatchMentionNotifications(
+    `${input.title} ${input.content}`,
+    viewer.id,
+    { postId: newPost?.id, postTitle: input.title }
+  )
 }
 
 /** Toggle a star on a post for the signed-in user. */
@@ -519,6 +658,13 @@ export async function addPostComment(postId: string, comment: string, parentComm
         })
       }
     }
+
+    // Trigger mention notifications if any @handles were typed
+    await dispatchMentionNotifications(comment, viewer.id, {
+      postId,
+      commentId: newComment?.id,
+      postTitle: post?.title,
+    })
   } catch (err) {
     console.error("Failed to trigger comment notification:", err)
   }
@@ -953,12 +1099,20 @@ export async function createDeckPost(content: string) {
   const trimmed = content.trim()
   if (!trimmed) throw new Error("Your post can't be empty.")
 
-  await db.insert(communityPosts).values({
-    userId: viewer.userId,
-    authorId: viewer.id,
-    title: "",
-    content: trimmed,
-    category: DECK_SLUG,
-    images: [],
+  const [newPost] = await db
+    .insert(communityPosts)
+    .values({
+      userId: viewer.userId,
+      authorId: viewer.id,
+      title: "",
+      content: trimmed,
+      category: DECK_SLUG,
+      images: [],
+    })
+    .returning()
+
+  await dispatchMentionNotifications(trimmed, viewer.id, {
+    postId: newPost?.id,
+    postTitle: "The DECK",
   })
 }

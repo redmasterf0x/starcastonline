@@ -27,6 +27,7 @@ export type NotificationType =
   | "comment_reply"
   | "comment_on_your_post"
   | "comment_star"
+  | "mention"
 
 export type NotificationItem = {
   id: string

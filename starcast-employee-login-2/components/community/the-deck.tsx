@@ -15,6 +15,8 @@ import {
   addPostComment,
   toggleCommentStar,
 } from "@/app/actions/community"
+import { SceneBadges, type SceneBadgeFlags } from "./scene-badge"
+import { SocialContent } from "./social-content"
 
 interface DeckComment {
   id: string
@@ -22,7 +24,13 @@ interface DeckComment {
   comment: string
   created_at: string
   parent_comment_id?: string | null
-  user?: { first_name: string; last_name: string; profile_pic: string }
+  user?: {
+    first_name: string
+    last_name: string
+    profile_pic: string
+    username?: string | null
+    badges?: SceneBadgeFlags
+  }
   star_count?: number
   user_starred?: boolean
   replies?: DeckComment[]
@@ -33,7 +41,13 @@ interface DeckPost {
   employee_id: string
   content: string
   created_at: string
-  employee?: { first_name: string; last_name: string; profile_pic: string }
+  employee?: {
+    first_name: string
+    last_name: string
+    profile_pic: string
+    username?: string | null
+    badges?: SceneBadgeFlags
+  }
   star_count?: number
   user_starred?: boolean
   comments?: DeckComment[]
@@ -255,7 +269,7 @@ export function TheDeck({
                   {/* Author */}
                   <div className="flex items-center gap-3.5 mb-4">
                     <Link
-                      href={`/profile/${post.employee_id}`}
+                      href={post.employee?.username ? `/u/${post.employee.username}` : `/profile/${post.employee_id}`}
                       className="w-12 h-12 rounded-full bg-gradient-to-br from-[#ea6f2a] to-[#20efe0] p-0.5 shrink-0"
                     >
                       <div className="w-full h-full rounded-full bg-[#05052d] flex items-center justify-center overflow-hidden">
@@ -270,21 +284,32 @@ export function TheDeck({
                       </div>
                     </Link>
                     <div>
-                      <p className="font-bold text-[#f5f7ff] text-base">
-                        {post.employee?.first_name} {post.employee?.last_name}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link
+                          href={post.employee?.username ? `/u/${post.employee.username}` : `/profile/${post.employee_id}`}
+                          className="font-bold text-[#f5f7ff] text-base hover:text-[#20efe0] transition-colors"
+                        >
+                          {post.employee?.first_name} {post.employee?.last_name}
+                        </Link>
+                        {post.employee?.username && (
+                          <span className="text-xs text-[#20efe0]/80 font-mono">
+                            @{post.employee.username}
+                          </span>
+                        )}
+                        <SceneBadges flags={post.employee?.badges} size="xs" />
                         {isOwn && (
-                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-[#ea6f2a]">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#ea6f2a] bg-[#ea6f2a]/10 border border-[#ea6f2a]/30 px-1.5 py-0.5 rounded-full">
                             You
                           </span>
                         )}
-                      </p>
-                      <p className="text-xs text-[#20efe0] font-medium">{formatDate(post.created_at)}</p>
+                      </div>
+                      <p className="text-xs text-[#9a9fc4] font-medium">{formatDate(post.created_at)}</p>
                     </div>
                   </div>
 
-                  <p className="text-[#f5f7ff] text-base sm:text-lg leading-relaxed whitespace-pre-wrap mb-5">
-                    {post.content}
-                  </p>
+                  <div className="mb-5">
+                    <SocialContent text={post.content} className="text-[#f5f7ff] text-base sm:text-lg" />
+                  </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-4 border-t border-[#20205a]/60">
@@ -337,10 +362,18 @@ export function TheDeck({
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="bg-[#0c0c3f] rounded-2xl rounded-tl-sm px-4 py-3 border border-[#20205a]/60">
-                                  <p className="text-xs sm:text-sm font-bold text-[#f5f7ff] mb-1">
-                                    {comment.user?.first_name} {comment.user?.last_name}
-                                  </p>
-                                  <p className="text-sm sm:text-base text-[#dbe0fb] whitespace-pre-wrap leading-relaxed">{comment.comment}</p>
+                                  <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                                    <p className="text-xs sm:text-sm font-bold text-[#f5f7ff] flex items-center gap-1.5 flex-wrap">
+                                      <span>{comment.user?.first_name} {comment.user?.last_name}</span>
+                                      {comment.user?.username && (
+                                        <span className="text-[11px] text-[#20efe0]/80 font-mono">
+                                          @{comment.user.username}
+                                        </span>
+                                      )}
+                                    </p>
+                                    <SceneBadges flags={comment.user?.badges} size="xs" />
+                                  </div>
+                                  <SocialContent text={comment.comment} className="text-sm sm:text-base text-[#dbe0fb]" />
                                 </div>
                                 <div className="flex items-center gap-4 mt-1.5 px-2 text-xs">
                                   <button
@@ -368,10 +401,18 @@ export function TheDeck({
                                         <CornerDownRight className="w-4 h-4 text-[#20efe0] mt-2 shrink-0" />
                                         <div className="flex-1 min-w-0">
                                           <div className="bg-[#0c0c3f] rounded-2xl rounded-tl-sm px-4 py-2.5 border border-[#20205a]/50">
-                                            <p className="text-xs sm:text-sm font-bold text-[#f5f7ff] mb-0.5">
-                                              {reply.user?.first_name} {reply.user?.last_name}
-                                            </p>
-                                            <p className="text-sm sm:text-base text-[#dbe0fb] whitespace-pre-wrap leading-relaxed">{reply.comment}</p>
+                                            <div className="flex items-center justify-between gap-2 flex-wrap mb-0.5">
+                                              <p className="text-xs sm:text-sm font-bold text-[#f5f7ff] flex items-center gap-1.5 flex-wrap">
+                                                <span>{reply.user?.first_name} {reply.user?.last_name}</span>
+                                                {reply.user?.username && (
+                                                  <span className="text-[11px] text-[#20efe0]/80 font-mono">
+                                                    @{reply.user.username}
+                                                  </span>
+                                                )}
+                                              </p>
+                                              <SceneBadges flags={reply.user?.badges} size="xs" />
+                                            </div>
+                                            <SocialContent text={reply.comment} className="text-sm sm:text-base text-[#dbe0fb]" />
                                           </div>
                                         </div>
                                       </div>

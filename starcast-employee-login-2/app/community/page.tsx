@@ -54,6 +54,8 @@ import { TheDeck } from "@/components/community/the-deck"
 import { BandQrModal } from "@/components/bands/band-qr-modal"
 import { CommunityLeftNav, type CommunityViewerInfo } from "@/components/community/community-left-nav"
 import { SocialComposer } from "@/components/community/social-composer"
+import { SceneBadges, type SceneBadgeFlags } from "@/components/community/scene-badge"
+import { SocialContent } from "@/components/community/social-content"
 import { 
   Search, UserPlus, UserCheck, Clock, MessageSquare, Users, 
   ArrowBigUp, MessageCircle, ChevronRight, ChevronLeft, 
@@ -74,6 +76,8 @@ interface CommunityPost {
     first_name: string
     last_name: string
     profile_pic: string
+    username?: string | null
+    badges?: SceneBadgeFlags
   }
   star_count?: number
   user_starred?: boolean
@@ -90,6 +94,8 @@ interface Comment {
     first_name: string
     last_name: string
     profile_pic: string
+    username?: string | null
+    badges?: SceneBadgeFlags
   }
   star_count?: number
   user_starred?: boolean
@@ -868,16 +874,25 @@ export default function CommunityPage() {
                           </Link>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-bold text-[#f5f7ff] text-base sm:text-lg">
+                              <Link
+                                href={post.employee?.username ? `/u/${post.employee.username}` : (post.employee_id ? `/profile/${post.employee_id}` : "#")}
+                                className="font-bold text-[#f5f7ff] text-base sm:text-lg hover:text-[#20efe0] transition-colors"
+                              >
                                 {post.employee?.first_name} {post.employee?.last_name || "Community Member"}
-                              </p>
+                              </Link>
+                              {post.employee?.username && (
+                                <span className="text-xs text-[#20efe0]/80 font-mono">
+                                  @{post.employee.username}
+                                </span>
+                              )}
+                              <SceneBadges flags={post.employee?.badges} size="xs" />
                               {post.category && (
                                 <span className="text-xs uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#20205a]/80 text-[#ffd166] border border-[#20205a]">
                                   {categories.find((c) => c.slug === post.category)?.name || post.category}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-[#20efe0] font-medium mt-0.5">
+                            <p className="text-xs text-[#9a9fc4] font-medium mt-0.5">
                               {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </p>
                           </div>
@@ -886,7 +901,9 @@ export default function CommunityPage() {
 
                       {/* Content */}
                       <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff] mb-3 leading-snug">{post.title}</h3>
-                      <p className="text-[#dbe0fb] text-base sm:text-lg leading-relaxed whitespace-pre-wrap mb-5">{post.content}</p>
+                      <div className="mb-5">
+                        <SocialContent text={post.content} className="text-[#dbe0fb] text-base sm:text-lg" />
+                      </div>
 
                       {/* Images */}
                       {post.images && post.images.length > 0 && (
@@ -946,15 +963,28 @@ export default function CommunityPage() {
                                   </div>
                                   <div className="flex-1">
                                     <div className="bg-[#05052d]/90 border border-[#20205a]/70 rounded-2xl px-4 py-3">
-                                      <div className="flex items-center justify-between">
-                                        <p className="text-xs sm:text-sm font-bold text-[#f5f7ff]">
-                                          {comment.user?.first_name} {comment.user?.last_name}
-                                        </p>
-                                        <span className="text-[11px] text-[#20efe0] font-medium">
+                                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <Link
+                                            href={comment.user?.username ? `/u/${comment.user.username}` : (comment.user_id ? `/profile/${comment.user_id}` : "#")}
+                                            className="text-xs sm:text-sm font-bold text-[#f5f7ff] hover:text-[#20efe0] transition-colors"
+                                          >
+                                            {comment.user?.first_name} {comment.user?.last_name}
+                                          </Link>
+                                          {comment.user?.username && (
+                                            <span className="text-[11px] text-[#20efe0]/80 font-mono">
+                                              @{comment.user.username}
+                                            </span>
+                                          )}
+                                          <SceneBadges flags={comment.user?.badges} size="xs" />
+                                        </div>
+                                        <span className="text-[11px] text-[#9a9fc4] font-medium">
                                           {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                         </span>
                                       </div>
-                                      <p className="text-sm sm:text-base text-[#dbe0fb] mt-1.5 leading-relaxed">{comment.comment}</p>
+                                      <div className="mt-1.5">
+                                        <SocialContent text={comment.comment} className="text-sm sm:text-base text-[#dbe0fb]" />
+                                      </div>
                                     </div>
                                     <div className="flex items-center gap-4 mt-1.5 ml-2 text-xs text-[#cbd0f2]">
                                       <button
@@ -1013,10 +1043,25 @@ export default function CommunityPage() {
                                               )}
                                             </div>
                                             <div className="flex-1 bg-[#05052d]/90 border border-[#20205a]/50 rounded-2xl px-3.5 py-2">
-                                              <p className="text-xs font-bold text-[#f5f7ff]">
-                                                {reply.user?.first_name} {reply.user?.last_name}
-                                              </p>
-                                              <p className="text-xs sm:text-sm text-[#dbe0fb] mt-0.5 leading-relaxed">{reply.comment}</p>
+                                              <div className="flex items-center justify-between gap-2 flex-wrap mb-0.5">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <Link
+                                                    href={reply.user?.username ? `/u/${reply.user.username}` : (reply.user_id ? `/profile/${reply.user_id}` : "#")}
+                                                    className="text-xs font-bold text-[#f5f7ff] hover:text-[#20efe0] transition-colors"
+                                                  >
+                                                    {reply.user?.first_name} {reply.user?.last_name}
+                                                  </Link>
+                                                  {reply.user?.username && (
+                                                    <span className="text-[10px] text-[#20efe0]/80 font-mono">
+                                                      @{reply.user.username}
+                                                    </span>
+                                                  )}
+                                                  <SceneBadges flags={reply.user?.badges} size="xs" />
+                                                </div>
+                                              </div>
+                                              <div className="mt-0.5">
+                                                <SocialContent text={reply.comment} className="text-xs sm:text-sm text-[#dbe0fb]" />
+                                              </div>
                                             </div>
                                           </div>
                                         ))}
