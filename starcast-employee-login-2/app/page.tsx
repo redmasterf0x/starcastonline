@@ -27,8 +27,10 @@ import {
   Clock,
   Flame,
   ChevronRight,
+  HelpCircle,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+import { ObservationDeckQuiz } from "@/components/quiz/observation-deck-quiz"
 
 export const metadata: Metadata = {
   title: "StarCast Media | #1 Topeka Media Company & YouTube Broadcast Studio",
@@ -195,6 +197,12 @@ export default async function HomePage() {
                 >
                   <Music className="w-3.5 h-3.5 text-[#20efe0]" /> Soundstage
                 </Link>
+                <a
+                  href="#quiz"
+                  className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#20efe0]/20 border border-[#20205a] hover:border-[#20efe0]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-[#20efe0]" /> Quiz
+                </a>
                 <Link
                   href="/community"
                   className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#ffd166]/20 border border-[#20205a] hover:border-[#ffd166]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
@@ -563,6 +571,11 @@ export default async function HomePage() {
                 </div>
               )}
             </div>
+          </section>
+
+          {/* ── MODULE 3.5: THE OBSERVATION DECK LIVE QUIZ ── */}
+          <section id="quiz" className="scroll-mt-24">
+            <ObservationDeckQuiz />
           </section>
 
           {/* ── MODULE 4: THE DECK & COMMUNITY DISCUSSIONS ── */}
