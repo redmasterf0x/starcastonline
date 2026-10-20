@@ -195,7 +195,7 @@ export default async function HomePage() {
                   href="/bands"
                   className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#20efe0]/20 border border-[#20205a] hover:border-[#20efe0]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
                 >
-                  <Music className="w-3.5 h-3.5 text-[#20efe0]" /> Soundstage
+                  <Music className="w-3.5 h-3.5 text-[#20efe0]" /> Bands
                 </Link>
                 <a
                   href="#quiz"
@@ -464,19 +464,19 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* ── MODULE 3: SOUNDSTAGE BANDS & ARTISTS ── */}
+          {/* ── MODULE 3: BANDS & ARTISTS ── */}
           <section id="bands">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
               <div>
                 <div className="flex items-center gap-2 text-[#20efe0] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-1.5">
                   <Music className="w-4 h-4" />
-                  <span>STARCAST SOUNDSTAGE</span>
+                  <span>STARCAST BANDS</span>
                 </div>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#f5f7ff] tracking-tight">
                   Featured Bands &amp; Artists
                 </h2>
                 <p className="text-base sm:text-lg text-[#e8ecff] mt-2">
-                  Discover regional Kansas musicians and bands performing on the StarCast Soundstage.
+                  Discover independent artists and bands broadcasting live on StarCast Online.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -550,7 +550,7 @@ export default async function HomePage() {
                           {band.follower_count} followers
                         </span>
                         <span className="text-[#ea6f2a] font-bold group-hover:text-[#ffd166] group-hover:translate-x-1 transition-all">
-                          View Soundstage &rarr;
+                          View Band Page &rarr;
                         </span>
                       </div>
                     </div>
@@ -561,12 +561,12 @@ export default async function HomePage() {
                   <div className="w-16 h-16 rounded-2xl bg-[#ea6f2a]/20 border border-[#ea6f2a]/30 flex items-center justify-center mx-auto mb-4 text-[#ea6f2a]">
                     <Music className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">StarCast Live Soundstage</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">StarCast Bands &amp; Artists</h3>
                   <p className="text-base text-[#dbe0fb] max-w-md mx-auto mt-2 leading-relaxed">
-                    Bands and musicians can register their soundstage page, book recording time, and share tracks.
+                    Bands and musicians can register their official page, book recording time, and share tracks.
                   </p>
                   <Button asChild className="mt-6 bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-xl px-6 h-12 text-sm sm:text-base font-semibold">
-                    <Link href="/bands">Explore Soundstage</Link>
+                    <Link href="/bands">Explore Bands</Link>
                   </Button>
                 </div>
               )}

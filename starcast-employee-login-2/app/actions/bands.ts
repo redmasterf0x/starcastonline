@@ -64,6 +64,13 @@ function serialize(b: typeof bands.$inferSelect) {
 export async function getMyBands() {
   try {
     const viewer = await requireViewer()
+    if (viewer.isAdmin) {
+      const rows = await db
+        .select()
+        .from(bands)
+        .orderBy(desc(bands.createdAt))
+      return rows.map(serialize)
+    }
     const rows = await db
       .select()
       .from(bands)

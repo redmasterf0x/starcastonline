@@ -106,7 +106,9 @@ async function verifyBandOwnershipOrAdmin(bandId: string) {
 
   // Check admin
   const profileRows = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
-  if (profileRows[0]?.isAdmin) return { band, user }
+  const p = profileRows[0]
+  const isAdmin = Boolean(p?.isAdmin || p?.role === "admin")
+  if (isAdmin) return { band, user }
 
   throw new Error("You do not have permission to manage music for this act.")
 }
@@ -502,7 +504,7 @@ export async function getAllPublicTracks(options?: {
  */
 export async function addBandTrack(bandId: string, input: TrackInput) {
   try {
-    const { band } = await verifyBandOwnershipOrAdmin(bandId)
+    const { band, user } = await verifyBandOwnershipOrAdmin(bandId)
 
     if (!input.title?.trim()) {
       return { success: false, error: "Track title is required." }
@@ -576,7 +578,7 @@ export async function addBandTrack(bandId: string, input: TrackInput) {
 
       await db.insert(bandPosts).values({
         bandId,
-        authorUserId: band.ownerUserId,
+        authorUserId: user.id || band.ownerUserId,
         content: postBody,
         postType: "audio",
         images: input.coverArtUrl ? [input.coverArtUrl] : [],
@@ -719,7 +721,7 @@ export async function toggleBandMusicCatalog(bandId: string, enabled: boolean, t
  */
 export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput) {
   try {
-    const { band } = await verifyBandOwnershipOrAdmin(bandId)
+    const { band, user } = await verifyBandOwnershipOrAdmin(bandId)
 
     if (!input.albumTitle?.trim()) {
       return { success: false, error: "Album title is required." }
@@ -796,7 +798,7 @@ export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput)
         const postBody = `💿 New album release: "${input.albumTitle.trim()}" (${albumAudioTracks.length} tracks) is now streaming!`
         await db.insert(bandPosts).values({
           bandId,
-          authorUserId: band.ownerUserId,
+          authorUserId: user.id || band.ownerUserId,
           content: postBody,
           postType: "album",
           images: input.coverArtUrl ? [input.coverArtUrl] : [],

@@ -18,6 +18,7 @@ import {
 } from "@/app/actions/band-tickets"
 import { StudioManager } from "@/components/studio/studio-manager"
 import { AdminAnalyticsDashboard } from "@/components/admin/admin-analytics-dashboard"
+import { UploadSongModal } from "@/components/music/upload-song-modal"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -148,6 +149,7 @@ export default function AdminPage() {
   const [newCategoryIcon, setNewCategoryIcon] = useState("")
   const [memberSearch, setMemberSearch] = useState("")
   const [previewArticle, setPreviewArticle] = useState<Article | null>(null)
+  const [uploadSongOpen, setUploadSongOpen] = useState(false)
   const [editingStaffEmailUserId, setEditingStaffEmailUserId] = useState<string | null>(null)
   const [editingStaffEmailValue, setEditingStaffEmailValue] = useState("")
   const [savingStaffEmail, setSavingStaffEmail] = useState(false)
@@ -369,6 +371,13 @@ export default function AdminPage() {
             <p className="text-[#9a9fc4]">Manage your community, content, and team</p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setUploadSongOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#20efe0] via-[#00b4d8] to-[#20efe0] text-[#05052d] font-bold text-sm hover:brightness-110 shadow-lg shadow-[#20efe0]/25 transition-all cursor-pointer"
+            >
+              <Music className="w-4 h-4" />
+              Upload &amp; Post Song
+            </Button>
             <Link
               href="/admin/support"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#ea6f2a] via-[#f2a04a] to-[#ffd166] text-[#05052d] font-bold text-sm hover:brightness-110 shadow-lg shadow-[#ea6f2a]/25 transition-all"
@@ -1354,6 +1363,9 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Upload Song Modal */}
+      <UploadSongModal open={uploadSongOpen} onOpenChange={setUploadSongOpen} />
 
       <Footer />
     </div>

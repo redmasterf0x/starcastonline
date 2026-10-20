@@ -13,7 +13,6 @@ const socialLinks = [
 
 const siteLinks = [
   { label: "Watch", href: "/watch" },
-  { label: "Shows", href: "/shows" },
   { label: "Articles", href: "/articles" },
   { label: "Bands", href: "/bands" },
   { label: "The DECK", href: "/community" },

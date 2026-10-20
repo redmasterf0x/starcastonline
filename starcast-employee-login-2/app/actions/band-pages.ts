@@ -6,7 +6,7 @@ import { bands, bandPosts, bandPostComments, bandFollows, bandTracks, profiles }
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
-import { assertSocialAllowed } from "@/lib/permissions"
+import { assertSocialAllowed, getViewerPermissions } from "@/lib/permissions"
 
 /** Optional viewer — returns the signed-in user id, or null when logged out. */
 async function getOptionalUserId(): Promise<string | null> {
@@ -199,7 +199,17 @@ export async function getPublicBand(slug: string): Promise<PublicBand | null> {
   if (!b) return null
 
   const viewerId = await getOptionalUserId()
-  const isOwner = viewerId != null && viewerId === b.ownerUserId
+  let isOwner = false
+  if (viewerId != null) {
+    if (viewerId === b.ownerUserId) {
+      isOwner = true
+    } else {
+      const perms = await getViewerPermissions()
+      if (perms?.isAdmin) {
+        isOwner = true
+      }
+    }
+  }
   if (!b.isPublic && !isOwner) return null
 
   const [followerCounts, followed] = await Promise.all([

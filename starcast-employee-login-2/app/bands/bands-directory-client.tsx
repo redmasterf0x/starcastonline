@@ -133,7 +133,7 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 text-[#ea6f2a] text-xs font-semibold tracking-wider uppercase mb-4">
                 <Radio className="w-3.5 h-3.5 animate-pulse" />
-                Aethelgard Soundstage Directory
+                StarCast Bands Directory
               </div>
 
               <h1 className="text-3xl sm:text-5xl font-extrabold text-[#f5f7ff] tracking-tight mb-3">
