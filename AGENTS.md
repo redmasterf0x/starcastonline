@@ -28,7 +28,7 @@ sponsorships, and merch.
 | Email | Resend (`lib/email.ts`, from `noreply@starcast.online`) |
 | SMS / Phone | **Firebase Phone Auth** (Google enterprise carrier routes + reCAPTCHA) + Twilio fallback (`lib/sms.ts`) |
 | Secondary store | Firebase Firestore (project `starcastonline-live`) — **support inbox only** |
-| Merch / Shop | Shopify Storefront API (`lib/shopify.ts`) |
+| Merch / Shop | Shopify Storefront API (`lib/shopify.ts`, GraphQL Cart & Checkout, `app/actions/shopify-cart.ts`, `/merch/[handle]`) |
 | Video | YouTube public RSS feeds/scraping (`lib/youtube.ts`, no API key needed) |
 
 Styling rules: see `.agents/rules/styling.md` and the `starcast-brand-design` / `tailwind-v4-shadcn` skills.
@@ -130,6 +130,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 - **Firestore** (`lib/firebase`): Admin SDK uses ADC on App Hosting or `FIREBASE_SERVICE_ACCOUNT_KEY`.
   Collections: `inbound_emails` (used), `users`, `articles` (helpers exist but the app reads these from Postgres).
 - **OG images**: `/api/og`, `/api/og-band/[slug]`, `/api/og-card/[slug]`. RSS: `/rss.xml`, `/shows.xml`, `/api/rss/*`.
+- **Shopify Storefront**: Storefront GraphQL API (`lib/shopify.ts` on version `2024-10` with REST + static fallbacks) queries live products and handles variant options (sizes/colors). Server actions (`app/actions/shopify-cart.ts`) interact with Shopify's Cart API (`cartCreate`, `cartLinesAdd`, `cartLinesUpdate`, `cartLinesRemove`) for live encrypted checkout links and cart persistence, coupled with `CartProvider` (`components/merch/cart-context.tsx`), `CartDrawer`, and individual product pages (`/merch/[handle]`).
 
 ## 8. Code conventions
 
