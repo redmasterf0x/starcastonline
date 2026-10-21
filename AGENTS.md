@@ -11,23 +11,22 @@ articles), a member community (posts, friends, DMs), a recording-studio portal f
 (bookings, public band pages, music catalog, ticketed events), a staff/production calendar,
 sponsorships, and merch.
 
-- The whole app lives in **`starcast-employee-login-2/`** (Next.js). The repo root only holds
-  deploy config, a built Android `.aab`, and one-off `patch_*.cjs` scripts (ignore those).
-- Originally scaffolded with v0 (Vercel), then migrated off Supabase. Expect leftover
-  `[v0]` log prefixes and legacy files.
+- The whole app lives in **`starcast-employee-login-2/`** (Next.js App Router).
+- Native Google Cloud & Firebase architecture deployed on **Firebase App Hosting**.
 
 ## 2. Stack
 
 | Layer | Tech |
 |---|---|
 | Framework | Next.js 16 (App Router), React 19, TypeScript (`ignoreBuildErrors: true` in `next.config.mjs`) |
-| UI | Tailwind CSS v4 (no tailwind.config — theme in `app/globals.css`), shadcn/ui (`components/ui`), lucide-react, sonner |
-| DB | **Neon Postgres** via `pg` Pool + **Drizzle ORM** (`lib/db`) |
+| UI | Tailwind CSS v4 (theme in `app/globals.css`), shadcn/ui (`components/ui`), lucide-react, sonner |
+| DB | **Postgres** via `pg` Pool + **Drizzle ORM** (`lib/db`) |
 | Auth | **Better Auth** (Google OAuth + Firebase Phone Auth with Better Auth session linking) |
 | Payments | Stripe (Checkout, Connect for bands & staff payouts) |
 | Email | Resend (`lib/email.ts`, from `noreply@starcast.online`) |
 | SMS / Phone | **Firebase Phone Auth** (Google enterprise carrier routes + reCAPTCHA) + Twilio fallback (`lib/sms.ts`) |
 | Secondary store | Firebase Firestore (project `starcastonline-live`) — **support inbox only** |
+| File Storage | Firebase Cloud Storage & Postgres `uploaded_blobs` (`/api/upload` -> `/api/blobs/...`) |
 | Merch / Shop | Shopify Storefront API (`lib/shopify.ts`, GraphQL Cart & Checkout, `app/actions/shopify-cart.ts`, `/merch/[handle]`) |
 | Video | YouTube public RSS feeds/scraping (`lib/youtube.ts`, no API key needed) |
 
@@ -38,8 +37,6 @@ Styling rules: see `.agents/rules/styling.md` and the `starcast-brand-design` / 
 - **Primary: Firebase App Hosting** — backend `starcast-backend`, project `starcastonline-live`,
   config in `starcast-employee-login-2/apphosting.yaml` (env vars + Secret Manager refs).
   Root `firebase.json` points `rootDir` at `starcast-employee-login-2`.
-- **Legacy/alt: Netlify** (`netlify.toml`, `@netlify/plugin-nextjs`). Code must still work when
-  Netlify-only APIs (e.g. Netlify Blobs) are unavailable — always wrap them in try/catch.
 - `.github/workflows/build-android-bundle.yml` builds the Android wrapper app.
 - Dev: `cd starcast-employee-login-2 && npm run dev`. Shell is **Windows PowerShell**.
 
@@ -63,8 +60,7 @@ lib/
   require-admin-route.ts  Admin guard for API route handlers
   email.ts / sms.ts / stripe.ts / printify.ts / youtube.ts / products.ts (sponsor packages)
   firebase/       admin.ts (Admin SDK init), client.ts (Client SDK init), use-phone-auth.ts (reCAPTCHA + phone verification hook), firestore-service.ts
-scripts/          migrate-*.js (current migration style) + old *.sql (LEGACY Supabase, don't use)
-netlify/database/migrations/  Drizzle-kit output (only the initial migration)
+scripts/          migrate-*.js (migration scripts via pg Pool + Drizzle)
 ```
 
 ## 5. Auth & identity (important!)
@@ -109,16 +105,15 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 
 ### Making schema changes
 1. Edit `lib/db/schema.ts`.
-2. Apply to Neon with an idempotent script in `scripts/migrate-<feature>.js` (pattern: `pg` Pool +
+2. Apply to Postgres with an idempotent script in `scripts/migrate-<feature>.js` (pattern: `pg` Pool +
    `dotenv` loading `.env.local`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`),
    run with `node scripts/migrate-<feature>.js` from `starcast-employee-login-2/`.
-   (`npm run db:push` via drizzle-kit also exists but the scripts approach is what's been used.)
 3. Update the table above.
 
 ## 7. Services & data flows
 
-- **File uploads**: client POSTs `FormData{file, folder}` to `/api/upload` → stored base64 in
-  Postgres `uploaded_blobs` (+ Netlify Blobs if available) → returns URL `/api/blobs/<folder>/<ts>-<name>`,
+- **File uploads**: client POSTs `FormData{file, folder}` to `/api/upload` → stored in
+  Postgres `uploaded_blobs` & Firebase Cloud Storage → returns URL `/api/blobs/<folder>/<ts>-<name>`,
   served by `app/api/blobs/[...key]`. Limits: images 10MB, audio 50MB. Used for logos, banners, avatars, audio, cover art.
 - **Stripe**: there are **no Stripe webhooks**. Fulfillment happens on the success page by verifying
   the Checkout session server-side: `/sponsors/success` → `verifySponsorPayment`, `/tickets/success` → `verifyAndFulfillTicketOrder`.
@@ -143,7 +138,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 
 ## 9. Environment variables
 
-DB: `DATABASE_URL` / `NEON_DATABASE_URL` (must be `postgres://` wire URL — **not** Neon's Data API REST URL).
+DB: `DATABASE_URL` (must be `postgres://` wire URL).
 Auth: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`.
 URLs: `NEXT_PUBLIC_BASE_URL`, `NEXT_PUBLIC_APP_URL`.
 Stripe: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
@@ -155,8 +150,6 @@ Production values: `apphosting.yaml` (+ Google Secret Manager).
 
 ## 10. Gotchas
 
-- Don't use `scripts/*.sql` (old Supabase/RLS era) — they don't match the current schema.
 - TypeScript errors don't fail the build; still run `npx tsc --noEmit` to catch real bugs.
-- Netlify Blobs / Netlify env vars are absent on Firebase App Hosting — never make them required.
 - `profiles.userId` ≠ `profiles.id`. Double-check which one a table expects.
 - Admins bypass social bans and implicitly have every permission.

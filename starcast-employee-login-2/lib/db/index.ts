@@ -16,11 +16,10 @@ import * as schema from "./schema"
  */
 export function resolvePostgresUrl(): string {
   const candidates = [
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_URL,
     process.env.NEON_DATABASE_URL,
     process.env.NEON_POSTGRES_URL,
-    process.env.POSTGRES_URL,
-    process.env.DATABASE_URL,
-    process.env.NETLIFY_DATABASE_URL,
   ]
   const valid = candidates.find((u) => u && /^postgres(ql)?:\/\//i.test(u))
   if (!valid) {

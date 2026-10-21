@@ -1,4 +1,3 @@
-import { getStore } from "@netlify/blobs"
 import { type NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { uploadedBlobs } from "@/lib/db/schema"
@@ -84,16 +83,6 @@ export async function POST(request: NextRequest) {
         })
     } catch (dbErr) {
       console.warn("Error storing blob in Postgres:", dbErr)
-    }
-
-    // 2. Also attempt Netlify Blobs store if active
-    try {
-      const store = getStore("uploads")
-      await store.set(pathname, arrayBuffer, {
-        metadata: { contentType },
-      })
-    } catch {
-      // Netlify blobs not active in current environment (e.g. Firebase App Hosting)
     }
 
     return NextResponse.json({ url: `/api/blobs/${pathname}` })

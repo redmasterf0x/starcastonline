@@ -1,4 +1,3 @@
-import { getStore } from "@netlify/blobs"
 import { type NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { uploadedBlobs } from "@/lib/db/schema"
@@ -58,31 +57,7 @@ export async function GET(
       console.warn("DB blob lookup error:", dbErr)
     }
 
-    // 2. Fallback to Netlify Blobs if active
-    try {
-      const store = getStore("uploads")
-      for (const k of [rawKey, decodedKey, rawKey.replace(/^\/+/, "")]) {
-        const { data, metadata } = await store.getWithMetadata(k, {
-          type: "arrayBuffer",
-        })
-
-        if (data) {
-          const contentType =
-            (metadata as Record<string, any>)?.contentType || "image/jpeg"
-
-          return new NextResponse(data, {
-            headers: {
-              "Content-Type": contentType,
-              "Cache-Control": "public, max-age=31536000, immutable",
-            },
-          })
-        }
-      }
-    } catch {
-      // Netlify Blobs not active or not found
-    }
-
-    // 3. If blob not found, return 404 so browser onError triggers seamlessly
+    // 2. If blob not found, return 404 so browser onError triggers seamlessly
     return new NextResponse("File Not Found", {
       status: 404,
       headers: {
