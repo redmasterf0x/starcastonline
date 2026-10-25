@@ -62,8 +62,7 @@ export async function POST(req: NextRequest) {
     ErrorMessage: ErrorMessage || null,
   })
 
-  // Logs are sufficient to confirm delivery in Vercel's log drain.
-  // Extend this to write to an sms_logs table in Neon if needed.
+  // Logs confirm delivery in Google Cloud / Firebase logging.
   if (MessageStatus === "failed" || MessageStatus === "undelivered") {
     console.log(
       `[twilio-webhook] DELIVERY FAILURE — to: ${To}, sid: ${MessageSid}, ` +

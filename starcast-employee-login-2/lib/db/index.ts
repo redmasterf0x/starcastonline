@@ -3,23 +3,16 @@ import { Pool } from "pg"
 import * as schema from "./schema"
 
 /**
- * Resolve the Postgres (Neon) connection string for this app.
+ * Resolve the Postgres connection string for this app.
  *
- * The app uses its own Neon database via the Postgres wire protocol
- * (pg + Drizzle + Better Auth). We prefer the explicit Neon env vars and only
- * fall back to a placeholder during build-time static collection.
- *
- * IMPORTANT: This project deliberately avoids Neon's Data API REST endpoint
- * (https://…apirest.neon.tech/…), which is NOT a Postgres wire URL and makes
- * every `pg` connection fail with "Connection terminated unexpectedly". So we
- * only ever accept real postgres(ql):// strings here.
+ * The app connects to Postgres via the pg wire protocol (pg + Drizzle + Better Auth).
+ * We read DATABASE_URL or POSTGRES_URL and only fall back to a placeholder during
+ * build-time static page collection.
  */
 export function resolvePostgresUrl(): string {
   const candidates = [
     process.env.DATABASE_URL,
     process.env.POSTGRES_URL,
-    process.env.NEON_DATABASE_URL,
-    process.env.NEON_POSTGRES_URL,
   ]
   const valid = candidates.find((u) => u && /^postgres(ql)?:\/\//i.test(u))
   if (!valid) {

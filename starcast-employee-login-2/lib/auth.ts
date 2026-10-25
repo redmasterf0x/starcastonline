@@ -10,13 +10,8 @@ export const auth = betterAuth({
   database: pool,
   baseURL:
     process.env.BETTER_AUTH_URL ??
-    process.env.URL ??
-    process.env.DEPLOY_PRIME_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : process.env.V0_RUNTIME_URL ?? "https://starcast.online"),
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    "https://starcast.online",
   socialProviders: {
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? {
@@ -102,25 +97,11 @@ export const auth = betterAuth({
   ],
   trustedOrigins: [
     // Production domain (both apex and www) so auth works on the live site
-    // regardless of which Vercel env var is present at runtime.
     "https://starcast.online",
     "https://www.starcast.online",
     // Google Firebase App Hosting domains
     "https://*.hosted.app",
     "https://starcast-backend--starcastonline-live.us-central1.hosted.app",
-    // Netlify domains & preview deploys
-    "https://*.netlify.app",
-    ...(process.env.URL ? [process.env.URL] : []),
-    ...(process.env.DEPLOY_PRIME_URL ? [process.env.DEPLOY_PRIME_URL] : []),
-    // v0 / Vercel preview + sandbox domains (wildcards)
-    "https://*.vercel.run",
-    "https://*.v0.build",
-    "https://*.vercel.app",
-    ...(process.env.V0_RUNTIME_URL ? [process.env.V0_RUNTIME_URL] : []),
-    ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
-    ...(process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? [`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`]
-      : []),
   ],
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days

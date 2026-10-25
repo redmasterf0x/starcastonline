@@ -12,7 +12,7 @@ const ALLOWED_EXTENSIONS = new Set([
   "pdf", "txt"
 ])
 
-// Uploads a file to Postgres and Netlify Blobs, returning its public URL.
+// Uploads a file to Postgres and Firebase Storage, returning its public URL.
 // Used for band logos, band banners, profile avatars, sponsor logos, and post audio/images.
 export async function POST(request: NextRequest) {
   try {

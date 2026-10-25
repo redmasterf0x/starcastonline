@@ -180,7 +180,7 @@ export default function DashboardPage() {
 
     setUploading(true)
 
-    // Upload to Vercel Blob (served by Vercel CDN)
+    // Upload file via /api/upload (Postgres + Firebase Storage)
     const uploadData = new FormData()
     uploadData.append("file", file)
     uploadData.append("folder", "avatars")
