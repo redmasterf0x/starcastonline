@@ -37,6 +37,7 @@ Styling rules: see `.agents/rules/styling.md` and the `starcast-brand-design` / 
 - **Primary: Firebase App Hosting** — backend `starcast-backend`, project `starcastonline-live`,
   config in `starcast-employee-login-2/apphosting.yaml` (env vars + Secret Manager refs).
   Root `firebase.json` points `rootDir` at `starcast-employee-login-2`.
+- **Deploy to Live Production**: `npx firebase deploy --only apphosting --project starcastonline-live` from the root repo.
 - `.github/workflows/build-android-bundle.yml` builds the Android wrapper app.
 - Dev: `cd starcast-employee-login-2 && npm run dev`. Shell is **Windows PowerShell**.
 
