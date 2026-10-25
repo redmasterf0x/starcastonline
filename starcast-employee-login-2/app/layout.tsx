@@ -99,9 +99,27 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/images/spacemanlogo.png",
-    apple: "/images/spacemanlogo.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-dark-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/images/spacemanlogo.png", sizes: "1024x1024", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon-precomposed.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "StarCast",
+  },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
+  manifest: "/manifest.webmanifest",
   category: "Media Production & Broadcasting",
   classification: "Media Company, Video Production, Broadcasting & Advertising",
   alternates: {
