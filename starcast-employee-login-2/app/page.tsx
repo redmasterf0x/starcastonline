@@ -17,11 +17,8 @@ import {
   FileText,
   MessageCircle,
   ShoppingBag,
-  Sparkles,
   ArrowRight,
   Users,
-  Mic2,
-  Video,
   ExternalLink,
   Radio,
   Clock,
@@ -33,9 +30,9 @@ import { formatDistanceToNow } from "date-fns"
 import { ObservationDeckQuiz } from "@/components/quiz/observation-deck-quiz"
 
 export const metadata: Metadata = {
-  title: "StarCast Media | #1 Topeka Media Company & YouTube Broadcast Studio",
+  title: "StarCast Media | #1 Topeka Media Company & YouTube Broadcast Network",
   description:
-    "StarCast Media is Topeka's premier local media company, YouTube broadcast network, and video production studio. Stream original podcasts, uncut shows, live soundstage sessions, and discover local business advertising in Topeka, KS.",
+    "StarCast Media is Topeka's premier local media company and YouTube broadcast network. Stream original podcasts, uncut shows, regional music spotlights, and discover local business advertising in Topeka, KS.",
   keywords: [
     "topeka media company",
     "media company topeka",
@@ -406,7 +403,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16 space-y-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-14 space-y-14 md:space-y-16">
 
           {/* ── MODULE 2: WATCH & SHOWS PLATFORM ── */}
           <section id="shows">
@@ -658,103 +655,63 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* ── MODULE 5 & 6: STUDIO PRODUCTION + MERCH & SPONSORS MOSAIC ── */}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {/* Studio Facility Showcase (Enlarged Mobile Layout) */}
-            <div className="lg:col-span-2 rounded-3xl border border-[#20205a]/70 bg-gradient-to-br from-[#0c0c3f]/90 via-[#0c0c3f]/70 to-[#1d2053]/50 p-6 sm:p-10 flex flex-col justify-between shadow-2xl">
+          {/* ── MODULE 5: MERCH & SPONSORSHIPS ── */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            {/* Merch Card */}
+            <div className="rounded-3xl border border-[#20205a]/70 bg-gradient-to-br from-[#0c0c3f]/80 via-[#0c0c3f]/60 to-[#121245]/50 p-6 sm:p-8 flex flex-col justify-between shadow-2xl hover:border-[#ffd166]/50 transition-all duration-300">
               <div>
-                <div className="flex items-center gap-2 text-[#ea6f2a] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-2.5">
-                  <Mic2 className="w-4 h-4" />
-                  <span>STARCAST STUDIOS // TOPEKA, KS</span>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#ffd166]/15 border border-[#ffd166]/30 flex items-center justify-center text-[#ffd166] shadow-[0_0_20px_rgba(255,209,102,0.15)]">
+                    <ShoppingBag className="w-6 h-6" />
+                  </div>
+                  <Badge variant="outline" className="border-[#ffd166]/40 text-[#ffd166] bg-[#ffd166]/10 text-xs py-1 px-2.5 font-bold uppercase tracking-wider">
+                    Official Merch
+                  </Badge>
                 </div>
-                <h3 className="text-3xl sm:text-4xl font-black text-[#f5f7ff] tracking-tight">
-                  Record &amp; Broadcast At StarCast
+                <h3 className="text-2xl sm:text-3xl font-black text-[#f5f7ff] tracking-tight">
+                  StarCast Supply Co.
                 </h3>
-                <p className="text-base sm:text-lg text-[#dbe0fb] mt-3 leading-relaxed max-w-2xl">
-                  Equipped with multi-camera 4K broadcast switching, dedicated podcast booths, audio soundstage tracking, and live streaming dispatch. Whether you have an original show or need recording space, StarCast is your launchpad.
+                <p className="text-sm sm:text-base text-[#dbe0fb] mt-2.5 leading-relaxed">
+                  Cop the official cosmic hoodies, snapback caps, mission patch tees, and stickers. Support independent Topeka broadcasting.
                 </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#05052d]/90 border border-[#20205a]">
-                    <Video className="w-6 h-6 text-[#20efe0] mb-2.5" />
-                    <p className="text-sm sm:text-base font-bold text-[#f5f7ff]">Multi-Cam 4K Stage</p>
-                    <p className="text-xs sm:text-sm text-[#cbd0f2] mt-1">Switching, teleprompter, live graphics.</p>
-                  </div>
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#05052d]/90 border border-[#20205a]">
-                    <Mic2 className="w-6 h-6 text-[#ea6f2a] mb-2.5" />
-                    <p className="text-sm sm:text-base font-bold text-[#f5f7ff]">Podcast Suites</p>
-                    <p className="text-xs sm:text-sm text-[#cbd0f2] mt-1">Professional Shure mics, acoustic dampening.</p>
-                  </div>
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#05052d]/90 border border-[#20205a]">
-                    <Music className="w-6 h-6 text-[#22b573] mb-2.5" />
-                    <p className="text-sm sm:text-base font-bold text-[#f5f7ff]">Soundstage Tracking</p>
-                    <p className="text-xs sm:text-sm text-[#cbd0f2] mt-1">Live sessions, multitrack audio, artist video.</p>
-                  </div>
-                </div>
               </div>
-
-              <div className="mt-8 pt-6 border-t border-[#20205a]/70 flex items-center justify-between flex-wrap gap-4">
-                <span className="text-sm sm:text-base text-[#dbe0fb]">Ready to create your next episode or soundstage session?</span>
-                <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-6 h-12 text-sm sm:text-base shadow-lg shadow-[#ea6f2a]/25">
-                  <Link href="/dashboard">Access Artist Portal</Link>
+              <div className="mt-8 pt-5 border-t border-[#20205a]/60 flex items-center justify-between flex-wrap gap-3">
+                <Button asChild className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold rounded-xl h-11 px-6 text-sm shadow-md shadow-[#ea6f2a]/20">
+                  <Link href="/merch">
+                    Shop Official Merch <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Link>
                 </Button>
+                <span className="text-xs font-mono text-[#9a9fc4]">FREE LOCAL PICKUP</span>
               </div>
             </div>
 
-            {/* Merch & Supply Co. + Sponsorship */}
-            <div className="space-y-6">
-              {/* Merch Card */}
-              <div className="rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/70 p-6 sm:p-8 flex flex-col justify-between shadow-2xl">
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 rounded-2xl bg-[#ffd166]/15 border border-[#ffd166]/30 flex items-center justify-center text-[#ffd166]">
-                      <ShoppingBag className="w-5 h-5" />
-                    </div>
-                    <Badge variant="outline" className="border-[#ffd166]/40 text-[#ffd166] bg-[#ffd166]/10 text-xs py-0.5 px-2">
-                      Official Merch
-                    </Badge>
+            {/* Sponsor Callout */}
+            <div className="rounded-3xl border border-[#20205a]/70 bg-gradient-to-br from-[#0c0c3f]/80 via-[#0c0c3f]/60 to-[#0e2a4a]/40 p-6 sm:p-8 flex flex-col justify-between shadow-2xl hover:border-[#20efe0]/50 transition-all duration-300">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#20efe0]/15 border border-[#20efe0]/30 flex items-center justify-center text-[#20efe0] shadow-[0_0_20px_rgba(32,239,224,0.15)]">
+                    <Radio className="w-6 h-6" />
                   </div>
-                  <h4 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">StarCast Supply Co.</h4>
-                  <p className="text-sm sm:text-base text-[#dbe0fb] mt-2.5 leading-relaxed">
-                    Cop the official cosmic hoodies, snapback caps, mission patch tees, and stickers.
-                  </p>
+                  <Badge variant="outline" className="border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10 text-xs py-1 px-2.5 font-bold uppercase tracking-wider">
+                    Partnerships
+                  </Badge>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#20205a]/60">
-                  <Button asChild className="w-full bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl h-12 text-sm sm:text-base shadow-md shadow-[#ea6f2a]/20">
-                    <Link href="/merch">
-                      Shop Official Merch <ArrowRight className="w-4 h-4 ml-1.5" />
-                    </Link>
-                  </Button>
-                </div>
+                <h3 className="text-2xl sm:text-3xl font-black text-[#f5f7ff] tracking-tight">
+                  Advertise With StarCast
+                </h3>
+                <p className="text-sm sm:text-base text-[#dbe0fb] mt-2.5 leading-relaxed">
+                  Connect your business with Kansas viewers through broadcast sponsorship, episode ad rolls, on-air mentions, and digital placement.
+                </p>
               </div>
-
-              {/* Sponsor Callout */}
-              <div className="rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/70 p-6 sm:p-8 flex flex-col justify-between shadow-2xl">
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 rounded-2xl bg-[#20efe0]/15 border border-[#20efe0]/30 flex items-center justify-center text-[#20efe0]">
-                      <Radio className="w-5 h-5" />
-                    </div>
-                    <Badge variant="outline" className="border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10 text-xs py-0.5 px-2">
-                      Partnerships
-                    </Badge>
-                  </div>
-                  <h4 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">Advertise With StarCast</h4>
-                  <p className="text-sm sm:text-base text-[#dbe0fb] mt-2.5 leading-relaxed">
-                    Connect your brand with Kansas viewers through broadcast sponsorship, segment features, and web placement.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-[#20205a]/60">
-                  <Button asChild variant="outline" className="w-full border-[#20efe0]/50 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white rounded-xl h-12 text-sm sm:text-base font-semibold">
-                    <Link href="/sponsors">
-                      Sponsorship Opportunities <ArrowRight className="w-4 h-4 ml-1.5" />
-                    </Link>
-                  </Button>
-                </div>
+              <div className="mt-8 pt-5 border-t border-[#20205a]/60 flex items-center justify-between flex-wrap gap-3">
+                <Button asChild variant="outline" className="border-[#20efe0]/50 text-[#20efe0] hover:bg-[#20efe0]/20 hover:text-white rounded-xl h-11 px-6 text-sm font-bold">
+                  <Link href="/sponsors">
+                    Sponsorship Packages <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Link>
+                </Button>
+                <span className="text-xs font-mono text-[#20efe0]">REACH THOUSANDS</span>
               </div>
             </div>
-
           </section>
 
         </div>
