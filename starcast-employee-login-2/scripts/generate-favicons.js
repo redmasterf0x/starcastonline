@@ -8,8 +8,8 @@ const imagesDir = path.join(publicDir, 'images');
 const appDir = path.join(rootDir, 'app');
 
 const defaultSrc = path.join(imagesDir, 'spacemanlogo.png');
-const customSrc = 'C:/Users/ray/.gemini/antigravity-ide/brain/65edc707-11e1-49d6-b7fd-cf408e193305/.user_uploaded/media_1792962408693.png';
-const srcPath = fs.existsSync(customSrc) ? customSrc : defaultSrc;
+const cliArg = process.argv[2];
+const srcPath = (cliArg && fs.existsSync(cliArg)) ? cliArg : defaultSrc;
 
 async function main() {
   console.log('Reading source image from:', srcPath);
