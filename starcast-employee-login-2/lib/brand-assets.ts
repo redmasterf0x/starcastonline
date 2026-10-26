@@ -4,8 +4,8 @@
 //   /images/starcast-mascot-badge.svg  (full-color circular planet badge)
 //   /images/starcast-mascot.png        (transparent full-color mascot)
 //   /images/starcast-wordmark.png      (transparent "STARCAST MEDIA" text-only logotype)
-const WHITE = "/images/starcast-mascot.webp"
-const COLOR = "/images/starcast-mascot.webp"
+const WHITE = "/images/starcast-header-logo.png"
+const COLOR = "/images/starcast-header-logo.png"
 const SEAL = "/images/starcast-mascot-badge.svg"
 const WORDMARK = "/images/starcast-wordmark.png"
 

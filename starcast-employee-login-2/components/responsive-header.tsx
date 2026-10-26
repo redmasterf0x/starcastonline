@@ -148,7 +148,7 @@ export function ResponsiveHeader({
                 <img
                   src={brandAssets.capstone.white || "/placeholder.svg"}
                   alt="StarCast Mascot"
-                  className="h-9 w-9 xs:h-10 xs:w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-transform group-hover:scale-105"
+                  className="h-9 w-9 xs:h-10 xs:w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 object-contain drop-shadow-md transition-transform group-hover:scale-105"
                 />
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">

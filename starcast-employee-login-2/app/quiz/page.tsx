@@ -13,6 +13,29 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://starcast.online/quiz",
   },
+  openGraph: {
+    title: "Take the StarCast Quiz | Test Your Show Knowledge",
+    description:
+      "Test your show knowledge across The Observation Deck, Hollywood: After Babylon, Star Talk, hosts & Topeka lore. Can you score 5/5?",
+    url: "https://starcast.online/quiz",
+    siteName: "StarCast Media",
+    images: [
+      {
+        url: "https://starcast.online/api/og-quiz",
+        width: 1200,
+        height: 630,
+        alt: "Take the StarCast Quiz - Test Your Show Knowledge",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Take the StarCast Quiz | Test Your Show Knowledge",
+    description:
+      "Test your show knowledge across The Observation Deck, Hollywood: After Babylon, Star Talk, hosts & Topeka lore. Can you score 5/5?",
+    images: ["https://starcast.online/api/og-quiz"],
+  },
 }
 
 export default function QuizPage() {

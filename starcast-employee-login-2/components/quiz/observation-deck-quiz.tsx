@@ -20,6 +20,8 @@ import {
   Flame,
   Check,
   ExternalLink,
+  Facebook,
+  Link2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -410,6 +412,7 @@ export function ObservationDeckQuiz() {
   const [postingToDeck, setPostingToDeck] = useState(false)
   const [postedToDeck, setPostedToDeck] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedQuizLink, setCopiedQuizLink] = useState(false)
 
   // Initialize random questions client-side to prevent SSR hydration mismatches
   useEffect(() => {
@@ -448,6 +451,7 @@ export function ObservationDeckQuiz() {
     setQuizFinished(false)
     setPostedToDeck(false)
     setCopied(false)
+    setCopiedQuizLink(false)
   }
 
   const rank = useMemo(
@@ -456,6 +460,41 @@ export function ObservationDeckQuiz() {
   )
 
   const shareText = `🎯 Take the StarCast Quiz: I scored ${score}/${totalQuestions} and earned the rank of ${rank.emoji} ${rank.title}! Test your show knowledge: https://starcast.online/quiz`
+
+  const handleShareFacebook = () => {
+    const quizUrl = typeof window !== "undefined" ? `${window.location.origin}/quiz` : "https://starcast.online/quiz"
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(quizUrl)}`
+    window.open(fbUrl, "_blank", "width=600,height=520,menubar=no,toolbar=no,resizable=yes")
+  }
+
+  const handleCopyQuizLink = async () => {
+    const quizUrl = typeof window !== "undefined" ? `${window.location.origin}/quiz` : "https://starcast.online/quiz"
+    try {
+      await navigator.clipboard.writeText(quizUrl)
+      setCopiedQuizLink(true)
+      toast.success("Quiz link copied! Paste anywhere on Facebook, messages, or social.")
+      setTimeout(() => setCopiedQuizLink(false), 2500)
+    } catch {
+      toast.error("Failed to copy link.")
+    }
+  }
+
+  const handleNativeShare = async () => {
+    const quizUrl = typeof window !== "undefined" ? `${window.location.origin}/quiz` : "https://starcast.online/quiz"
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "Take the StarCast Quiz",
+          text: "Test your show knowledge across StarCast broadcasts, hosts, and Topeka lore. Can you score 5/5?",
+          url: quizUrl,
+        })
+        return
+      } catch {
+        // User dismissed share dialog
+      }
+    }
+    handleCopyQuizLink()
+  }
 
   const handleCopy = async () => {
     try {
@@ -545,6 +584,54 @@ export function ObservationDeckQuiz() {
           <p className="text-xs sm:text-sm text-[#cbd0f2] mt-1 max-w-xl">
             Test your show knowledge across StarCast broadcasts, hosts, and Topeka lore.
           </p>
+
+          {/* Quick Share Quiz Actions */}
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#20205a]/40 flex-wrap">
+            <span className="text-[11px] font-mono text-[#9a9fc4] uppercase tracking-wider font-semibold">
+              Share Quiz:
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleShareFacebook}
+              className="h-8 px-3 rounded-lg border-[#1877f2]/40 bg-[#1877f2]/10 hover:bg-[#1877f2]/25 text-[#60a5fa] hover:text-white text-xs font-semibold gap-1.5 transition-all shadow-sm"
+              title="Share Quiz on Facebook"
+            >
+              <Facebook className="w-3.5 h-3.5 fill-current" />
+              <span>Facebook</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopyQuizLink}
+              className="h-8 px-3 rounded-lg border-[#20205a] bg-[#0c0c3f] hover:bg-[#20205a] text-[#cbd0f2] hover:text-[#f5f7ff] text-xs font-semibold gap-1.5 transition-all"
+              title="Copy link to the StarCast Quiz"
+            >
+              {copiedQuizLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400">Copied Link!</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="w-3.5 h-3.5" />
+                  <span>Copy Quiz Link</span>
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleNativeShare}
+              className="h-8 px-2.5 rounded-lg border-[#20205a] bg-[#0c0c3f] hover:bg-[#20205a] text-[#20efe0] hover:text-white text-xs font-semibold gap-1.5 transition-all"
+              title="Share Quiz via Device"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
 
         {!quizFinished && (
@@ -688,37 +775,78 @@ export function ObservationDeckQuiz() {
           </div>
 
           {/* Social Share & Post Action Rail */}
-          <div className="pt-4 max-w-lg mx-auto rounded-2xl border border-[#20205a] bg-[#05052d]/90 p-5 space-y-3.5">
-            <p className="text-xs font-mono text-[#9a9fc4] uppercase font-semibold">
-              Share your score with the community:
-            </p>
+          <div className="pt-4 max-w-lg mx-auto rounded-2xl border border-[#20205a] bg-[#05052d]/90 p-5 space-y-4">
+            <div className="text-center">
+              <p className="text-xs font-mono text-[#9a9fc4] uppercase font-bold tracking-wider">
+                Share The Quiz With Friends
+              </p>
+              <p className="text-xs text-[#cbd0f2] mt-0.5">
+                Share the quiz on Facebook or copy the link to challenge friends!
+              </p>
+            </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+              {/* Share Quiz on Facebook */}
               <Button
-                onClick={handlePostToDeck}
-                disabled={postingToDeck || postedToDeck}
-                className="w-full sm:w-auto bg-gradient-to-r from-[#ffd166] to-[#ea6f2a] hover:opacity-90 text-black font-extrabold rounded-xl h-11 px-5 text-xs sm:text-sm gap-2 shadow-lg shadow-[#ffd166]/20 transition-all active:scale-95"
+                type="button"
+                onClick={handleShareFacebook}
+                className="w-full sm:w-auto bg-[#1877f2] hover:bg-[#1564d2] text-white font-bold rounded-xl h-11 px-4 text-xs sm:text-sm gap-2 shadow-lg shadow-[#1877f2]/25 active:scale-95 transition-all"
               >
-                {postedToDeck ? (
+                <Facebook className="w-4 h-4 fill-current" />
+                <span>Share Quiz on Facebook</span>
+              </Button>
+
+              {/* Copy Quiz Link */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCopyQuizLink}
+                className="w-full sm:w-auto border-[#20205a] bg-[#0c0c3f] hover:bg-[#20205a] text-[#cbd0f2] hover:text-white rounded-xl h-11 px-4 text-xs sm:text-sm font-bold gap-2"
+              >
+                {copiedQuizLink ? (
                   <>
-                    <Check className="w-4 h-4 text-black" />
-                    <span>Posted to Community!</span>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-400">Quiz Link Copied!</span>
                   </>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
+                    <Link2 className="w-4 h-4" />
+                    <span>Copy Quiz Link</span>
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2 border-t border-[#20205a]/60">
+              {/* Post to DECK */}
+              <Button
+                type="button"
+                onClick={handlePostToDeck}
+                disabled={postingToDeck || postedToDeck}
+                className="w-full sm:w-auto bg-gradient-to-r from-[#ffd166] to-[#ea6f2a] hover:opacity-90 text-black font-extrabold rounded-xl h-10 px-4 text-xs gap-1.5 shadow-lg shadow-[#ffd166]/20 transition-all active:scale-95"
+              >
+                {postedToDeck ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-black" />
+                    <span>Posted to The DECK!</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
                     <span>{postingToDeck ? "Broadcasting..." : "Post Score to The DECK"}</span>
                   </>
                 )}
               </Button>
 
+              {/* Copy Score text */}
               <Button
-                variant="outline"
+                type="button"
+                variant="ghost"
                 onClick={handleCopy}
-                className="w-full sm:w-auto border-[#20205a] bg-[#0c0c3f] hover:bg-[#20205a] text-[#20efe0] hover:text-white rounded-xl h-11 px-4 text-xs sm:text-sm font-bold gap-2"
+                className="w-full sm:w-auto text-[#cbd0f2] hover:text-white hover:bg-white/10 text-xs font-semibold h-10 px-3 gap-1.5"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
-                <span>{copied ? "Copied!" : "Copy Result"}</span>
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-[#ffd166]" />}
+                <span>{copied ? "Score Copied!" : "Copy Score Text"}</span>
               </Button>
             </div>
 
