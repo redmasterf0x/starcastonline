@@ -15,31 +15,7 @@ async function main() {
   console.log('Reading source image from:', srcPath);
   const srcBuffer = fs.readFileSync(srcPath);
 
-  // 1. Master square logos in public/images
-  console.log('Writing public/images/spacemanlogo.png (1024x1024)...');
-  await sharp(srcBuffer)
-    .resize(1024, 1024)
-    .png({ quality: 100, compressionLevel: 9 })
-    .toFile(path.join(imagesDir, 'spacemanlogo.png'));
-
-  console.log('Writing public/images/spacemanlogo.webp (1024x1024)...');
-  await sharp(srcBuffer)
-    .resize(1024, 1024)
-    .webp({ quality: 90 })
-    .toFile(path.join(imagesDir, 'spacemanlogo.webp'));
-
-  console.log('Writing public/images/starcast-mascot.png & webp...');
-  await sharp(srcBuffer)
-    .resize(1024, 1024)
-    .png({ quality: 100, compressionLevel: 9 })
-    .toFile(path.join(imagesDir, 'starcast-mascot.png'));
-
-  await sharp(srcBuffer)
-    .resize(1024, 1024)
-    .webp({ quality: 90 })
-    .toFile(path.join(imagesDir, 'starcast-mascot.webp'));
-
-  // 2. Apple Touch Icons (180x180 standard for iOS Retina Home Screen / Apple Shortcuts)
+  // 1. Apple Touch Icons (180x180 standard for iOS Retina Home Screen / Apple Shortcuts)
   console.log('Writing Apple touch icons (180x180)...');
   const apple180Buffer = await sharp(srcBuffer)
     .resize(180, 180)
