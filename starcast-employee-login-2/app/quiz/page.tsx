@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Tv, Music, MessageCircle, ArrowLeft, Sparkles, HelpCircle } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "StarCast Trivia Quiz | How Well Do You Know StarCast?",
+  title: "Take the StarCast Quiz | Test Your Show Knowledge",
   description:
-    "Test your knowledge on The Observation Deck, Hollywood: After Babylon, Star Talk, show hosts, episode guests, and Midwest soundstages. Earn cosmic ranks and share your score to The DECK.",
+    "Take the StarCast Quiz and test your show knowledge on The Observation Deck, Hollywood: After Babylon, Star Talk, show hosts, episode guests, and Midwest soundstages.",
   alternates: {
     canonical: "https://starcast.online/quiz",
   },

@@ -455,7 +455,7 @@ export function ObservationDeckQuiz() {
     [score, totalQuestions]
   )
 
-  const shareText = `🎯 StarCast Universe Quiz: I scored ${score}/${totalQuestions} and earned the rank of ${rank.emoji} ${rank.title}! Can you beat my score? https://starcast.online/quiz`
+  const shareText = `🎯 Take the StarCast Quiz: I scored ${score}/${totalQuestions} and earned the rank of ${rank.emoji} ${rank.title}! Test your show knowledge: https://starcast.online/quiz`
 
   const handleCopy = async () => {
     try {
@@ -537,13 +537,13 @@ export function ObservationDeckQuiz() {
         <div>
           <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-[#20efe0] mb-1.5">
             <Radio className="w-4 h-4 text-[#ea6f2a] animate-pulse" />
-            <span>STARCAST UNIVERSE // LIVE TRIVIA CHALLENGE</span>
+            <span>STARCAST LIVE // TRIVIA CHALLENGE</span>
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#f5f7ff] tracking-tight">
-            How Well Do You Know StarCast?
+            Take the StarCast Quiz
           </h2>
           <p className="text-xs sm:text-sm text-[#cbd0f2] mt-1 max-w-xl">
-            Test your knowledge of The Observation Deck, The Middle Show, The Psyco G Spot, Star Talk, and Topeka lore!
+            Test your show knowledge across StarCast broadcasts, hosts, and Topeka lore.
           </p>
         </div>
 

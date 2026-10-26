@@ -217,10 +217,10 @@ export default async function HomePage() {
                     <span className="text-xs text-[#20efe0] font-mono hidden md:inline">• 5 Questions</span>
                   </div>
                   <h3 className="text-sm sm:text-base font-black text-[#f5f7ff] tracking-tight truncate">
-                    How well do you know StarCast?
+                    Take the StarCast Quiz
                   </h3>
                   <p className="text-xs text-[#cbd0f2] hidden sm:block truncate">
-                    Test your knowledge of StarCast shows, hosts, episode guests, and soundstages. Earn cosmic ranks!
+                    Test your show knowledge across StarCast broadcasts, hosts, and Topeka lore.
                   </p>
                 </div>
               </div>
