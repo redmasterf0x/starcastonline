@@ -6,6 +6,7 @@ import { SpaceflightTransitionProvider } from "@/components/spaceflight/spacefli
 import { CelestialRadar } from "@/components/spaceflight/celestial-radar"
 import { GlobalAudioProvider } from "@/components/music/global-audio-context"
 import { BottomAudioPlayer } from "@/components/music/bottom-audio-player"
+import { AppShell } from "@/components/navigation/app-shell"
 import "./globals.css"
 
 // Montserrat is the closest free match to the brand kit's Proxima Nova Bold.
@@ -377,7 +378,9 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         <GlobalAudioProvider>
           <SpaceflightTransitionProvider>
-            {children}
+            <AppShell>
+              {children}
+            </AppShell>
             <CelestialRadar />
           </SpaceflightTransitionProvider>
           <BottomAudioPlayer />

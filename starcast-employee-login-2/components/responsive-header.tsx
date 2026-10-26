@@ -14,12 +14,14 @@ import { brandAssets } from "@/lib/brand-assets"
 import { authClient } from "@/lib/auth-client"
 import { getMyProfile } from "@/app/actions/profile"
 import { getUnreadNotificationCount } from "@/app/actions/notifications"
+import { useInsideAppShell } from "@/components/navigation/app-shell"
 
 interface ResponsiveHeaderProps {
   currentPage?: string
   isAdmin?: boolean
   isCrew?: boolean
   isLoggedIn?: boolean
+  isTopLevel?: boolean
   onSignOut?: () => void
   onLogin?: () => void
 }
@@ -29,9 +31,15 @@ export function ResponsiveHeader({
   isAdmin: isAdminProp,
   isCrew: isCrewProp,
   isLoggedIn: isLoggedInProp,
+  isTopLevel = false,
   onSignOut,
   onLogin,
 }: ResponsiveHeaderProps) {
+  const isInsideShell = useInsideAppShell()
+  if (!isTopLevel && isInsideShell) {
+    return null
+  }
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [loggedIn, setLoggedIn] = useState(isLoggedInProp ?? false)
   const [isAdmin, setIsAdmin] = useState(isAdminProp ?? false)
@@ -73,11 +81,10 @@ export function ResponsiveHeader({
     }
   }, [session, isAdminProp, isCrewProp, isLoggedInProp])
 
-  // Close drawer on Escape key
+  // Close mobile menu on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setDesktopDrawerOpen(false)
         setMobileMenuOpen(false)
       }
     }
@@ -130,99 +137,99 @@ export function ResponsiveHeader({
   ]
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#38bdf8]/40 bg-[#0284c7] shadow-[0_8px_30px_rgba(2,132,199,0.35)] backdrop-blur-xl">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="flex h-16 sm:h-20 items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 border-b border-[#38bdf8]/40 bg-[#0284c7] shadow-[0_8px_30px_rgba(2,132,199,0.35)] backdrop-blur-xl w-full max-w-full overflow-x-clip">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6">
+        <div className="flex h-16 sm:h-20 items-center justify-between gap-2 sm:gap-4 w-full">
           {/* Left section: StarCast Logo */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Left-aligned, Bigger StarCast Online Logo with BETA Tag */}
-              <Link href="/" className="flex items-center gap-3 sm:gap-3.5 transition-all hover:opacity-90 group shrink-0">
-                <div className="relative flex items-center justify-center">
-                  <img
-                    src={brandAssets.capstone.white || "/placeholder.svg"}
-                    alt="StarCast Mascot"
-                    className="h-12 w-12 sm:h-14 sm:w-14 object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-transform group-hover:scale-105"
-                  />
-                </div>
-                <div className="flex items-center gap-2 sm:gap-2.5">
-                  <div className="flex flex-col text-left leading-none">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-wider text-white drop-shadow-md">
-                        STARCAST
-                      </span>
-                      <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-wider text-[#ffd166] drop-shadow-md">
-                        ONLINE
-                      </span>
-                    </div>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Left-aligned, Responsive StarCast Online Logo with BETA Tag */}
+            <Link href="/" className="flex items-center gap-2 sm:gap-3.5 transition-all hover:opacity-90 group min-w-0">
+              <div className="relative flex items-center justify-center shrink-0">
+                <img
+                  src={brandAssets.capstone.white || "/placeholder.svg"}
+                  alt="StarCast Mascot"
+                  className="h-9 w-9 xs:h-10 xs:w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-transform group-hover:scale-105"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                <div className="flex flex-col text-left leading-none min-w-0">
+                  <div className="flex items-baseline gap-1 sm:gap-1.5 truncate">
+                    <span className="text-base xs:text-lg sm:text-2xl md:text-3xl font-black tracking-wide sm:tracking-wider text-white drop-shadow-md truncate">
+                      STARCAST
+                    </span>
+                    <span className="text-base xs:text-lg sm:text-2xl md:text-3xl font-black tracking-wide sm:tracking-wider text-[#ffd166] drop-shadow-md truncate">
+                      ONLINE
+                    </span>
                   </div>
-                  <span className="rounded-full bg-[#ea6f2a] px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-widest text-white shadow-md border border-white/40 ring-1 ring-[#ea6f2a]/50">
-                    BETA
-                  </span>
                 </div>
-              </Link>
-            </div>
-
-            {/* Desktop Navigation (Streamlined on desktop) */}
-            <nav className="hidden items-center gap-1 rounded-full border border-white/20 bg-[#05052d]/60 p-1 shadow-inner backdrop-blur-md lg:flex">
-              {desktopNavLinks.map(
-                (link) =>
-                  link.show && (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      target={link.external ? "_blank" : undefined}
-                      rel={link.external ? "noopener noreferrer" : undefined}
-                      className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors inline-flex items-center gap-1.5 ${
-                        currentPage === link.href
-                          ? "bg-[#ea6f2a] text-white shadow-sm font-bold"
-                          : link.label === "Merch"
-                            ? "text-[#ffd166] font-semibold hover:bg-white/15 hover:text-white"
-                            : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  )
-              )}
-            </nav>
-
-            {/* Auth buttons */}
-            <div className="hidden lg:flex items-center gap-3">
-              {loggedIn ? (
-                <div className="flex items-center gap-2.5">
-                  <Button
-                    onClick={handleSignOut}
-                    variant="outline"
-                    size="sm"
-                    className="border-white/30 bg-[#05052d]/60 text-white hover:bg-[#05052d] hover:text-white"
-                  >
-                    Sign Out
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  onClick={handleLogin}
-                  size="sm"
-                  className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold shadow-md shadow-[#ea6f2a]/30 border border-white/20"
-                >
-                  Sign In / Sign Up
-                </Button>
-              )}
-            </div>
-
-            {/* Mobile menu toggle */}
-            <button
-              className="rounded-lg p-2 text-[#e4e7f5] transition-colors hover:bg-[#8796cb]/15 hover:text-[#f5f7ff] lg:hidden relative"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              {unreadNotifs > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ea6f2a] animate-pulse" />
-              )}
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+                <span className="hidden xs:inline-flex rounded-full bg-[#ea6f2a] px-1.5 sm:px-2.5 py-0.5 text-[9px] sm:text-xs font-black uppercase tracking-widest text-white shadow-md border border-white/40 ring-1 ring-[#ea6f2a]/50 shrink-0">
+                  BETA
+                </span>
+              </div>
+            </Link>
           </div>
+
+          {/* Desktop Navigation (Streamlined on desktop) */}
+          <nav className="hidden items-center gap-1 rounded-full border border-white/20 bg-[#05052d]/60 p-1 shadow-inner backdrop-blur-md lg:flex">
+            {desktopNavLinks.map(
+              (link) =>
+                link.show && (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    target={link.external ? "_blank" : undefined}
+                    rel={link.external ? "noopener noreferrer" : undefined}
+                    className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors inline-flex items-center gap-1.5 ${
+                      currentPage === link.href
+                        ? "bg-[#ea6f2a] text-white shadow-sm font-bold"
+                        : link.label === "Merch"
+                          ? "text-[#ffd166] font-semibold hover:bg-white/15 hover:text-white"
+                          : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                )
+            )}
+          </nav>
+
+          {/* Auth buttons */}
+          <div className="hidden lg:flex items-center gap-3">
+            {loggedIn ? (
+              <div className="flex items-center gap-2.5">
+                <Button
+                  onClick={handleSignOut}
+                  variant="outline"
+                  size="sm"
+                  className="border-white/30 bg-[#05052d]/60 text-white hover:bg-[#05052d] hover:text-white"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={handleLogin}
+                size="sm"
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold shadow-md shadow-[#ea6f2a]/30 border border-white/20"
+              >
+                Sign In / Sign Up
+              </Button>
+            )}
+          </div>
+
+          {/* Mobile menu toggle (Fixed: shrink-0 ml-auto so it never overflows off screen) */}
+          <button
+            className="shrink-0 ml-auto rounded-lg p-2 text-[#e4e7f5] transition-colors hover:bg-white/15 hover:text-[#f5f7ff] lg:hidden relative"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {unreadNotifs > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ea6f2a] animate-pulse" />
+            )}
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
+      </div>
 
         {/* Mobile menu (Comprehensive on mobile) */}
         {mobileMenuOpen && (

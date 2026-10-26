@@ -1,9 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
-import { ResponsiveHeader } from "@/components/responsive-header"
-import { DesktopLeftNav } from "@/components/navigation/desktop-left-nav"
-import { Footer } from "@/components/footer"
 import { ShowSpotlightCard } from "@/components/show-spotlight-card"
 import { getPlaylistVideos } from "@/lib/youtube"
 import { listPublicBands } from "@/app/actions/band-pages"
@@ -157,20 +154,9 @@ export default async function HomePage() {
   const recentDiscussions = allDiscussions.slice(0, 3)
 
   return (
-    <div className="public-shell min-h-screen text-[#f5f7ff] bg-[#05051f]">
-      <div className="relative z-10">
-        <ResponsiveHeader currentPage="/" />
-
-        {/* Desktop 2-Column Framework: Persistent Left Rail + Main Home Content */}
-        <div className="max-w-[1720px] mx-auto px-3 sm:px-6 py-6 md:py-8">
-          <div className="flex flex-col lg:flex-row gap-6 xl:gap-8 items-start">
-            {/* Desktop Persistent Left Navigation Rail (Dashboards, Bands, Community, Portal, etc.) */}
-            <DesktopLeftNav currentPage="/" />
-
-            {/* Main Content Area */}
-            <main className="flex-1 min-w-0 w-full space-y-10 md:space-y-14">
-              {/* ── TOP SECTION: LATEST ARTICLE & EDITORIAL SPOTLIGHT ── */}
-              <section className="relative w-full rounded-3xl border border-[#20205a]/60 bg-gradient-to-b from-[#080829] via-[#05051f] to-[#05051f] p-4 sm:p-6 lg:p-8 overflow-hidden shadow-2xl">
+    <div className="space-y-10 md:space-y-14">
+      {/* ── TOP SECTION: LATEST ARTICLE & EDITORIAL SPOTLIGHT ── */}
+      <section className="relative w-full rounded-3xl border border-[#20205a]/60 bg-gradient-to-b from-[#080829] via-[#05051f] to-[#05051f] p-4 sm:p-6 lg:p-8 overflow-hidden shadow-2xl">
                 {/* Subtle cosmic ambient glow */}
                 <div className="absolute top-0 right-1/4 w-[500px] h-[350px] bg-[#ea6f2a]/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="absolute top-10 left-10 w-[400px] h-[300px] bg-[#22b573]/10 rounded-full blur-3xl pointer-events-none" />
@@ -742,12 +728,6 @@ export default async function HomePage() {
               </div>
             </div>
           </section>
-        </main>
-      </div>
     </div>
-
-    <Footer />
-  </div>
-</div>
   )
 }

@@ -1,6 +1,9 @@
+"use client"
+
 import Link from "next/link"
 import { Facebook, Instagram, Music2, ShoppingBag, Twitch, Youtube } from "lucide-react"
 import { brandAssets } from "@/lib/brand-assets"
+import { useInsideAppShell } from "@/components/navigation/app-shell"
 
 const socialLinks = [
   { name: "YouTube", url: "https://www.youtube.com/@StarCastLiveMedia", icon: Youtube },
@@ -24,7 +27,17 @@ const siteLinks = [
   { label: "Music Agreement", href: "/music/agreement" },
 ]
 
-export function Footer() {
+interface FooterProps {
+  isTopLevel?: boolean
+}
+
+export function Footer({ isTopLevel = false }: FooterProps = {}) {
+  const isInsideShell = useInsideAppShell()
+
+  // Prevent duplicate footers when nested inside AppShell
+  if (!isTopLevel && isInsideShell) {
+    return null
+  }
   return (
     <footer className="mt-auto border-t border-white/10 bg-[#050519]/88 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
