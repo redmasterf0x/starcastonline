@@ -24,6 +24,7 @@ import {
   Clock,
   Flame,
   ChevronRight,
+  HelpCircle,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
@@ -193,12 +194,46 @@ export default async function HomePage() {
                   <Music className="w-3.5 h-3.5 text-[#20efe0]" /> Bands
                 </Link>
                 <Link
+                  href="/quiz"
+                  className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#20efe0]/20 border border-[#20205a] hover:border-[#20efe0]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-[#20efe0]" /> Quiz
+                </Link>
+                <Link
                   href="/community"
                   className="px-3 py-1.5 rounded-full bg-[#0c0c3f]/80 hover:bg-[#ffd166]/20 border border-[#20205a] hover:border-[#ffd166]/50 text-[#cbd0f2] hover:text-[#f5f7ff] transition-all font-medium flex items-center gap-1.5"
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-[#ffd166]" /> The DECK
                 </Link>
               </div>
+            </div>
+
+            {/* QUIZ PROMO BANNER (Above Articles) */}
+            <div className="mb-6 rounded-2xl border border-[#20efe0]/35 bg-gradient-to-r from-[#0c0c3f]/95 via-[#0e1747]/95 to-[#0c0c3f]/95 p-3.5 sm:p-4.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl hover:border-[#20efe0]/60 transition-all duration-300">
+              <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#20efe0]/15 border border-[#20efe0]/30 flex items-center justify-center text-[#20efe0] shrink-0 shadow-[0_0_20px_rgba(32,239,224,0.18)]">
+                  <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6 text-[#20efe0]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-[#ffd166]">
+                      OFFICIAL CHALLENGE
+                    </span>
+                    <span className="text-xs text-[#20efe0] font-mono hidden md:inline">• 5 Questions</span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-[#f5f7ff] tracking-tight truncate">
+                    How well do you know StarCast?
+                  </h3>
+                  <p className="text-xs text-[#cbd0f2] hidden sm:block truncate">
+                    Test your knowledge of StarCast shows, hosts, episode guests, and soundstages. Earn cosmic ranks!
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm" className="w-full sm:w-auto bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold text-xs sm:text-sm rounded-xl px-5 h-10 shrink-0 shadow-lg shadow-[#ea6f2a]/25">
+                <Link href="/quiz">
+                  Take the Quiz Now <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Link>
+              </Button>
             </div>
 
             {/* PREMIER STORY HERO CARD */}
