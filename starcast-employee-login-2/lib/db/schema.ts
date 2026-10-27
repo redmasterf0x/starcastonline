@@ -585,6 +585,13 @@ export const bandTracks = pgTable("band_tracks", {
   allowDownload: boolean("allow_download").notNull().default(true),
   playCount: integer("play_count").notNull().default(0),
   position: integer("position").notNull().default(0),
+  // Audio Magic / Fingerprinting & Copyright Compliance
+  audioHash: text("audio_hash"),
+  fingerprint: text("fingerprint"),
+  fingerprintAlgorithm: text("fingerprint_algorithm").default("starcast-spectral-v1"),
+  copyrightStatus: text("copyright_status").notNull().default("clean"),
+  copyrightDetails: jsonb("copyright_details").default({}),
+  proofOfMasterHash: text("proof_of_master_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })

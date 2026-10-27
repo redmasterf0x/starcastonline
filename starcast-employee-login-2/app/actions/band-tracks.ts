@@ -6,6 +6,7 @@ import { bands, bandTracks, bandPosts, trackComments, profiles } from "@/lib/db/
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
+import { scanAudioForCopyrightAndDuplicates, generateProofOfMasterHash } from "@/lib/audio-fingerprint"
 
 export interface BandTrackItem {
   id: string
@@ -31,6 +32,12 @@ export interface BandTrackItem {
   bandName?: string | null
   bandSlug?: string | null
   bandLogo?: string | null
+  audioHash?: string | null
+  fingerprint?: string | null
+  fingerprintAlgorithm?: string | null
+  copyrightStatus?: string | null
+  copyrightDetails?: any
+  proofOfMasterHash?: string | null
 }
 
 export interface TrackCommentItem {
@@ -74,6 +81,10 @@ export interface AlbumReleaseInput {
     producer?: string
     durationSeconds?: number
     lyrics?: string
+    audioHash?: string
+    fingerprint?: string
+    proofOfMasterHash?: string
+    copyrightStatus?: string
   }[]
 }
 
@@ -183,6 +194,12 @@ export async function getBandTracks(bandId: string): Promise<BandTrackItem[]> {
         bandName: b?.name,
         bandSlug: b?.slug,
         bandLogo: b?.logoUrl || undefined,
+        audioHash: t.audioHash,
+        fingerprint: t.fingerprint,
+        fingerprintAlgorithm: t.fingerprintAlgorithm,
+        copyrightStatus: t.copyrightStatus || "clean",
+        copyrightDetails: t.copyrightDetails || {},
+        proofOfMasterHash: t.proofOfMasterHash,
       }
     })
 
@@ -302,6 +319,12 @@ export async function getTrackBySlug(slugOrId: string): Promise<{
       bandName: b?.name,
       bandSlug: b?.slug,
       bandLogo: b?.logoUrl || undefined,
+      audioHash: t.audioHash,
+      fingerprint: t.fingerprint,
+      fingerprintAlgorithm: t.fingerprintAlgorithm,
+      copyrightStatus: t.copyrightStatus || "clean",
+      copyrightDetails: t.copyrightDetails || {},
+      proofOfMasterHash: t.proofOfMasterHash,
     }
 
     // Fetch related tracks by the same band
@@ -340,6 +363,12 @@ export async function getTrackBySlug(slugOrId: string): Promise<{
       bandName: rb?.name,
       bandSlug: rb?.slug,
       bandLogo: rb?.logoUrl || undefined,
+      audioHash: rt.audioHash,
+      fingerprint: rt.fingerprint,
+      fingerprintAlgorithm: rt.fingerprintAlgorithm,
+      copyrightStatus: rt.copyrightStatus || "clean",
+      copyrightDetails: rt.copyrightDetails || {},
+      proofOfMasterHash: rt.proofOfMasterHash,
     }))
 
     // Fetch track comments
@@ -418,6 +447,12 @@ export async function getAllPublicTracks(options?: {
         bandName: b?.name,
         bandSlug: b?.slug,
         bandLogo: b?.logoUrl || undefined,
+        audioHash: t.audioHash,
+        fingerprint: t.fingerprint,
+        fingerprintAlgorithm: t.fingerprintAlgorithm,
+        copyrightStatus: t.copyrightStatus || "clean",
+        copyrightDetails: t.copyrightDetails || {},
+        proofOfMasterHash: t.proofOfMasterHash,
       }
     })
 
@@ -549,6 +584,12 @@ export async function addBandTrack(bandId: string, input: TrackInput) {
         lyrics: input.lyrics?.trim() || null,
         allowDownload: input.allowDownload !== false,
         position: nextPos,
+        audioHash: input.audioHash || null,
+        fingerprint: input.fingerprint || null,
+        fingerprintAlgorithm: input.fingerprintAlgorithm || "starcast-spectral-v1",
+        copyrightStatus: input.copyrightStatus || "clean",
+        copyrightDetails: input.copyrightDetails || {},
+        proofOfMasterHash: input.proofOfMasterHash || (input.audioHash ? generateProofOfMasterHash(input.audioHash, bandId, Date.now()) : null),
       })
       .returning()
 
@@ -767,6 +808,11 @@ export async function releaseBandAlbum(bandId: string, input: AlbumReleaseInput)
           lyrics: t.lyrics?.trim() || null,
           allowDownload: input.allowDownload !== false,
           position: startPos++,
+          audioHash: t.audioHash || null,
+          fingerprint: t.fingerprint || null,
+          fingerprintAlgorithm: "starcast-spectral-v1",
+          copyrightStatus: t.copyrightStatus || "clean",
+          proofOfMasterHash: t.proofOfMasterHash || (t.audioHash ? generateProofOfMasterHash(t.audioHash, bandId, Date.now()) : null),
         })
         .returning()
 
@@ -914,3 +960,65 @@ export async function deleteTrackComment(commentId: string) {
   }
 }
 
+
+
+/**
+ * Perform an on-demand acoustic fingerprint scan and copyright compliance check on a track.
+ */
+export async function rescanTrackAudio(trackId: string): Promise<{
+  success: boolean
+  track?: any
+  scanResult?: any
+  error?: string
+}> {
+  try {
+    const rows = await db
+      .select({
+        track: bandTracks,
+        band: bands,
+      })
+      .from(bandTracks)
+      .leftJoin(bands, eq(bandTracks.bandId, bands.id))
+      .where(eq(bandTracks.id, trackId))
+      .limit(1)
+
+    if (rows.length === 0) return { success: false, error: "Track not found." }
+    const { track: t, band: b } = rows[0]
+
+    // Fetch the audio buffer
+    const audioRes = await fetch(t.audioUrl)
+    if (!audioRes.ok) {
+      return { success: false, error: "Could not retrieve audio file for acoustic scanning." }
+    }
+
+    const arrayBuffer = await audioRes.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    const scanResult = await scanAudioForCopyrightAndDuplicates(buffer, {
+      bandId: t.bandId,
+      title: t.title,
+      durationSeconds: t.durationSeconds || 0,
+    })
+
+    const updated = await db
+      .update(bandTracks)
+      .set({
+        audioHash: scanResult.audioHash,
+        fingerprint: scanResult.fingerprint,
+        fingerprintAlgorithm: scanResult.fingerprintAlgorithm,
+        copyrightStatus: scanResult.status,
+        copyrightDetails: scanResult.matchDetails as any,
+        proofOfMasterHash: scanResult.proofOfMasterHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(bandTracks.id, trackId))
+      .returning()
+
+    revalidatePath("/music")
+    if (b?.slug) revalidatePath(`/bands/${b.slug}`)
+
+    return { success: true, track: updated[0], scanResult }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to rescan track audio." }
+  }
+}

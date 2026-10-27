@@ -24,6 +24,8 @@ import {
   User,
   Sliders,
   Users,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react"
 
 interface UploadSongModalProps {
@@ -70,6 +72,7 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
     allowDownload: true,
   })
 
+  const [audioScanResult, setAudioScanResult] = useState<any | null>(null)
   const [uploadingAudio, setUploadingAudio] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -175,7 +178,14 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
       const data = await res.json()
       if (!res.ok || !data.url) throw new Error(data.error || "Audio upload failed.")
 
-      setForm((prev) => ({ ...prev, audioUrl: data.url }))
+      setForm((prev) => ({
+        ...prev,
+        audioUrl: data.url,
+        durationSeconds: data.audioScan?.durationSeconds || prev.durationSeconds,
+      }))
+      if (data.audioScan) {
+        setAudioScanResult(data.audioScan)
+      }
     } catch (err: any) {
       setError(err?.message || "Failed to upload audio track.")
     } finally {
@@ -250,6 +260,11 @@ export function UploadSongModal({ open, onOpenChange, onSuccess, defaultBandId }
         lyrics: form.lyrics.trim() || undefined,
         description: form.description.trim() || undefined,
         allowDownload: form.allowDownload,
+        audioHash: audioScanResult?.audioHash,
+        fingerprint: audioScanResult?.fingerprint,
+        proofOfMasterHash: audioScanResult?.proofOfMasterHash,
+        copyrightStatus: audioScanResult?.status || "clean",
+        copyrightDetails: audioScanResult?.matchDetails,
       }
 
       const res = await addBandTrack(targetBandId, trackPayload)

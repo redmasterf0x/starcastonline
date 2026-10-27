@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { uploadedBlobs } from "@/lib/db/schema"
+import { scanAudioForCopyrightAndDuplicates } from "@/lib/audio-fingerprint"
 
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
 const MAX_AUDIO_SIZE_BYTES = 50 * 1024 * 1024 // 50MB
@@ -13,7 +14,8 @@ const ALLOWED_EXTENSIONS = new Set([
 ])
 
 // Uploads a file to Postgres and Firebase Storage, returning its public URL.
-// Used for band logos, band banners, profile avatars, sponsor logos, and post audio/images.
+// When audio is uploaded, performs real-time acoustic fingerprinting, internal duplicate/collision
+// detection, and copyright compliance checks (StarCast Audio Shield).
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -65,6 +67,33 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer)
     const base64Data = buffer.toString("base64")
 
+    // Real-Time Audio Fingerprinting & Copyright Pre-Upload Compliance
+    let audioScan = null
+    if (isAudio) {
+      try {
+        const extractedBandId = folder.startsWith("bands/") ? folder.split("/")[1] : undefined
+        audioScan = await scanAudioForCopyrightAndDuplicates(buffer, {
+          bandId: extractedBandId,
+          title: file.name,
+        })
+
+        // If an exact unauthorized master collision with another band is detected, quarantine & reject upload
+        if (audioScan.status === "quarantined") {
+          return NextResponse.json(
+            {
+              error:
+                audioScan.matchDetails.notes ||
+                "Copyright collision: this exact audio master is already registered by another artist on StarCast Online.",
+              audioScan,
+            },
+            { status: 409 }
+          )
+        }
+      } catch (scanErr) {
+        console.warn("Audio fingerprint scan encountered non-fatal error:", scanErr)
+      }
+    }
+
     // 1. Store in Neon Postgres uploaded_blobs table for persistent cross-cloud hosting
     try {
       await db
@@ -85,7 +114,20 @@ export async function POST(request: NextRequest) {
       console.warn("Error storing blob in Postgres:", dbErr)
     }
 
-    return NextResponse.json({ url: `/api/blobs/${pathname}` })
+    return NextResponse.json({
+      url: `/api/blobs/${pathname}`,
+      audioScan: audioScan
+        ? {
+            audioHash: audioScan.audioHash,
+            fingerprint: audioScan.fingerprint,
+            fingerprintAlgorithm: audioScan.fingerprintAlgorithm,
+            durationSeconds: audioScan.durationSeconds,
+            proofOfMasterHash: audioScan.proofOfMasterHash,
+            status: audioScan.status,
+            matchDetails: audioScan.matchDetails,
+          }
+        : undefined,
+    })
   } catch (error) {
     console.error("Upload error:", error)
     return NextResponse.json({ error: "Upload failed" }, { status: 500 })

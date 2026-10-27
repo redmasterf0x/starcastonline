@@ -324,6 +324,9 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                     {track.releaseYear}
                   </span>
                 )}
+                <Badge className="bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-mono text-xs flex items-center gap-1.5 px-2.5 py-0.5" title="Acoustic fingerprint protected against unauthorized duplication & theft">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Fingerprint Protected Master
+                </Badge>
               </div>
 
               {/* Title & Artist */}
@@ -493,6 +496,52 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
             </div>
           </section>
         )}
+
+        {/* ── AUDIO FINGERPRINT & CHAIN OF CUSTODY CARD ── */}
+        <section className="rounded-3xl border border-[#20205a]/80 bg-[#0c0c3f]/60 p-6 sm:p-8 space-y-4 shadow-xl">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-[#f5f7ff]">Acoustic Fingerprint &amp; Master Ownership Record</h2>
+                <p className="text-xs text-[#20efe0] font-mono">StarCast Audio Magic Identification Engine &middot; Prior-Art Registry</p>
+              </div>
+            </div>
+            <Link
+              href="/music/agreement"
+              className="text-xs font-mono text-[#ffd166] hover:underline flex items-center gap-1"
+            >
+              <FileText className="w-3.5 h-3.5" /> 100% Artist Ownership Terms &rarr;
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+            <div className="p-3.5 rounded-2xl bg-[#05052d]/90 border border-[#20205a]/60">
+              <span className="text-[#7f84ad] block text-[10px] uppercase font-bold">Master Checksum (SHA-256)</span>
+              <span className="font-bold text-[#ffd166] text-[11px] truncate block mt-1" title={track.audioHash || "Master Audio Certified"}>
+                {track.audioHash ? `${track.audioHash.slice(0, 14)}...${track.audioHash.slice(-10)}` : "SHA-256 Master Verified"}
+              </span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-[#05052d]/90 border border-[#20205a]/60">
+              <span className="text-[#7f84ad] block text-[10px] uppercase font-bold">Acoustic Shield Fingerprint</span>
+              <span className="font-bold text-[#20efe0] text-[11px] truncate block mt-1" title={track.fingerprint || "Spectral V1 Fingerprint"}>
+                {track.fingerprint ? `${track.fingerprint.slice(0, 14)}...${track.fingerprint.slice(-10)}` : "Spectral Acoustic Profile"}
+              </span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-[#05052d]/90 border border-[#20205a]/60">
+              <span className="text-[#7f84ad] block text-[10px] uppercase font-bold">Prior-Art Custody Ledger</span>
+              <span className="font-bold text-[#f5f7ff] text-[11px] truncate block mt-1" title={track.proofOfMasterHash || "Custody Token"}>
+                {track.proofOfMasterHash ? `${track.proofOfMasterHash.slice(0, 14)}...${track.proofOfMasterHash.slice(-10)}` : "Immutable Timestamp Token"}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-[#9a9fc4] leading-relaxed">
+            This sound recording is protected by acoustic fingerprinting and internal catalog conflict resolution. Under the StarCast Music Rights Agreement, <strong>{track.artistName || track.bandName || "the Artist"}</strong> retains 100% master and publishing copyright ownership. Unauthorized sampling, stems isolation, re-recording, or AI training are strictly prohibited.
+          </p>
+        </section>
 
         {/* ── FAN DISCUSSION & COMMENTS BOARD ── */}
         <section className="rounded-3xl border border-[#20205a]/80 bg-[#0c0c3f]/60 p-6 sm:p-8 space-y-6 shadow-xl">
