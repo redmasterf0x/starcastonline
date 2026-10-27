@@ -154,7 +154,7 @@ export default async function HomePage() {
   const recentDiscussions = allDiscussions.slice(0, 3)
 
   return (
-    <div className="space-y-10 md:space-y-14">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-10 md:space-y-14">
       {/* ── TOP SECTION: LATEST ARTICLE & EDITORIAL SPOTLIGHT ── */}
       <section className="relative w-full rounded-3xl border border-[#20205a]/60 bg-gradient-to-b from-[#080829] via-[#05051f] to-[#05051f] p-4 sm:p-6 lg:p-8 overflow-hidden shadow-2xl">
                 {/* Subtle cosmic ambient glow */}

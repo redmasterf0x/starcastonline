@@ -259,6 +259,7 @@
 }
 .shows-row-scroll::-webkit-scrollbar {
   height: 6px;
+  width: 6px;
 }
 .shows-row-scroll::-webkit-scrollbar-track {
   background: transparent;

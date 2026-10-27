@@ -38,13 +38,13 @@ export function AppShell({ children }: AppShellProps) {
         {/* Sticky Global Responsive Header */}
         <ResponsiveHeader currentPage={pathname} isTopLevel={true} />
 
-        {/* Desktop 2-Column Framework: Persistent Left Navigation Rail + Animated Right Panel */}
-        <div className="w-full max-w-[1720px] mx-auto px-3 sm:px-6 py-4 sm:py-6 md:py-8 flex-1 flex flex-col">
-          <div className="flex flex-col lg:flex-row gap-6 xl:gap-8 items-start flex-1 w-full">
-            {/* Desktop Persistent Left Nav Rail (Does NOT reload or unmount between routes) */}
-            <DesktopLeftNav currentPage={pathname} />
+        {/* Desktop 2-Column Framework: Full-Height Left Navigation Rail + Animated Right Panel */}
+        <div className="flex-1 flex flex-col lg:flex-row w-full items-stretch">
+          {/* Desktop Persistent Left Nav Rail (Goes all the way top to bottom on desktop) */}
+          <DesktopLeftNav currentPage={pathname} />
 
-            {/* Right Panel: Content Area that smoothly animates on page change */}
+          {/* Right Column: Main Content Area + Footer */}
+          <div className="flex-1 min-w-0 flex flex-col w-full">
             <main
               key={pathname}
               className="flex-1 min-w-0 w-full right-panel-animate fill-mode-both"
@@ -53,11 +53,11 @@ export function AppShell({ children }: AppShellProps) {
                 {children}
               </AppShellContext.Provider>
             </main>
+
+            {/* Global Footer */}
+            <Footer isTopLevel={true} />
           </div>
         </div>
-
-        {/* Global Footer */}
-        <Footer isTopLevel={true} />
       </div>
     </div>
   )

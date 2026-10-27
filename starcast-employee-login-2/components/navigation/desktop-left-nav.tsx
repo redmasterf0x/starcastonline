@@ -87,11 +87,13 @@ export function DesktopLeftNav({ currentPage = "/", className = "" }: DesktopLef
 
   return (
     <aside
-      className={`hidden lg:flex lg:w-64 xl:w-72 flex-col shrink-0 sticky top-24 space-y-4 ${className}`}
+      className={`hidden lg:flex lg:w-64 xl:w-72 flex-col shrink-0 sticky top-16 sm:top-20 h-[calc(100vh-4rem)] sm:h-[calc(100vh-5rem)] border-r border-[#20205a]/60 bg-[#060624]/95 backdrop-blur-xl z-30 ${className}`}
       aria-label="Desktop Navigation Rail"
     >
-      {/* ── SECTION 1: WORKSPACES & HUBS ── */}
-      <div className="rounded-2xl border border-[#20205a]/70 bg-[#0c0c3f]/50 backdrop-blur-md p-3.5 shadow-xl space-y-1.5">
+      {/* Scrollable Upper Navigation */}
+      <div className="flex-1 overflow-y-auto shows-row-scroll p-3.5 space-y-4">
+        {/* ── SECTION 1: WORKSPACES & HUBS ── */}
+        <div className="rounded-2xl border border-[#20205a]/70 bg-[#0c0c3f]/50 backdrop-blur-md p-3.5 shadow-xl space-y-1.5">
         <div className="flex items-center justify-between px-2 pb-1.5 border-b border-[#20205a]/40">
           <span className="text-[10px] font-mono font-bold tracking-widest text-[#ffd166] uppercase">
             Hubs & Spaces
@@ -322,9 +324,10 @@ export function DesktopLeftNav({ currentPage = "/", className = "" }: DesktopLef
           </div>
         </Link>
       </div>
+      </div>
 
-      {/* ── SECTION 3: SESSION / MEMBER PROFILE CARD ── */}
-      <div className="rounded-2xl border border-[#20205a]/70 bg-[#0c0c3f]/70 backdrop-blur-md p-3.5 shadow-xl">
+      {/* ── SECTION 3: DOCKED MEMBER PROFILE / AUTH BAR ── */}
+      <div className="p-3.5 border-t border-[#20205a]/60 bg-[#050520]/90 shrink-0">
         {loggedIn ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
