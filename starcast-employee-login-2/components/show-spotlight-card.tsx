@@ -18,6 +18,10 @@ interface ShowSpotlightCardProps {
 
 export function ShowSpotlightCard({ title, genre, color, showPageHref, playlistUrl, video }: ShowSpotlightCardProps) {
   const [playing, setPlaying] = useState(false)
+  const initialThumb =
+    video?.thumbnail ||
+    (video?.id ? `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg` : "/placeholder.svg")
+  const [imgSrc, setImgSrc] = useState(initialThumb)
 
   return (
     <section>
@@ -58,8 +62,13 @@ export function ShowSpotlightCard({ title, genre, color, showPageHref, playlistU
             <span className="absolute inset-x-0 top-0 z-10 h-[3px]" style={{ backgroundColor: color }} />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={video.thumbnail || "/placeholder.svg"}
+              src={imgSrc}
               alt={video.title}
+              onError={() => {
+                if (video?.id && !imgSrc.includes("mqdefault")) {
+                  setImgSrc(`https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`)
+                }
+              }}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
             />

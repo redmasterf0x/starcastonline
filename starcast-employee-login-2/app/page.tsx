@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
 import { ShowSpotlightCard } from "@/components/show-spotlight-card"
-import { getPlaylistVideos } from "@/lib/youtube"
+import { getPlaylistVideos, getWatchVideos, FALLBACK_WATCH_VIDEOS, type YouTubeVideo } from "@/lib/youtube"
 import { listPublicBands } from "@/app/actions/band-pages"
 import { listArticles } from "@/app/actions/articles"
 import { listCommunityPosts, listDeckPosts } from "@/app/actions/community"
@@ -94,18 +94,57 @@ const shows = [
 ]
 
 export default async function HomePage() {
-  const [showsWithLatestVideo, publicBands, recentArticles, deckData, communityPosts] = await Promise.all([
-    Promise.all(
-      shows.map(async (show) => {
-        const videos = await getPlaylistVideos(show.playlistId)
-        return { ...show, video: videos[0] ?? null }
-      }),
-    ),
+  const [allWatchVideos, publicBands, recentArticles, deckData, communityPosts] = await Promise.all([
+    getWatchVideos().catch(() => FALLBACK_WATCH_VIDEOS),
     listPublicBands().catch(() => []),
     listArticles().catch(() => []),
     listDeckPosts().catch(() => ({ posts: [] })),
     listCommunityPosts().catch(() => []),
   ])
+
+  // Resolve latest video for each show with reliable fallback cascade
+  const showsWithLatestVideo = await Promise.all(
+    shows.map(async (show) => {
+      let video: YouTubeVideo | null = null
+      try {
+        const playlistVideos = await getPlaylistVideos(show.playlistId)
+        if (playlistVideos && playlistVideos.length > 0) {
+          video = playlistVideos[0]
+        }
+      } catch {
+        // Fallback to watch catalog
+      }
+
+      if (!video) {
+        const searchTerms = [
+          show.title.toLowerCase(),
+          show.id.replace(/-/g, " ").toLowerCase(),
+        ]
+        const matched =
+          allWatchVideos.find((v) =>
+            searchTerms.some(
+              (term) => v.show.toLowerCase().includes(term) || v.title.toLowerCase().includes(term)
+            )
+          ) ||
+          FALLBACK_WATCH_VIDEOS.find((v) =>
+            searchTerms.some(
+              (term) => v.show.toLowerCase().includes(term) || v.title.toLowerCase().includes(term)
+            )
+          )
+
+        if (matched) {
+          video = {
+            id: matched.id,
+            title: matched.title,
+            thumbnail: matched.thumbnail || `https://i.ytimg.com/vi/${matched.id}/hqdefault.jpg`,
+            publishedAt: new Date().toISOString(),
+          }
+        }
+      }
+
+      return { ...show, video }
+    })
+  )
 
   // Featured bands (up to 3)
   const featuredBands = publicBands.slice(0, 3)
