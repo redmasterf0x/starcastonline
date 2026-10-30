@@ -63,8 +63,9 @@ import {
   ArrowBigUp, MessageCircle, ChevronRight, ChevronLeft, 
   Sparkles, TrendingUp, Send, X, Plus, Image as ImageIcon,
   Heart, Share2, Bookmark, MoreHorizontal, User, Music, UserMinus,
-  QrCode, Radio, ArrowRight, ExternalLink
+  QrCode, Radio, ArrowRight, ExternalLink, Bell, BellRing
 } from "lucide-react"
+import { BandShareModal } from "@/components/bands/band-share-modal"
 
 interface CommunityPost {
   id: string
@@ -194,6 +195,7 @@ export default function CommunityPage() {
   const [bandSearch, setBandSearch] = useState("")
   const [bandActionError, setBandActionError] = useState("")
   const [qrBandTarget, setQrBandTarget] = useState<BandDirectoryEntry | null>(null)
+  const [shareBandData, setShareBandData] = useState<{ title: string; subtitle?: string; url: string; text?: string } | null>(null)
 
   // Form state
   const [title, setTitle] = useState("")
@@ -559,8 +561,28 @@ export default function CommunityPage() {
       ),
     )
     try {
-      if (next) await followBand(band.id)
-      else await unfollowBand(band.id)
+      if (next) {
+        await followBand(band.id)
+        toast.success(`You are now following ${band.name}!`, {
+          description: "You'll receive live notifications whenever they dispatch new posts and releases.",
+          action: {
+            label: "Share",
+            onClick: () => {
+              setShareBandData({
+                title: band.name,
+                subtitle: band.genre || "StarCast Artist",
+                url: `${typeof window !== "undefined" ? window.location.origin : ""}/bands/${band.slug}`,
+                text: `Check out ${band.name} on StarCast Online!`,
+              })
+            },
+          },
+        })
+      } else {
+        await unfollowBand(band.id)
+        toast.info(`Unfollowed ${band.name}`, {
+          description: "Post notifications turned off for this band.",
+        })
+      }
       const feed = await getFollowedBandsFeed()
       setFollowedFeed(feed)
     } catch (e: any) {
@@ -1349,6 +1371,23 @@ export default function CommunityPage() {
                               <QrCode className="w-4 h-4" />
                             </Button>
 
+                            <Button
+                              onClick={() => {
+                                setShareBandData({
+                                  title: b.name,
+                                  subtitle: b.genre || "StarCast Artist",
+                                  url: `${typeof window !== "undefined" ? window.location.origin : ""}/bands/${b.slug}`,
+                                  text: `Discover ${b.name} on StarCast Online!`,
+                                })
+                              }}
+                              size="sm"
+                              variant="outline"
+                              className="border-[#20205a] text-[#9a9fc4] hover:text-[#20efe0] hover:border-[#20efe0]/50 text-xs rounded-xl h-10 sm:h-11 px-3 shrink-0 transition-all"
+                              title="Share Band"
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </Button>
+
                             {!b.is_owner && currentUserId && (
                               <Button
                                 onClick={() => handleToggleBandFollow(b)}
@@ -1359,12 +1398,12 @@ export default function CommunityPage() {
                                     ? "border-emerald-700/50 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/60"
                                     : "border-[#20205a] text-[#dbe0fb] hover:border-[#ea6f2a]/50 hover:text-white"
                                 }`}
-                                title={b.is_following ? "Unfollow" : "Follow"}
+                                title={b.is_following ? "Following (Alerts active - click to unfollow)" : "Follow band for post alerts"}
                               >
                                 {b.is_following ? (
-                                  <UserMinus className="w-4 h-4" />
+                                  <BellRing className="w-4 h-4 text-emerald-400" />
                                 ) : (
-                                  <UserPlus className="w-4 h-4" />
+                                  <Bell className="w-4 h-4" />
                                 )}
                               </Button>
                             )}
@@ -1385,10 +1424,10 @@ export default function CommunityPage() {
               </div>
             ) : followedFeed.length === 0 ? (
               <div className="text-center py-16 text-[#9a9fc4] rounded-2xl border border-[#20205a]/40 bg-[#0c0c3f]/30 p-8">
-                <UserPlus className="w-10 h-10 mx-auto mb-3 opacity-40 text-[#20efe0]" />
+                <Bell className="w-10 h-10 mx-auto mb-3 opacity-40 text-[#20efe0]" />
                 <p className="text-base font-semibold text-[#f5f7ff]">You are not following any acts yet</p>
                 <p className="text-xs text-[#9a9fc4] mt-1 max-w-sm mx-auto">
-                  Switch to the Discover tab above to find Topeka &amp; Midwest musicians to follow.
+                  Switch to the Discover tab above to find Topeka &amp; Midwest musicians to follow and receive post alerts.
                 </p>
               </div>
             ) : (
@@ -1396,6 +1435,7 @@ export default function CommunityPage() {
                 {followedFeed.map((post) => (
                   <article
                     key={post.id}
+                    id={`post-${post.id}`}
                     className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#0c0c3f]/80 to-[#070725]/90 border border-[#20205a]/70 hover:border-[#ea6f2a]/50 transition-colors shadow-lg"
                   >
                     <div className="flex items-center justify-between gap-3 mb-3">
@@ -1423,11 +1463,31 @@ export default function CommunityPage() {
                         </div>
                       </Link>
 
-                      <Button asChild size="sm" variant="ghost" className="text-xs text-[#20efe0] hover:text-white">
-                        <Link href={`/bands/${post.band_slug}`}>
-                          Visit Soundstage →
-                        </Link>
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => {
+                            setShareBandData({
+                              title: `${post.band_name} Dispatch`,
+                              subtitle: "StarCast Band Soundstage",
+                              url: `${typeof window !== "undefined" ? window.location.origin : ""}/bands/${post.band_slug}#post-${post.id}`,
+                              text: `${post.band_name} just shared a new dispatch on StarCast!`,
+                            })
+                          }}
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs text-[#9a9fc4] hover:text-[#20efe0] flex items-center gap-1.5 h-8 px-2.5"
+                          title="Share Post"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Share</span>
+                        </Button>
+
+                        <Button asChild size="sm" variant="ghost" className="text-xs text-[#20efe0] hover:text-white h-8 px-2.5">
+                          <Link href={`/bands/${post.band_slug}#post-${post.id}`}>
+                            Visit Soundstage →
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
 
                     {post.content && (
@@ -1852,6 +1912,16 @@ export default function CommunityPage() {
             band={qrBandTarget}
           />
         )}
+
+        {/* Band / Post Share Modal */}
+        <BandShareModal
+          isOpen={!!shareBandData}
+          onOpenChange={(open) => !open && setShareBandData(null)}
+          title={shareBandData?.title || ""}
+          subtitle={shareBandData?.subtitle}
+          url={shareBandData?.url || ""}
+          text={shareBandData?.text}
+        />
       </main>
       <Footer />
     </div>

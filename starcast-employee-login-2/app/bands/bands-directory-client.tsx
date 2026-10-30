@@ -20,7 +20,12 @@ import {
   UserPlus,
   Radio,
   Disc,
+  Share2,
+  Bell,
+  BellRing,
 } from "lucide-react"
+import { toast } from "sonner"
+import { BandShareModal } from "@/components/bands/band-share-modal"
 import {
   type BandDirectoryEntry,
   followBand,
@@ -37,6 +42,7 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState<"newest" | "followers" | "name">("followers")
   const [actionError, setActionError] = useState("")
+  const [shareBand, setShareBand] = useState<BandDirectoryEntry | null>(null)
 
   const filteredBands = useMemo(() => {
     let result = [...bands]
@@ -91,8 +97,16 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
     try {
       if (next) {
         await followBand(band.id)
+        toast.success(`You are now following ${band.name}!`, {
+          description: "You'll receive live notifications when this band posts backstage updates & tracks (separate from friend requests).",
+          action: {
+            label: "Share",
+            onClick: () => setShareBand(band),
+          },
+        })
       } else {
         await unfollowBand(band.id)
+        toast.info(`Unfollowed ${band.name}`)
       }
     } catch (e: any) {
       // Revert on error
@@ -259,11 +273,31 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
             {filteredBands.map((band) => (
-              <BandCard key={band.id} band={band} onToggleFollow={handleToggleFollow} />
+              <BandCard
+                key={band.id}
+                band={band}
+                onToggleFollow={handleToggleFollow}
+                onShareBand={handleShareBand}
+              />
             ))}
           </div>
         )}
       </main>
+
+      {shareBand && (
+        <BandShareModal
+          open={!!shareBand}
+          onOpenChange={(open) => !open && setShareBand(null)}
+          title={shareBand.name}
+          subtitle={shareBand.bio || `${shareBand.name} Soundstage on StarCast Online`}
+          url={
+            typeof window !== "undefined"
+              ? `${window.location.origin}/bands/${shareBand.slug}`
+              : `https://starcast.online/bands/${shareBand.slug}`
+          }
+          text={`Check out ${shareBand.name} on StarCast Online!`}
+        />
+      )}
 
       <Footer />
     </div>
@@ -273,9 +307,11 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
 function BandCard({
   band,
   onToggleFollow,
+  onShareBand,
 }: {
   band: BandDirectoryEntry
   onToggleFollow: (band: BandDirectoryEntry) => void
+  onShareBand: (band: BandDirectoryEntry) => void
 }) {
   const [bannerError, setBannerError] = useState(false)
   const [logoError, setLogoError] = useState(false)
@@ -358,35 +394,46 @@ function BandCard({
         </div>
 
         {/* Card Actions */}
-        <div className="pt-4 border-t border-[#20205a]/50 flex items-center justify-between gap-3 mt-2">
+        <div className="pt-4 border-t border-[#20205a]/50 flex items-center justify-between gap-2 mt-2">
           <Button
             asChild
             className="flex-1 bg-[#20efe0]/15 hover:bg-[#20efe0]/25 text-[#c9fbf7] border border-[#20efe0]/35 hover:text-white rounded-xl text-xs sm:text-sm font-semibold h-11"
           >
             <Link href={`/bands/${band.slug}`}>
               <Disc className="w-4 h-4 mr-1.5 text-[#20efe0]" />
-              View Soundstage
+              Soundstage
             </Link>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => onShareBand(band)}
+            className="border-[#20205a] text-[#dbe0fb] hover:text-[#ffd166] hover:bg-[#20205a]/40 rounded-xl h-11 w-11 shrink-0"
+            title="Share this band"
+          >
+            <Share2 className="w-4 h-4" />
           </Button>
 
           {!band.is_owner && (
             <Button
               variant="outline"
               onClick={() => onToggleFollow(band)}
-              className={`text-xs sm:text-sm h-11 rounded-xl font-medium transition-all px-4 ${
+              className={`text-xs sm:text-sm h-11 rounded-xl font-medium transition-all px-3.5 ${
                 band.is_following
-                  ? "border-green-700/50 bg-green-950/30 text-green-400 hover:bg-green-950/60"
+                  ? "border-emerald-700/50 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/60"
                   : "border-[#20205a] text-[#dbe0fb] hover:text-white hover:border-[#ea6f2a]/50"
               }`}
             >
               {band.is_following ? (
                 <>
-                  <UserCheck className="w-4 h-4 mr-1.5 text-green-400" />
+                  <BellRing className="w-4 h-4 mr-1.5 text-emerald-400" />
                   Following
                 </>
               ) : (
                 <>
-                  <UserPlus className="w-4 h-4 mr-1.5" />
+                  <Bell className="w-4 h-4 mr-1.5 text-[#ea6f2a]" />
                   Follow
                 </>
               )}

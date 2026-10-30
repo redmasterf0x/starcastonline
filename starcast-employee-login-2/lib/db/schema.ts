@@ -552,7 +552,7 @@ export const notifications = pgTable("notifications", {
   actorProfileId: uuid("actor_profile_id")
     .references(() => profiles.id, { onDelete: "cascade" })
     .notNull(),
-  type: text("type").notNull(), // 'friend_request' | 'friend_accepted' | 'post_star' | 'post_comment' | 'comment_reply' | 'comment_on_your_post' | 'comment_star'
+  type: text("type").notNull(), // 'friend_request' | 'friend_accepted' | 'post_star' | 'post_comment' | 'comment_reply' | 'comment_on_your_post' | 'comment_star' | 'mention' | 'band_post'
   postId: uuid("post_id"),
   commentId: uuid("comment_id"),
   friendshipId: uuid("friendship_id"),

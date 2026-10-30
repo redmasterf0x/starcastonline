@@ -7,6 +7,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { assertSocialAllowed, getViewerPermissions } from "@/lib/permissions"
+import { createNotification } from "@/app/actions/notifications"
 
 /** Optional viewer — returns the signed-in user id, or null when logged out. */
 async function getOptionalUserId(): Promise<string | null> {
@@ -561,14 +562,64 @@ export async function createBandPost(
   if (!band.isPublic && band.ownerUserId !== userId) throw new Error("Forbidden")
   if (!content.trim() && images.length === 0 && audioTracks.length === 0) throw new Error("Post cannot be empty")
 
-  await db.insert(bandPosts).values({
-    bandId,
-    authorUserId: userId,
-    content: content.trim(),
-    postType: postType || "text",
-    images,
-    audioTracks: audioTracks as any,
-  })
+  const [newPost] = await db
+    .insert(bandPosts)
+    .values({
+      bandId,
+      authorUserId: userId,
+      content: content.trim(),
+      postType: postType || "text",
+      images,
+      audioTracks: audioTracks as any,
+    })
+    .returning()
+
+  // Dispatch live notification to all followers of this band (separate from friendships)
+  try {
+    const followers = await db
+      .select({
+        followerUserId: bandFollows.userId,
+        recipientProfileId: profiles.id,
+      })
+      .from(bandFollows)
+      .innerJoin(profiles, eq(profiles.userId, bandFollows.userId))
+      .where(eq(bandFollows.bandId, bandId))
+
+    const authorProfiles = await db
+      .select({ id: profiles.id })
+      .from(profiles)
+      .where(eq(profiles.userId, userId))
+      .limit(1)
+
+    const authorProfileId = authorProfiles[0]?.id
+
+    if (authorProfileId && followers.length > 0) {
+      const postTitle = `${band.name}||${band.slug || ""}`
+      const snippet =
+        content.trim().slice(0, 160) ||
+        (audioTracks.length > 0
+          ? `🎶 New Track: "${audioTracks[0]?.title || "Original Audio"}"`
+          : images.length > 0
+          ? "📷 Shared new backstage photos"
+          : "New backstage dispatch")
+
+      for (const follower of followers) {
+        if (follower.followerUserId === userId || follower.recipientProfileId === authorProfileId) {
+          continue
+        }
+        await createNotification({
+          recipientProfileId: follower.recipientProfileId,
+          actorProfileId: authorProfileId,
+          type: "band_post",
+          postId: newPost?.id ?? null,
+          postTitle,
+          snippet,
+        })
+      }
+    }
+  } catch (notifErr) {
+    console.error("Failed to notify band followers of new post:", notifErr)
+  }
 
   // If audio tracks were included, automatically ensure they are registered in band_tracks catalog
   if (Array.isArray(audioTracks) && audioTracks.length > 0) {

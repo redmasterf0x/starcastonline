@@ -28,7 +28,11 @@ import {
   RefreshCw,
   Loader2,
   AtSign,
+  Radio,
+  Music,
+  Share2,
 } from "lucide-react"
+import { BandShareModal } from "@/components/bands/band-share-modal"
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -48,6 +52,7 @@ export function NotificationFeed() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "unread">("all")
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [shareItem, setShareItem] = useState<{ title: string; subtitle?: string; url: string } | null>(null)
 
   async function loadNotifications() {
     try {
@@ -251,111 +256,166 @@ export function NotificationFeed() {
                     </div>
                   )}
 
-                  {/* Type Icon Pin */}
-                  <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-[#0c0c3f] border border-[#20205a]">
-                    {n.type === "mention" ? (
-                      <AtSign className="w-3 h-3 text-[#20efe0]" />
-                    ) : n.type === "post_star" || n.type === "comment_star" ? (
-                      <Star className="w-3 h-3 text-[#ea6f2a] fill-[#ea6f2a]" />
-                    ) : n.type === "friend_request" || n.type === "friend_accepted" ? (
-                      <UserPlus className="w-3 h-3 text-[#20efe0]" />
-                    ) : n.type === "comment_reply" || n.type === "comment_on_your_post" ? (
-                      <CornerDownRight className="w-3 h-3 text-[#20efe0]" />
-                    ) : (
-                      <MessageSquare className="w-3 h-3 text-[#22b573]" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0 text-xs space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[#f5f7ff]">
-                      <span className="font-bold text-[#f5f7ff] hover:underline cursor-pointer">
-                        {actorName}
-                      </span>{" "}
-                      {n.type === "mention" && (
-                        <span className="text-[#20efe0] font-medium">mentioned you in a post or comment:</span>
+                    {/* Type Icon Pin */}
+                    <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-[#0c0c3f] border border-[#20205a]">
+                      {n.type === "mention" ? (
+                        <AtSign className="w-3 h-3 text-[#20efe0]" />
+                      ) : n.type === "band_post" ? (
+                        <Radio className="w-3 h-3 text-[#ea6f2a]" />
+                      ) : n.type === "post_star" || n.type === "comment_star" ? (
+                        <Star className="w-3 h-3 text-[#ea6f2a] fill-[#ea6f2a]" />
+                      ) : n.type === "friend_request" || n.type === "friend_accepted" ? (
+                        <UserPlus className="w-3 h-3 text-[#20efe0]" />
+                      ) : n.type === "comment_reply" || n.type === "comment_on_your_post" ? (
+                        <CornerDownRight className="w-3 h-3 text-[#20efe0]" />
+                      ) : (
+                        <MessageSquare className="w-3 h-3 text-[#22b573]" />
                       )}
-                      {n.type === "post_star" && (
-                        <span>starred your post:</span>
-                      )}
-                      {n.type === "comment_star" && (
-                        <span>liked your comment:</span>
-                      )}
-                      {n.type === "post_comment" && (
-                        <span>commented on your post:</span>
-                      )}
-                      {n.type === "comment_reply" && (
-                        <span>replied to your comment:</span>
-                      )}
-                      {n.type === "comment_on_your_post" && (
-                        <span>replied to a discussion on your post:</span>
-                      )}
-                      {n.type === "friend_request" && (
-                        <span>sent you a friend request!</span>
-                      )}
-                      {n.type === "friend_accepted" && (
-                        <span>accepted your friend request!</span>
-                      )}
-                    </p>
-                    <span className="text-[10px] text-[#9a9fc4] shrink-0">{timeAgo(n.createdAt)}</span>
+                    </div>
                   </div>
 
-                  {/* Post title or Snippet */}
-                  {n.postTitle && (
-                    <p className="font-medium text-[#20efe0] truncate">
-                      "{n.postTitle}"
-                    </p>
-                  )}
+                  {/* Content */}
+                  {(() => {
+                    const isBandPost = n.type === "band_post"
+                    const [bandTitle, bandSlug] = n.postTitle
+                      ? n.postTitle.includes("||")
+                        ? n.postTitle.split("||")
+                        : [n.postTitle, ""]
+                      : ["Band Soundstage", ""]
 
-                  {n.snippet && (
-                    <p className="text-[#9a9fc4] italic line-clamp-1 bg-[#05052d]/60 px-2 py-0.5 rounded border border-[#20205a]/30 text-[11px]">
-                      "{n.snippet}"
-                    </p>
-                  )}
+                    return (
+                      <div className="flex-1 min-w-0 text-xs space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[#f5f7ff]">
+                            {isBandPost ? (
+                              <span>
+                                <strong className="font-bold text-[#ea6f2a] hover:underline cursor-pointer">
+                                  {bandTitle}
+                                </strong>{" "}
+                                <span className="text-[#dbe0fb]">dropped a new backstage post:</span>
+                              </span>
+                            ) : (
+                              <>
+                                <span className="font-bold text-[#f5f7ff] hover:underline cursor-pointer">
+                                  {actorName}
+                                </span>{" "}
+                                {n.type === "mention" && (
+                                  <span className="text-[#20efe0] font-medium">mentioned you in a post or comment:</span>
+                                )}
+                                {n.type === "post_star" && (
+                                  <span>starred your post:</span>
+                                )}
+                                {n.type === "comment_star" && (
+                                  <span>liked your comment:</span>
+                                )}
+                                {n.type === "post_comment" && (
+                                  <span>commented on your post:</span>
+                                )}
+                                {n.type === "comment_reply" && (
+                                  <span>replied to your comment:</span>
+                                )}
+                                {n.type === "comment_on_your_post" && (
+                                  <span>replied to a discussion on your post:</span>
+                                )}
+                                {n.type === "friend_request" && (
+                                  <span>sent you a friend request!</span>
+                                )}
+                                {n.type === "friend_accepted" && (
+                                  <span>accepted your friend request!</span>
+                                )}
+                              </>
+                            )}
+                          </p>
+                          <span className="text-[10px] text-[#9a9fc4] shrink-0">{timeAgo(n.createdAt)}</span>
+                        </div>
 
-                  {/* Friend request quick actions */}
-                  {n.type === "friend_request" && n.friendshipId && (
-                    <div className="flex items-center gap-2 pt-1.5">
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleAcceptFriend(n.id, n.friendshipId)
-                        }}
-                        disabled={busyId === n.id}
-                        size="sm"
-                        className="h-7 px-3 bg-[#22b573] hover:bg-[#1ba063] text-black font-semibold text-xs"
-                      >
-                        <Check className="w-3 h-3 mr-1" /> Accept
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeclineFriend(n.id, n.friendshipId)
-                        }}
-                        disabled={busyId === n.id}
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2.5 border-[#20205a] text-[#9a9fc4] hover:text-white bg-transparent text-xs"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
+                        {/* Post title or Snippet */}
+                        {isBandPost ? (
+                          <p className="font-bold text-[#20efe0] flex items-center gap-1 text-[11px]">
+                            <Music className="w-3 h-3 text-[#ffd166]" />
+                            {bandTitle}
+                          </p>
+                        ) : n.postTitle ? (
+                          <p className="font-medium text-[#20efe0] truncate">
+                            "{n.postTitle}"
+                          </p>
+                        ) : null}
 
-                  {/* Community post quick link */}
-                  {n.postId && (
-                    <div className="pt-0.5">
-                      <Link
-                        href="/community"
-                        className="text-[11px] text-[#ea6f2a] hover:underline inline-flex items-center gap-1 font-semibold"
-                      >
-                        View in Community <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    </div>
-                  )}
-                </div>
+                        {n.snippet && (
+                          <p className="text-[#9a9fc4] italic line-clamp-1 bg-[#05052d]/60 px-2 py-0.5 rounded border border-[#20205a]/30 text-[11px]">
+                            "{n.snippet}"
+                          </p>
+                        )}
+
+                        {/* Friend request quick actions */}
+                        {n.type === "friend_request" && n.friendshipId && (
+                          <div className="flex items-center gap-2 pt-1.5">
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleAcceptFriend(n.id, n.friendshipId)
+                              }}
+                              disabled={busyId === n.id}
+                              size="sm"
+                              className="h-7 px-3 bg-[#22b573] hover:bg-[#1ba063] text-black font-semibold text-xs"
+                            >
+                              <Check className="w-3 h-3 mr-1" /> Accept
+                            </Button>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeclineFriend(n.id, n.friendshipId)
+                              }}
+                              disabled={busyId === n.id}
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2.5 border-[#20205a] text-[#9a9fc4] hover:text-white bg-transparent text-xs"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Band post quick links with Share choice */}
+                        {isBandPost ? (
+                          <div className="pt-1 flex items-center gap-2 flex-wrap">
+                            <Link
+                              href={bandSlug ? `/bands/${bandSlug}` : "/community"}
+                              className="text-[11px] text-[#20efe0] hover:text-white inline-flex items-center gap-1 font-semibold bg-[#20efe0]/10 hover:bg-[#20efe0]/20 px-2.5 py-1 rounded-lg border border-[#20efe0]/30 transition-colors"
+                            >
+                              <Radio className="w-3 h-3 text-[#38ef7d]" /> Visit Soundstage <ExternalLink className="w-2.5 h-2.5" />
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const url = typeof window !== "undefined"
+                                  ? `${window.location.origin}/bands/${bandSlug || ""}`
+                                  : `https://starcast.online/bands/${bandSlug || ""}`
+                                setShareItem({
+                                  title: bandTitle || "StarCast Band Soundstage",
+                                  subtitle: n.snippet || undefined,
+                                  url,
+                                })
+                              }}
+                              className="text-[11px] text-[#dbe0fb] hover:text-white inline-flex items-center gap-1 font-semibold bg-[#20205a]/40 hover:bg-[#20205a]/70 px-2.5 py-1 rounded-lg border border-[#20205a]/50 transition-colors"
+                            >
+                              <Share2 className="w-3 h-3 text-[#ffd166]" /> Share
+                            </button>
+                          </div>
+                        ) : n.postId ? (
+                          <div className="pt-0.5">
+                            <Link
+                              href="/community"
+                              className="text-[11px] text-[#ea6f2a] hover:underline inline-flex items-center gap-1 font-semibold"
+                            >
+                              View in Community <ExternalLink className="w-3 h-3" />
+                            </Link>
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  })()}
 
                 {/* Dismiss button */}
                 <button
@@ -372,6 +432,16 @@ export function NotificationFeed() {
             )
           })}
         </div>
+      )}
+
+      {shareItem && (
+        <BandShareModal
+          open={!!shareItem}
+          onOpenChange={(open) => !open && setShareItem(null)}
+          title={shareItem.title}
+          subtitle={shareItem.subtitle}
+          url={shareItem.url}
+        />
       )}
     </div>
   )

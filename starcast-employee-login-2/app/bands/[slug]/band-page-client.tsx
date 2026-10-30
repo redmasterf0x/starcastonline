@@ -50,7 +50,11 @@ import {
   Layers,
   Loader2,
   Filter,
+  Bell,
+  BellRing,
 } from "lucide-react"
+import { toast } from "sonner"
+import { BandShareModal } from "@/components/bands/band-share-modal"
 import {
   type PublicBand,
   type BandPost,
@@ -116,6 +120,7 @@ export function BandPageClient({
   const [copied, setCopied] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [shareModalData, setShareModalData] = useState<{ title: string; subtitle?: string; url: string; text?: string } | null>(null)
   const [error, setError] = useState("")
   const [isFollowing, setIsFollowing] = useState(band.is_following)
   const [followerCount, setFollowerCount] = useState(band.follower_count)
@@ -171,10 +176,37 @@ export function BandPageClient({
 
   function handleShare() {
     const url = typeof window !== "undefined" ? `${window.location.origin}/bands/${band.slug}` : `https://starcast.online/bands/${band.slug}`
+    setShareModalData({
+      title: band.name,
+      subtitle: band.bio || `Soundstage live broadcasts, music catalog, and updates on StarCast Online.`,
+      url,
+      text: `Check out ${band.name} on StarCast Online!`,
+    })
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(url).then(() => {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
+      })
+    }
+  }
+
+  function handleSharePost(post: BandPost) {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://starcast.online"
+    const url = `${origin}/bands/${band.slug}#post-${post.id}`
+    const snippet =
+      post.content?.trim().slice(0, 140) ||
+      (post.audio_tracks?.length ? `New track: ${post.audio_tracks[0]?.title}` : "Backstage update")
+    setShareModalData({
+      title: `${band.name} Post`,
+      subtitle: snippet,
+      url,
+      text: `Check out this backstage post from ${band.name} on StarCast Online: "${snippet}"`,
+    })
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        toast.success("Post link copied to clipboard!", {
+          description: "Ready to share with friends on social media or direct message.",
+        })
       })
     }
   }
@@ -187,8 +219,21 @@ export function BandPageClient({
     setIsFollowing(next)
     setFollowerCount((c) => c + (next ? 1 : -1))
     try {
-      if (next) await followBand(band.id)
-      else await unfollowBand(band.id)
+      if (next) {
+        await followBand(band.id)
+        toast.success(`You are now following ${band.name}!`, {
+          description: "You'll receive live notifications when this band posts backstage updates & tracks (separate from friend requests).",
+          action: {
+            label: "Share Band",
+            onClick: () => handleShare(),
+          },
+        })
+      } else {
+        await unfollowBand(band.id)
+        toast.info(`Unfollowed ${band.name}`, {
+          description: "You will no longer receive notifications when this band posts.",
+        })
+      }
     } catch (e: any) {
       setIsFollowing(!next)
       setFollowerCount((c) => c + (next ? -1 : 1))
@@ -669,9 +714,9 @@ export function BandPageClient({
                     <strong className="text-[#f5f7ff] font-bold">{followerCount}</strong> {followerCount === 1 ? "follower" : "followers"}
                   </span>
                   <span>·</span>
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#ffd166]" />
-                    StarCast Resident Act
+                  <span className="flex items-center gap-1.5 text-xs text-[#9a9fc4]">
+                    <Bell className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    Followers get live post alerts (separate from friend requests)
                   </span>
                 </div>
               </div>
@@ -688,23 +733,35 @@ export function BandPageClient({
 
             {/* Interactive Action Ribbon */}
             <div className="flex items-center gap-3 mt-6 pt-6 border-t border-[#20205a]/50 flex-wrap">
-              {!band.is_owner && band.is_authenticated && (
-                <Button
-                  onClick={handleToggleFollow}
-                  disabled={followBusy}
-                  className={
-                    isFollowing
-                      ? "border border-[#20205a] bg-transparent text-[#f5f7ff] hover:bg-[#20205a]/40 rounded-xl h-11 sm:h-12 px-6 text-sm font-semibold"
-                      : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-xl h-11 sm:h-12 px-6 text-sm font-semibold shadow-lg shadow-[#ea6f2a]/25"
-                  }
-                >
-                  {isFollowing ? (
-                    <UserMinus className="w-4 h-4 mr-2" />
-                  ) : (
-                    <UserPlus className="w-4 h-4 mr-2" />
-                  )}
-                  {isFollowing ? "Following Act" : "Follow Act"}
-                </Button>
+              {!band.is_owner && (
+                band.is_authenticated ? (
+                  <Button
+                    onClick={handleToggleFollow}
+                    disabled={followBusy}
+                    className={
+                      isFollowing
+                        ? "border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-950/60 rounded-xl h-11 sm:h-12 px-6 text-sm font-semibold transition-all shadow-md"
+                        : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-xl h-11 sm:h-12 px-6 text-sm font-semibold shadow-lg shadow-[#ea6f2a]/25"
+                    }
+                  >
+                    {isFollowing ? (
+                      <BellRing className="w-4 h-4 mr-2 text-emerald-400 animate-pulse" />
+                    ) : (
+                      <Bell className="w-4 h-4 mr-2" />
+                    )}
+                    {isFollowing ? "Following Band (Alerts Active)" : "Follow Band"}
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white rounded-xl h-11 sm:h-12 px-6 text-sm font-semibold shadow-lg shadow-[#ea6f2a]/25"
+                  >
+                    <Link href="/login">
+                      <Bell className="w-4 h-4 mr-2" />
+                      Follow Band
+                    </Link>
+                  </Button>
+                )
               )}
 
               <Button
@@ -1272,6 +1329,7 @@ export function BandPageClient({
                 post={post}
                 band={band}
                 onDeletePost={handleDeletePost}
+                onSharePost={handleSharePost}
                 onRefresh={refresh}
                 setError={setError}
               />
@@ -1317,6 +1375,18 @@ export function BandPageClient({
           }}
         />
       )}
+
+      {/* Share Band & Post Modal */}
+      {shareModalData && (
+        <BandShareModal
+          open={!!shareModalData}
+          onOpenChange={(open) => !open && setShareModalData(null)}
+          title={shareModalData.title}
+          subtitle={shareModalData.subtitle}
+          url={shareModalData.url}
+          text={shareModalData.text}
+        />
+      )}
     </div>
   )
 }
@@ -1325,12 +1395,14 @@ function PostCard({
   post,
   band,
   onDeletePost,
+  onSharePost,
   onRefresh,
   setError,
 }: {
   post: BandPost
   band: PublicBand
   onDeletePost: (id: string) => void
+  onSharePost: (post: BandPost) => void
   onRefresh: () => Promise<void>
   setError: (m: string) => void
 }) {
@@ -1364,7 +1436,10 @@ function PostCard({
   const isAudioPost = post.post_type === "audio" || post.post_type === "album" || (post.audio_tracks && post.audio_tracks.length > 0)
 
   return (
-    <article className="rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 to-[#070725]/80 p-6 sm:p-7 shadow-xl hover:border-[#ea6f2a]/40 transition-colors">
+    <article
+      id={`post-${post.id}`}
+      className="scroll-mt-24 rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 to-[#070725]/80 p-6 sm:p-7 shadow-xl hover:border-[#ea6f2a]/40 transition-colors"
+    >
       <div className="flex items-start gap-4">
         <Avatar name={post.author_name} src={post.author_avatar} />
         <div className="flex-1 min-w-0">
@@ -1397,15 +1472,26 @@ function PostCard({
               </div>
               <p className="text-xs text-[#20efe0] font-mono mt-1">{timeAgo(post.created_at)}</p>
             </div>
-            {post.can_delete && (
+            <div className="flex items-center gap-1 shrink-0">
               <button
-                onClick={() => onDeletePost(post.id)}
-                className="text-[#9a9fc4] hover:text-red-400 p-1.5 rounded-lg hover:bg-[#20205a]/40 transition-colors"
-                aria-label="Delete post"
+                type="button"
+                onClick={() => onSharePost(post)}
+                className="text-[#9a9fc4] hover:text-[#ffd166] p-1.5 rounded-lg hover:bg-[#20205a]/40 transition-colors flex items-center gap-1 text-xs font-semibold"
+                title="Share this post"
               >
-                <Trash2 className="w-4 h-4" />
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Share</span>
               </button>
-            )}
+              {post.can_delete && (
+                <button
+                  onClick={() => onDeletePost(post.id)}
+                  className="text-[#9a9fc4] hover:text-red-400 p-1.5 rounded-lg hover:bg-[#20205a]/40 transition-colors"
+                  aria-label="Delete post"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
 
           {post.content && (

@@ -28,6 +28,7 @@ export type NotificationType =
   | "comment_on_your_post"
   | "comment_star"
   | "mention"
+  | "band_post"
 
 export type NotificationItem = {
   id: string
