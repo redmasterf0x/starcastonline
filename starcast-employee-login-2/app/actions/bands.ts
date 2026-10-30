@@ -9,6 +9,7 @@ import { getViewerPermissions, requireViewer, requireStaff } from "@/lib/permiss
 export type BandInput = {
   name: string
   type?: string // "band" | "artist"
+  slug?: string
   genre?: string
   bio?: string
   contactEmail?: string
@@ -16,6 +17,7 @@ export type BandInput = {
   logoUrl?: string
   bannerUrl?: string
   links?: any[]
+  musicCatalogEnabled?: boolean
 }
 
 function toIso(d: any): string | null {
@@ -220,6 +222,7 @@ export async function updateBand(id: string, input: BandInput) {
       .set({
         name: input.name?.trim() || b.name,
         type: input.type && allowedTypes.includes(input.type) ? input.type : b.type,
+        slug: input.slug ? input.slug.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]+/g, "") : b.slug,
         genre: input.genre !== undefined ? (input.genre?.trim() || null) : b.genre,
         bio: input.bio !== undefined ? (input.bio?.trim() || null) : b.bio,
         contactEmail: input.contactEmail !== undefined ? (input.contactEmail?.trim() || null) : b.contactEmail,
@@ -227,6 +230,7 @@ export async function updateBand(id: string, input: BandInput) {
         logoUrl: input.logoUrl !== undefined ? (input.logoUrl?.trim() || null) : b.logoUrl,
         bannerUrl: input.bannerUrl !== undefined ? (input.bannerUrl?.trim() || null) : b.bannerUrl,
         links: Array.isArray(input.links) ? input.links : b.links,
+        musicCatalogEnabled: input.musicCatalogEnabled !== undefined ? input.musicCatalogEnabled : b.musicCatalogEnabled,
         updatedAt: new Date(),
       })
       .where(eq(bands.id, id))

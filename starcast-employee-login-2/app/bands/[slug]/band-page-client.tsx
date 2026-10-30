@@ -24,6 +24,7 @@ import {
 } from "@/app/actions/band-tracks"
 import {
   Music,
+  Pencil,
   Share2,
   Check,
   Send,
@@ -55,6 +56,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { BandShareModal } from "@/components/bands/band-share-modal"
+import { EditBandModal } from "@/components/bands/edit-band-modal"
 import {
   type PublicBand,
   type BandPost,
@@ -118,6 +120,8 @@ export function BandPageClient({
   const [bannerError, setBannerError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [bandState, setBandState] = useState<PublicBand>(band)
+  const [editBandModalOpen, setEditBandModalOpen] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [shareModalData, setShareModalData] = useState<{ title: string; subtitle?: string; url: string; text?: string } | null>(null)
@@ -793,6 +797,15 @@ export function BandPageClient({
                   </Button>
 
                   <Button
+                    variant="outline"
+                    onClick={() => setEditBandModalOpen(true)}
+                    className="border-[#ffd166]/50 bg-[#ffd166]/10 text-[#ffd166] hover:bg-[#ffd166]/20 rounded-xl h-11 sm:h-12 px-5 text-sm font-semibold"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Act Profile
+                  </Button>
+
+                  <Button
                     asChild
                     variant="outline"
                     className="border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/15 rounded-xl ml-auto h-11 sm:h-12 px-5 text-sm font-semibold"
@@ -1349,6 +1362,14 @@ export function BandPageClient({
         )}
       </main>
 
+      <EditBandModal
+        band={bandState}
+        isOpen={editBandModalOpen}
+        onClose={() => setEditBandModalOpen(false)}
+        onSaved={(updated) => {
+          setBandState((prev) => ({ ...prev, ...updated }))
+        }}
+      />
       <Footer />
 
       {/* QR Code Modal */}

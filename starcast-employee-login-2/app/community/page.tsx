@@ -1915,7 +1915,7 @@ export default function CommunityPage() {
 
         {/* Band / Post Share Modal */}
         <BandShareModal
-          isOpen={!!shareBandData}
+          open={!!shareBandData}
           onOpenChange={(open) => !open && setShareBandData(null)}
           title={shareBandData?.title || ""}
           subtitle={shareBandData?.subtitle}

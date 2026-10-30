@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { bands, bandTracks, bandPosts, trackComments, profiles } from "@/lib/db/schema"
+import { bands, bandTracks, bandPosts, trackComments, profiles, trackLikes, albumLikes } from "@/lib/db/schema"
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
@@ -38,6 +38,35 @@ export interface BandTrackItem {
   copyrightStatus?: string | null
   copyrightDetails?: any
   proofOfMasterHash?: string | null
+  likeCount?: number
+  isLiked?: boolean
+  canEdit?: boolean
+}
+
+export interface BandAlbumItem {
+  albumName: string
+  bandId: string
+  bandName?: string | null
+  bandSlug?: string | null
+  bandLogo?: string | null
+  artistName?: string | null
+  producer?: string | null
+  coverArtUrl?: string | null
+  releaseYear?: string | null
+  genre?: string | null
+  tracks: BandTrackItem[]
+  likeCount: number
+  isLiked: boolean
+  canEdit?: boolean
+}
+
+export interface AlbumUpdateInput {
+  newAlbumName?: string
+  coverArtUrl?: string
+  genre?: string
+  releaseYear?: string
+  producer?: string
+  artistName?: string
 }
 
 export interface TrackCommentItem {
@@ -65,6 +94,12 @@ export interface TrackInput {
   description?: string
   lyrics?: string
   allowDownload?: boolean
+  audioHash?: string | null
+  fingerprint?: string | null
+  fingerprintAlgorithm?: string | null
+  copyrightStatus?: string | null
+  copyrightDetails?: any
+  proofOfMasterHash?: string | null
 }
 
 export interface AlbumReleaseInput {
@@ -154,6 +189,141 @@ export async function normalizeAudioUrl(url: string): Promise<string> {
 /**
  * Fetch all tracks for a band in position order.
  */
+
+/**
+ * Attaches real-time like counts, viewer like states, and edit privileges to a list of tracks.
+ */
+export async function attachTrackLikesAndPerms(
+  tracks: BandTrackItem[],
+  viewerId: string | null,
+  isAdmin: boolean
+): Promise<BandTrackItem[]> {
+  if (tracks.length === 0) return tracks
+
+  const trackIds = tracks.map((t) => t.id)
+
+  const countMap = new Map<string, number>()
+  const likedSet = new Set<string>()
+
+  try {
+    const countRows = await db
+      .select({
+        trackId: trackLikes.trackId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(trackLikes)
+      .where(inArray(trackLikes.trackId, trackIds))
+      .groupBy(trackLikes.trackId)
+
+    for (const r of countRows) {
+      countMap.set(r.trackId, r.count)
+    }
+
+    if (viewerId) {
+      const userLikes = await db
+        .select({ trackId: trackLikes.trackId })
+        .from(trackLikes)
+        .where(and(eq(trackLikes.userId, viewerId), inArray(trackLikes.trackId, trackIds)))
+      for (const ul of userLikes) {
+        likedSet.add(ul.trackId)
+      }
+    }
+  } catch (err) {
+    console.error("Error reading track likes:", err)
+  }
+
+  const bandIds = Array.from(new Set(tracks.map((t) => t.bandId).filter(Boolean)))
+  const bandOwnerMap = new Map<string, string>()
+
+  if (bandIds.length > 0) {
+    try {
+      const bandRows = await db
+        .select({ id: bands.id, ownerUserId: bands.ownerUserId })
+        .from(bands)
+        .where(inArray(bands.id, bandIds))
+      for (const b of bandRows) {
+        bandOwnerMap.set(b.id, b.ownerUserId)
+      }
+    } catch (err) {
+      console.error("Error reading band owners:", err)
+    }
+  }
+
+  return tracks.map((t) => {
+    const ownerUserId = bandOwnerMap.get(t.bandId)
+    const canEdit = Boolean(isAdmin || (viewerId && ownerUserId && ownerUserId === viewerId))
+    return {
+      ...t,
+      likeCount: countMap.get(t.id) ?? 0,
+      isLiked: likedSet.has(t.id),
+      canEdit,
+    }
+  })
+}
+
+export async function getAlbumLikesInfo(
+  albums: Array<{ bandId: string; albumName: string }>,
+  viewerId: string | null
+): Promise<Map<string, { count: number; isLiked: boolean }>> {
+  const result = new Map<string, { count: number; isLiked: boolean }>()
+  if (albums.length === 0) return result
+
+  for (const a of albums) {
+    result.set(`${a.bandId}:::${a.albumName}`, { count: 0, isLiked: false })
+  }
+
+  const bandIds = Array.from(new Set(albums.map((a) => a.bandId)))
+  const albumNames = Array.from(new Set(albums.map((a) => a.albumName)))
+
+  try {
+    const countRows = await db
+      .select({
+        bandId: albumLikes.bandId,
+        albumName: albumLikes.albumName,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(albumLikes)
+      .where(and(inArray(albumLikes.bandId, bandIds), inArray(albumLikes.albumName, albumNames)))
+      .groupBy(albumLikes.bandId, albumLikes.albumName)
+
+    for (const r of countRows) {
+      const key = `${r.bandId}:::${r.albumName}`
+      const existing = result.get(key)
+      if (existing) {
+        existing.count = r.count
+      }
+    }
+
+    if (viewerId) {
+      const userLikes = await db
+        .select({
+          bandId: albumLikes.bandId,
+          albumName: albumLikes.albumName,
+        })
+        .from(albumLikes)
+        .where(
+          and(
+            eq(albumLikes.userId, viewerId),
+            inArray(albumLikes.bandId, bandIds),
+            inArray(albumLikes.albumName, albumNames)
+          )
+        )
+
+      for (const ul of userLikes) {
+        const key = `${ul.bandId}:::${ul.albumName}`
+        const existing = result.get(key)
+        if (existing) {
+          existing.isLiked = true
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching album likes info:", err)
+  }
+
+  return result
+}
+
 export async function getBandTracks(bandId: string): Promise<BandTrackItem[]> {
   try {
     const rows = await db
@@ -261,7 +431,14 @@ export async function getBandTracks(bandId: string): Promise<BandTrackItem[]> {
       console.error("Error loading post audio fallback:", postErr)
     }
 
-    return results
+    const user = await getSessionUser()
+    const viewerId = user?.id || null
+    let isAdmin = false
+    if (user) {
+      const pr = await db.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1)
+      isAdmin = Boolean(pr[0]?.isAdmin || pr[0]?.role === "admin")
+    }
+    return await attachTrackLikesAndPerms(results, viewerId, isAdmin)
   } catch (err) {
     console.error("Error loading band tracks:", err)
     return []
@@ -658,7 +835,7 @@ export async function updateBandTrack(trackId: string, input: Partial<TrackInput
 
     const cleanAudioUrl = input.audioUrl ? await normalizeAudioUrl(input.audioUrl) : existing[0].audioUrl
 
-    await db
+    const [updated] = await db
       .update(bandTracks)
       .set({
         title: input.title !== undefined ? input.title.trim() : existing[0].title,
@@ -678,11 +855,13 @@ export async function updateBandTrack(trackId: string, input: Partial<TrackInput
         updatedAt: new Date(),
       })
       .where(eq(bandTracks.id, trackId))
+      .returning()
 
     revalidatePath("/music")
     revalidatePath("/community")
+    revalidatePath("/bands")
 
-    return { success: true }
+    return { success: true, track: updated }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to update track." }
   }
@@ -1020,5 +1199,285 @@ export async function rescanTrackAudio(trackId: string): Promise<{
     return { success: true, track: updated[0], scanResult }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to rescan track audio." }
+  }
+}
+
+
+/**
+ * Toggle like on a track for the authenticated user.
+ */
+export async function toggleLikeTrack(trackId: string): Promise<{
+  success: boolean
+  liked: boolean
+  likeCount: number
+  error?: string
+}> {
+  try {
+    const user = await getSessionUser()
+    if (!user) return { success: false, liked: false, likeCount: 0, error: "Please sign in to like songs." }
+
+    const existing = await db
+      .select()
+      .from(trackLikes)
+      .where(and(eq(trackLikes.trackId, trackId), eq(trackLikes.userId, user.id)))
+      .limit(1)
+
+    let liked = false
+    if (existing.length > 0) {
+      await db
+        .delete(trackLikes)
+        .where(and(eq(trackLikes.trackId, trackId), eq(trackLikes.userId, user.id)))
+      liked = false
+    } else {
+      await db
+        .insert(trackLikes)
+        .values({
+          trackId,
+          userId: user.id,
+        })
+        .onConflictDoNothing()
+      liked = true
+    }
+
+    const countRes = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(trackLikes)
+      .where(eq(trackLikes.trackId, trackId))
+
+    const likeCount = countRes[0]?.count ?? 0
+
+    revalidatePath("/music")
+    return { success: true, liked, likeCount }
+  } catch (err: any) {
+    console.error("toggleLikeTrack error:", err)
+    return { success: false, liked: false, likeCount: 0, error: err?.message || "Failed to like track." }
+  }
+}
+
+/**
+ * Toggle like on an album. AUTOMATICALLY LIKES ALL SONGS IN THAT ALBUM!
+ */
+export async function toggleLikeAlbum(
+  bandId: string,
+  albumName: string
+): Promise<{
+  success: boolean
+  liked: boolean
+  likeCount: number
+  affectedTrackIds: string[]
+  error?: string
+}> {
+  try {
+    const user = await getSessionUser()
+    if (!user) return { success: false, liked: false, likeCount: 0, affectedTrackIds: [], error: "Please sign in to like albums." }
+
+    const cleanAlbum = albumName.trim()
+    if (!cleanAlbum) return { success: false, liked: false, likeCount: 0, affectedTrackIds: [], error: "Album name is required." }
+
+    // Find all tracks in this album
+    const albumTracksList = await db
+      .select({ id: bandTracks.id })
+      .from(bandTracks)
+      .where(and(eq(bandTracks.bandId, bandId), eq(bandTracks.albumName, cleanAlbum)))
+
+    const trackIds = albumTracksList.map((t) => t.id)
+
+    const existing = await db
+      .select()
+      .from(albumLikes)
+      .where(
+        and(
+          eq(albumLikes.bandId, bandId),
+          eq(albumLikes.albumName, cleanAlbum),
+          eq(albumLikes.userId, user.id)
+        )
+      )
+      .limit(1)
+
+    let liked = false
+    if (existing.length > 0) {
+      // User is unliking the album
+      await db
+        .delete(albumLikes)
+        .where(
+          and(
+            eq(albumLikes.bandId, bandId),
+            eq(albumLikes.albumName, cleanAlbum),
+            eq(albumLikes.userId, user.id)
+          )
+        )
+      liked = false
+    } else {
+      // User is liking the album -> insert album like
+      await db
+        .insert(albumLikes)
+        .values({
+          bandId,
+          albumName: cleanAlbum,
+          userId: user.id,
+        })
+        .onConflictDoNothing()
+      liked = true
+
+      // CRITICAL REQUIREMENT: Automatically like all songs in this album!
+      for (const trk of albumTracksList) {
+        await db
+          .insert(trackLikes)
+          .values({
+            trackId: trk.id,
+            userId: user.id,
+          })
+          .onConflictDoNothing()
+      }
+    }
+
+    const countRes = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(albumLikes)
+      .where(and(eq(albumLikes.bandId, bandId), eq(albumLikes.albumName, cleanAlbum)))
+
+    const likeCount = countRes[0]?.count ?? 0
+
+    revalidatePath("/music")
+    return { success: true, liked, likeCount, affectedTrackIds: trackIds }
+  } catch (err: any) {
+    console.error("toggleLikeAlbum error:", err)
+    return { success: false, liked: false, likeCount: 0, affectedTrackIds: [], error: err?.message || "Failed to like album." }
+  }
+}
+
+/**
+ * Update album metadata across all tracks in the album (accessible by band owner or admin).
+ */
+export async function updateBandAlbum(
+  bandId: string,
+  currentAlbumName: string,
+  input: AlbumUpdateInput
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await verifyBandOwnershipOrAdmin(bandId)
+
+    const cleanCurrent = currentAlbumName.trim()
+    const cleanNewName = input.newAlbumName?.trim()
+
+    const updatePayload: any = {
+      updatedAt: new Date(),
+    }
+    if (cleanNewName) {
+      updatePayload.albumName = cleanNewName
+    }
+    if (input.coverArtUrl !== undefined) {
+      updatePayload.coverArtUrl = input.coverArtUrl.trim() || null
+    }
+    if (input.genre !== undefined) {
+      updatePayload.genre = input.genre.trim() || null
+    }
+    if (input.releaseYear !== undefined) {
+      updatePayload.releaseYear = input.releaseYear.trim() || null
+    }
+    if (input.producer !== undefined) {
+      updatePayload.producer = input.producer.trim() || null
+    }
+    if (input.artistName !== undefined) {
+      updatePayload.artistName = input.artistName.trim() || null
+    }
+
+    await db
+      .update(bandTracks)
+      .set(updatePayload)
+      .where(
+        and(
+          eq(bandTracks.bandId, bandId),
+          eq(bandTracks.albumName, cleanCurrent)
+        )
+      )
+
+    // If album was renamed, rename in album_likes as well
+    if (cleanNewName && cleanNewName !== cleanCurrent) {
+      await db
+        .update(albumLikes)
+        .set({ albumName: cleanNewName })
+        .where(
+          and(
+            eq(albumLikes.bandId, bandId),
+            eq(albumLikes.albumName, cleanCurrent)
+          )
+        )
+    }
+
+    revalidatePath("/music")
+    revalidatePath("/bands")
+    return { success: true }
+  } catch (err: any) {
+    console.error("updateBandAlbum error:", err)
+    return { success: false, error: err?.message || "Failed to update album." }
+  }
+}
+
+/**
+ * Fetch all albums across public tracks with album like counts and tracklists.
+ */
+export async function getAllPublicAlbums(tracks?: BandTrackItem[]): Promise<BandAlbumItem[]> {
+  try {
+    const allTracks = tracks || (await getAllPublicTracks({ limit: 500 }))
+    const sessionUser = await getSessionUser()
+    const viewerId = sessionUser?.id || null
+    let isAdmin = false
+    if (sessionUser) {
+      const pr = await db.select().from(profiles).where(eq(profiles.userId, sessionUser.id)).limit(1)
+      isAdmin = Boolean(pr[0]?.isAdmin || pr[0]?.role === "admin")
+    }
+
+    const albumMap = new Map<string, BandAlbumItem>()
+
+    for (const t of allTracks) {
+      const aName = t.albumName?.trim()
+      if (!aName) continue
+
+      const key = `${t.bandId}:::${aName}`
+      if (!albumMap.has(key)) {
+        albumMap.set(key, {
+          albumName: aName,
+          bandId: t.bandId,
+          bandName: t.bandName,
+          bandSlug: t.bandSlug,
+          bandLogo: t.bandLogo,
+          artistName: t.artistName,
+          producer: t.producer,
+          coverArtUrl: t.coverArtUrl || t.bandLogo || null,
+          releaseYear: t.releaseYear,
+          genre: t.genre,
+          tracks: [],
+          likeCount: 0,
+          isLiked: false,
+          canEdit: t.canEdit,
+        })
+      }
+      const album = albumMap.get(key)!
+      album.tracks.push(t)
+      if (!album.coverArtUrl && t.coverArtUrl) {
+        album.coverArtUrl = t.coverArtUrl
+      }
+    }
+
+    const albumList = Array.from(albumMap.values())
+    const likesInfo = await getAlbumLikesInfo(
+      albumList.map((a) => ({ bandId: a.bandId, albumName: a.albumName })),
+      viewerId
+    )
+
+    for (const a of albumList) {
+      const key = `${a.bandId}:::${a.albumName}`
+      const info = likesInfo.get(key)
+      if (info) {
+        a.likeCount = info.count
+        a.isLiked = info.isLiked
+      }
+    }
+
+    return albumList.sort((a, b) => b.likeCount - a.likeCount || b.tracks.length - a.tracks.length)
+  } catch (err) {
+    console.error("getAllPublicAlbums error:", err)
+    return []
   }
 }

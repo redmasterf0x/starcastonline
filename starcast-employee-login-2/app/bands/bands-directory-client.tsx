@@ -277,7 +277,7 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
                 key={band.id}
                 band={band}
                 onToggleFollow={handleToggleFollow}
-                onShareBand={handleShareBand}
+                onShareBand={(b) => setShareBand(b)}
               />
             ))}
           </div>

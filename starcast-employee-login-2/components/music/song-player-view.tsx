@@ -8,7 +8,11 @@ import {
   incrementTrackPlay,
   addTrackComment,
   deleteTrackComment,
+  toggleLikeTrack,
 } from "@/app/actions/band-tracks"
+import { followBand, unfollowBand } from "@/app/actions/band-pages"
+import { toast } from "sonner"
+import { EditTrackModal } from "@/components/music/edit-track-modal"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -39,6 +43,10 @@ import {
   ArrowLeft,
   ArrowRight,
   ShieldCheck,
+  Heart,
+  Pencil,
+  UserPlus,
+  UserCheck,
 } from "lucide-react"
 
 interface SongPlayerViewProps {
@@ -94,7 +102,59 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
   const [copied, setCopied] = useState(false)
 
   // Comments state
+  const [trackState, setTrackState] = useState<BandTrackItem>(track)
   const [comments, setComments] = useState<TrackCommentItem[]>(initialComments)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followBusy, setFollowBusy] = useState(false)
+
+  const handleLike = async () => {
+    if (!currentUser) {
+      toast.error("Please sign in to like songs.")
+      return
+    }
+    const wasLiked = Boolean(trackState.isLiked)
+    const nextLiked = !wasLiked
+    const nextCount = wasLiked ? Math.max(0, (trackState.likeCount || 1) - 1) : (trackState.likeCount || 0) + 1
+    setTrackState((prev) => ({ ...prev, isLiked: nextLiked, likeCount: nextCount }))
+
+    try {
+      const res = await toggleLikeTrack(trackState.id)
+      if (!res.success) {
+        setTrackState((prev) => ({ ...prev, isLiked: wasLiked, likeCount: track.likeCount }))
+        toast.error(res.error || "Failed to like song.")
+      } else if (nextLiked) {
+        toast.success(`Liked "${trackState.title}"!`)
+      }
+    } catch {
+      setTrackState((prev) => ({ ...prev, isLiked: wasLiked, likeCount: track.likeCount }))
+      toast.error("Failed to like song.")
+    }
+  }
+
+  const handleToggleFollowBand = async () => {
+    if (!currentUser) {
+      toast.error("Please sign in to follow this act.")
+      return
+    }
+    setFollowBusy(true)
+    const next = !isFollowing
+    setIsFollowing(next)
+    try {
+      if (next) {
+        await followBand(trackState.bandId)
+        toast.success(`Following ${trackState.artistName || trackState.bandName}!`)
+      } else {
+        await unfollowBand(trackState.bandId)
+        toast.info(`Unfollowed ${trackState.artistName || trackState.bandName}`)
+      }
+    } catch (err: any) {
+      setIsFollowing(!next)
+      toast.error(err?.message || "Failed to update follow status")
+    } finally {
+      setFollowBusy(false)
+    }
+  }
   const [commentDraft, setCommentDraft] = useState("")
   const [submittingComment, setSubmittingComment] = useState(false)
   const [commentError, setCommentError] = useState("")
@@ -242,7 +302,7 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
               className="border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/15 text-xs font-semibold"
             >
               <Link href={`/bands/${track.bandSlug}`}>
-                <Radio className="w-3.5 h-3.5 mr-1.5" /> Visit Band Soundstage
+                <Radio className="w-3.5 h-3.5 mr-1.5" /> Visit Band Page
               </Link>
             </Button>
           )}
@@ -443,8 +503,52 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                 </div>
               </div>
 
-              {/* Action Ribbon: Download & Share */}
+              {/* Action Ribbon: Download, Like, Follow & Edit */}
               <div className="flex items-center gap-3 flex-wrap">
+                {/* Like Button */}
+                <Button
+                  onClick={handleLike}
+                  variant="outline"
+                  className={`rounded-xl h-11 px-5 text-xs font-bold transition-all ${
+                    trackState.isLiked
+                      ? "bg-rose-500/15 border-rose-500/50 text-rose-400 hover:bg-rose-500/25"
+                      : "border-[#20205a] bg-[#0c0c3f]/80 text-[#f5f7ff] hover:text-rose-400 hover:border-rose-500/40"
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 mr-2 ${trackState.isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
+                  {trackState.isLiked ? "Liked" : "Like Song"} ({trackState.likeCount || 0})
+                </Button>
+
+                {/* Follow Act Button */}
+                {trackState.bandId && (
+                  <Button
+                    onClick={handleToggleFollowBand}
+                    disabled={followBusy}
+                    variant="outline"
+                    className={`border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/15 rounded-xl h-11 px-4 text-xs font-semibold`}
+                  >
+                    {isFollowing ? (
+                      <>
+                        <UserCheck className="w-4 h-4 mr-1.5" /> Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-1.5" /> Follow Act
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {/* Edit Track Button (Owner or Admin) */}
+                {trackState.canEdit && (
+                  <Button
+                    onClick={() => setEditModalOpen(true)}
+                    variant="outline"
+                    className="border-[#ffd166]/50 bg-[#ffd166]/10 text-[#ffd166] hover:bg-[#ffd166]/20 rounded-xl h-11 px-4 text-xs font-semibold"
+                  >
+                    <Pencil className="w-4 h-4 mr-1.5" /> Edit Song
+                  </Button>
+                )}
                 {track.allowDownload && (
                   <Button
                     onClick={handleDownload}
@@ -684,6 +788,12 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
         )}
       </main>
 
+      <EditTrackModal
+        track={trackState}
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onSaved={(updated) => setTrackState(updated)}
+      />
       <Footer />
     </div>
   )

@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { type BandTrackItem, incrementTrackPlay } from "@/app/actions/band-tracks"
+import { type BandTrackItem, incrementTrackPlay, toggleLikeTrack } from "@/app/actions/band-tracks"
+import { toast } from "sonner"
+import { EditTrackModal } from "@/components/music/edit-track-modal"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -23,6 +25,8 @@ import {
   Sparkles,
   Radio,
   Clock,
+  Heart,
+  Pencil,
 } from "lucide-react"
 
 import { useGlobalAudio, type GlobalTrack } from "@/components/music/global-audio-context"
@@ -63,6 +67,41 @@ export function BandMusicPlayer({
     playNext,
     playPrevious,
   } = useGlobalAudio()
+
+  const [trackList, setTrackList] = useState<BandTrackItem[]>(tracks)
+  const [editingTrack, setEditingTrack] = useState<BandTrackItem | null>(null)
+
+  useEffect(() => {
+    setTrackList(tracks)
+  }, [tracks])
+
+  const handleToggleLike = async (e: React.MouseEvent, track: BandTrackItem) => {
+    e.stopPropagation()
+    const wasLiked = Boolean(track.isLiked)
+    const nextLiked = !wasLiked
+    const nextCount = wasLiked ? Math.max(0, (track.likeCount || 1) - 1) : (track.likeCount || 0) + 1
+
+    setTrackList((prev) =>
+      prev.map((t) => (t.id === track.id ? { ...t, isLiked: nextLiked, likeCount: nextCount } : t))
+    )
+
+    try {
+      const res = await toggleLikeTrack(track.id)
+      if (!res.success) {
+        setTrackList((prev) =>
+          prev.map((t) => (t.id === track.id ? { ...t, isLiked: wasLiked, likeCount: track.likeCount } : t))
+        )
+        toast.error(res.error || "Please sign in to like tracks.")
+      } else if (nextLiked) {
+        toast.success(`Liked "${track.title}"!`)
+      }
+    } catch {
+      setTrackList((prev) =>
+        prev.map((t) => (t.id === track.id ? { ...t, isLiked: wasLiked, likeCount: track.likeCount } : t))
+      )
+      toast.error("Failed to like track.")
+    }
+  }
 
   const [localTrackIndex, setLocalTrackIndex] = useState(0)
   const [activeLyricsTrack, setActiveLyricsTrack] = useState<BandTrackItem | null>(null)
@@ -401,7 +440,7 @@ export function BandMusicPlayer({
         </div>
 
         <div className="divide-y divide-[#20205a]/40 mt-1">
-          {tracks.map((track, idx) => {
+          {trackList.map((track, idx) => {
             const isThisActive = currentTrackIndex === idx
             const isThisPlaying = isThisActive && isPlaying
 
@@ -453,6 +492,32 @@ export function BandMusicPlayer({
 
                 {/* Right stats & actions */}
                 <div className="flex items-center gap-3 shrink-0 text-xs font-mono text-[#9a9fc4]">
+                  {/* Like Button */}
+                  <button
+                    onClick={(e) => handleToggleLike(e, track)}
+                    className={`flex items-center gap-1 text-xs transition-colors hover:text-rose-400 p-1 ${
+                      track.isLiked ? "text-rose-500 font-bold" : "text-[#7f84ad]"
+                    }`}
+                    title={track.isLiked ? "Unlike song" : "Like song"}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${track.isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
+                    <span>{track.likeCount || 0}</span>
+                  </button>
+
+                  {/* Owner or Admin Edit Song */}
+                  {(isOwner || track.canEdit) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingTrack(track)
+                      }}
+                      className="p-1 rounded-md text-[#ffd166] hover:text-white hover:bg-[#20205a] transition-colors"
+                      title="Edit Song Info"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
                   <span className="hidden sm:flex items-center gap-1 text-[#ffd166]">
                     <Headphones className="w-3 h-3" /> {track.playCount}
                   </span>
@@ -496,6 +561,15 @@ export function BandMusicPlayer({
           </DialogContent>
         )}
       </Dialog>
+
+      <EditTrackModal
+        track={editingTrack}
+        isOpen={Boolean(editingTrack)}
+        onClose={() => setEditingTrack(null)}
+        onSaved={(updated) => {
+          setTrackList((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+        }}
+      />
     </div>
   )
 }

@@ -32,7 +32,7 @@ import { authClient } from "@/lib/auth-client"
 export interface QuizQuestion {
   id: string
   show: string
-  category: "Spaceflight" | "Cinema & Lore" | "Music & Soundstage" | "StarCast Culture"
+  category: string
   icon: string
   question: string
   options: string[]

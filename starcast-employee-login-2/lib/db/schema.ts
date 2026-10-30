@@ -609,6 +609,25 @@ export const trackComments = pgTable("track_comments", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const trackLikes = pgTable("track_likes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  trackId: uuid("track_id")
+    .references(() => bandTracks.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const albumLikes = pgTable("album_likes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bandId: uuid("band_id")
+    .references(() => bands.id, { onDelete: "cascade" })
+    .notNull(),
+  albumName: text("album_name").notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const inboundEmails = pgTable("inbound_emails", {
   id: uuid("id").primaryKey().defaultRandom(),
   sender: text("sender").notNull(),

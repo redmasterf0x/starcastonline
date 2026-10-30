@@ -46,10 +46,11 @@ export function DesktopLeftNav({ currentPage = "/", className = "" }: DesktopLef
     if (session?.user) {
       setLoggedIn(true)
       getMyProfile()
-        .then((res) => {
-          if (!mounted || !res.profile) return
-          setUserProfile(res.profile)
-          const p = res.profile
+        .then((res: any) => {
+          const profile = res?.profile || res
+          if (!mounted || !profile) return
+          setUserProfile(profile)
+          const p = profile
           const isStaff =
             p.role === "staff" ||
             p.role === "admin" ||

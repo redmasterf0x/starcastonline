@@ -468,7 +468,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
     setError("")
 
     try {
-      const finalizedTracks: { title: string; audioUrl: string; durationSeconds?: number; lyrics?: string }[] = []
+      const finalizedTracks: AlbumReleaseInput["tracks"] = []
 
       // 1. Upload files sequentially with progress updates
       for (let i = 0; i < albumTracks.length; i++) {
@@ -477,13 +477,15 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
 
         let finalAudioUrl = item.audioUrl || ""
 
+        let uploadData: any = null
         if (item.file) {
           const formData = new FormData()
           formData.append("file", item.file)
           formData.append("folder", `bands/${band.id}/albums`)
 
           const res = await fetch("/api/upload", { method: "POST", body: formData })
-          const data = await res.json()
+          uploadData = await res.json()
+          const data = uploadData
           if (!res.ok || !data.url) {
             throw new Error(`Failed to upload audio for track "${item.title}": ${data.error || "Upload failed"}`)
           }
@@ -493,12 +495,12 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
         finalizedTracks.push({
           title: item.title,
           audioUrl: finalAudioUrl,
-          durationSeconds: (data as any)?.audioScan?.durationSeconds || item.durationSeconds,
+          durationSeconds: (uploadData as any)?.audioScan?.durationSeconds || item.durationSeconds,
           lyrics: item.lyrics,
-          audioHash: (data as any)?.audioScan?.audioHash,
-          fingerprint: (data as any)?.audioScan?.fingerprint,
-          proofOfMasterHash: (data as any)?.audioScan?.proofOfMasterHash,
-          copyrightStatus: (data as any)?.audioScan?.status || "clean",
+          audioHash: (uploadData as any)?.audioScan?.audioHash,
+          fingerprint: (uploadData as any)?.audioScan?.fingerprint,
+          proofOfMasterHash: (uploadData as any)?.audioScan?.proofOfMasterHash,
+          copyrightStatus: (uploadData as any)?.audioScan?.status || "clean",
         })
       }
 
