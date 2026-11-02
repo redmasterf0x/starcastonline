@@ -182,7 +182,7 @@ export function BandPageClient({
     const url = typeof window !== "undefined" ? `${window.location.origin}/bands/${band.slug}` : `https://starcast.online/bands/${band.slug}`
     setShareModalData({
       title: band.name,
-      subtitle: band.bio || `Soundstage live broadcasts, music catalog, and updates on StarCast Online.`,
+      subtitle: band.bio || `Music catalog, live broadcasts, and updates on StarCast Online.`,
       url,
       text: `Check out ${band.name} on StarCast Online!`,
     })
@@ -602,7 +602,7 @@ export function BandPageClient({
           >
             <Link href="/bands">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Soundstage Directory
+              Bands Directory
             </Link>
           </Button>
 
@@ -636,7 +636,7 @@ export function BandPageClient({
           </div>
         )}
 
-        {/* Soundstage Grand Hero */}
+        {/* Artist Grand Hero */}
         <section className="relative rounded-3xl border border-[#20205a]/80 bg-gradient-to-b from-[#0c0c3f]/80 via-[#070725]/90 to-[#05051f] overflow-hidden mb-8 shadow-2xl shadow-black/60">
           {/* Banner Image Stage Rig */}
           {band.banner_url && !bannerError ? (
@@ -658,10 +658,10 @@ export function BandPageClient({
             </div>
           )}
 
-          {/* Soundstage Verified Beacon */}
+          {/* Artist Verified Beacon */}
           <div className="absolute top-4 right-4 z-20 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#05051f]/80 border border-[#20efe0]/40 backdrop-blur-md text-[11px] font-mono text-[#20efe0]">
             <Radio className="w-3.5 h-3.5 animate-pulse text-[#38ef7d]" />
-            <span>SOUNDSTAGE LIVE // TOPEKA</span>
+            <span>STARCAST LIVE // TOPEKA</span>
           </div>
 
           <div className="relative z-10 px-4 sm:px-8 pb-6 sm:pb-8 pt-2 sm:pt-4">

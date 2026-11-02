@@ -155,7 +155,7 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
               </h1>
 
               <p className="text-[#9a9fc4] text-base sm:text-lg leading-relaxed">
-                Discover independent bands, soundstage residents, and sonic collectives broadcasting live across
+                Discover independent bands, artists, and music creators broadcasting live across
                 StarCast Online. Follow your favorite acts, explore their music catalogs, and catch upcoming studio sessions.
               </p>
             </div>
@@ -289,7 +289,7 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
           open={!!shareBand}
           onOpenChange={(open) => !open && setShareBand(null)}
           title={shareBand.name}
-          subtitle={shareBand.bio || `${shareBand.name} Soundstage on StarCast Online`}
+          subtitle={shareBand.bio || `${shareBand.name} on StarCast Online`}
           url={
             typeof window !== "undefined"
               ? `${window.location.origin}/bands/${shareBand.slug}`
@@ -318,7 +318,7 @@ function BandCard({
 
   return (
     <div className="group relative rounded-3xl border border-[#20205a]/70 bg-[#0c0c3f]/60 overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/50 transition-all hover:shadow-[0_0_35px_rgba(234,111,42,0.18)]">
-      {/* Soundstage Banner Header */}
+      {/* Banner Header */}
       <div className="relative w-full h-28 sm:h-32 bg-[#05052d] overflow-hidden">
         {band.banner_url && !bannerError ? (
           <img

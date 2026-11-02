@@ -87,14 +87,14 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
             <div>
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-xl sm:text-2xl font-black text-[#f5f7ff] tracking-tight">
-                  Soundstage Stage Pass
+                  Artist Page Pass
                 </DialogTitle>
                 <Badge className="bg-[#20efe0]/15 text-[#20efe0] border-[#20efe0]/40 text-[10px] font-bold uppercase tracking-wider hidden sm:inline-flex">
                   Instant QR
                 </Badge>
               </div>
               <DialogDescription className="text-xs sm:text-sm text-[#dbe0fb]">
-                Scan to instantly access <span className="text-[#f5f7ff] font-semibold">{band.name}</span>'s verified Soundstage profile.
+                Scan to instantly access <span className="text-[#f5f7ff] font-semibold">{band.name}</span>'s verified artist profile.
               </DialogDescription>
             </div>
           </div>
@@ -121,7 +121,7 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
               <div className="mt-3 px-3 py-1 rounded-full bg-[#05051f] border border-[#20efe0]/40 flex items-center gap-1.5 shadow-sm">
                 <Sparkles className="w-3 h-3 text-[#20efe0]" />
                 <span className="text-[10px] font-mono font-bold tracking-wider text-[#f5f7ff] uppercase">
-                  STARCAST SOUNDSTAGE
+                  STARCAST ONLINE
                 </span>
               </div>
             </div>

@@ -5,11 +5,11 @@ import { BandsDirectoryClient } from "./bands-directory-client"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Soundstage Bands & Artists Directory | StarCast Online",
+  title: "Bands & Artists Directory | StarCast Online",
   description:
-    "Explore independent musicians, soundstage resident acts, and live music broadcasts on StarCast Online. Follow bands, listen to tracks, and catch studio sessions.",
+    "Explore independent musicians, bands, and music creators on StarCast Online. Follow bands, listen to tracks, and catch studio sessions.",
   openGraph: {
-    title: "StarCast Bands & Soundstage Directory",
+    title: "StarCast Bands & Artists Directory",
     description: "Discover independent artists and bands broadcasting live on StarCast Online.",
   },
 }

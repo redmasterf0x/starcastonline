@@ -271,7 +271,7 @@ export function TheDeck({
           </div>
           <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">The DECK is clear for now</h3>
           <p className="text-sm sm:text-base text-[#dbe0fb] max-w-md mx-auto mt-2 leading-relaxed">
-            Claim the first spot of the day! Share what you&apos;re watching, regional music picks, or soundstage thoughts.
+            Claim the first spot of the day! Share what you&apos;re watching, regional music picks, or music picks.
           </p>
         </div>
       ) : (

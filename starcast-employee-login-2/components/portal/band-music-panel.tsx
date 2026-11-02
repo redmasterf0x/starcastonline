@@ -505,7 +505,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
       }
 
       // 2. Batch commit album to database
-      setAlbumUploadProgress("Publishing album to your soundstage...")
+      setAlbumUploadProgress("Publishing album to your band page...")
       const releaseInput: AlbumReleaseInput = {
         albumTitle: albumForm.title.trim(),
         releaseYear: albumForm.releaseYear.trim(),
@@ -644,7 +644,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 </Badge>
               </div>
               <CardDescription className="text-xs sm:text-sm text-[#9a9fc4]">
-                Upload MP3 singles or entire albums for free streaming on your public soundstage page.
+                Upload MP3 singles or entire albums for free streaming on your public band page.
               </CardDescription>
             </div>
 
@@ -944,7 +944,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
             <DialogDescription className="text-xs text-[#9a9fc4]">
               {editingTrackId
                 ? "Update track information, lyrics, or replacement audio file."
-                : "Upload an MP3 audio file or link from cloud storage for free streaming on your soundstage."}
+                : "Upload an MP3 audio file or link from cloud storage for free streaming on your band page."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1354,7 +1354,7 @@ export function BandMusicPanel({ band, onRefreshBand }: BandMusicPanelProps) {
                 <Label className="text-xs font-semibold text-[#f5f7ff] flex items-center gap-1">
                   <Download className="w-3.5 h-3.5 text-emerald-400" /> Allow Free MP3 Downloads for Album
                 </Label>
-                <p className="text-[10px] text-[#7f84ad]">Fans can download tracks directly from your soundstage</p>
+                <p className="text-[10px] text-[#7f84ad]">Fans can download tracks directly from your band page</p>
               </div>
               <Switch
                 checked={albumForm.allowDownload}

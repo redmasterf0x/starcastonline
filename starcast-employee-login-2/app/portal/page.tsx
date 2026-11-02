@@ -360,7 +360,7 @@ export default function PortalPage() {
           <Music className="w-8 h-8 text-[#ea6f2a]" />
         </div>
         <div className="space-y-1">
-          <p className="text-lg font-semibold text-[#f5f7ff] tracking-wide">Connecting to Soundstage Portal...</p>
+          <p className="text-lg font-semibold text-[#f5f7ff] tracking-wide">Connecting to Artist Studio Portal...</p>
           <p className="text-xs text-[#9a9fc4]">Synchronizing artist credentials and studio frequencies</p>
         </div>
       </div>
@@ -382,7 +382,7 @@ export default function PortalPage() {
             <div className="relative z-10 max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#ea6f2a]/15 border border-[#ea6f2a]/30 text-[#ea6f2a] text-xs font-semibold tracking-wider uppercase mb-6">
                 <Radio className="w-3.5 h-3.5 animate-pulse" />
-                Aethelgard Soundstage · Artist Suite
+                StarCast Studio · Artist Suite
               </div>
 
               <h1 className="text-3xl sm:text-5xl font-extrabold text-[#f5f7ff] tracking-tight leading-tight mb-4">
@@ -393,7 +393,7 @@ export default function PortalPage() {
               </h1>
 
               <p className="text-base sm:text-lg text-[#9a9fc4] leading-relaxed mb-8">
-                Join our roster of independent musicians, soundstage collectives, and producers. Claim your official
+                Join our roster of independent musicians, music collectives, and producers. Claim your official
                 artist page, reserve professional studio recording time, clear digital licensing, and reach thousands
                 of listeners directly across the network.
               </p>
@@ -445,7 +445,7 @@ export default function PortalPage() {
                 </div>
                 <CardTitle className="text-lg text-[#f5f7ff]">Studio Time Booking</CardTitle>
                 <CardDescription className="text-sm text-[#9a9fc4]">
-                  Reserve tracked rehearsal hours and professional production time directly at the StarCast Soundstage.
+                  Reserve tracked rehearsal hours and professional production time directly at the StarCast Studio.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -478,7 +478,7 @@ export default function PortalPage() {
           {/* Quick Registration CTA */}
           <div className="rounded-2xl border border-[#38bdf8]/30 bg-gradient-to-r from-[#0284c7]/20 via-[#0c0c3f]/60 to-[#ea6f2a]/15 p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
-              <h3 className="text-xl font-bold text-[#f5f7ff] mb-1">Ready to step onto the soundstage?</h3>
+              <h3 className="text-xl font-bold text-[#f5f7ff] mb-1">Ready to publish your music on StarCast?</h3>
               <p className="text-sm text-[#9a9fc4]">
                 Create a StarCast account or sign in to register your band and claim your artist URL today.
               </p>
@@ -509,7 +509,7 @@ export default function PortalPage() {
               <Music className="w-5 h-5 text-[#ea6f2a]" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-[#f5f7ff]">Artist Portal &amp; Soundstage</h1>
+              <h1 className="text-2xl font-semibold text-[#f5f7ff]">Artist Studio &amp; Portal</h1>
               <p className="text-sm text-[#9a9fc4]">Manage your band profile, book studio time, and track sessions.</p>
             </div>
           </div>
@@ -558,7 +558,7 @@ export default function PortalPage() {
               <ShieldCheck className="w-5 h-5 text-[#20efe0] shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-[#f5f7ff]">Studio Console Privileges</p>
-                <p className="text-xs text-[#9a9fc4]">Staff/admin access to manage, book, and inspect all soundstage acts</p>
+                <p className="text-xs text-[#9a9fc4]">Staff/admin access to manage, book, and inspect all acts</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -654,7 +654,7 @@ export default function PortalPage() {
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-r from-[#ea6f2a]/25 via-[#bc3f00]/15 to-[#20efe0]/15 flex items-center justify-center text-[#9a9fc4] text-xs font-mono">
-                        <span>STARCAST SOUNDSTAGE // NO CUSTOM BANNER</span>
+                        <span>STARCAST ONLINE // NO CUSTOM BANNER</span>
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-black/20 to-transparent pointer-events-none" />
@@ -1176,8 +1176,8 @@ export default function PortalPage() {
             </DialogTitle>
             <DialogDescription className="text-[#9a9fc4]">
               {bandDialog === "new"
-                ? "Create your official soundstage act, custom banner, and avatar. Each account can only create one page."
-                : "Update your soundstage visual branding, bio, and booking contacts."}
+                ? "Create your official band page, custom banner, and avatar. Each account can only create one page."
+                : "Update your visual branding, bio, and booking contacts."}
             </DialogDescription>
           </DialogHeader>
           {error && (
@@ -1190,7 +1190,7 @@ export default function PortalPage() {
             <div className="p-4 rounded-xl bg-[#05052d]/80 border border-[#20205a] space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#20efe0] flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5" /> Visual Branding & Soundstage Media
+                  <ImageIcon className="w-3.5 h-3.5" /> Visual Branding & Artist Media
                 </span>
                 <span className="text-[11px] text-[#9a9fc4]">Banner & profile picture</span>
               </div>
@@ -1198,7 +1198,7 @@ export default function PortalPage() {
               {/* Soundstage Banner */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-[#f5f7ff]">Soundstage Header Banner</Label>
+                  <Label className="text-xs font-medium text-[#f5f7ff]">Page Header Banner</Label>
                   {bandForm.bannerUrl && (
                     <button
                       type="button"
@@ -1397,7 +1397,7 @@ export default function PortalPage() {
             </div>
 
             <div>
-              <Label className="text-xs text-[#f5f7ff]">Bio / Soundstage Description</Label>
+              <Label className="text-xs text-[#f5f7ff]">Bio / Act Description</Label>
               <Textarea
                 rows={3}
                 value={bandForm.bio}

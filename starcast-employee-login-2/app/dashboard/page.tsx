@@ -370,7 +370,7 @@ export default function DashboardPage() {
               Workspaces & Portals
             </h2>
             <p className="text-sm text-[#9a9fc4]">
-              Access your soundstage, studio production controls, and administrative tools.
+              Access your band page, studio production controls, and administrative tools.
             </p>
           </div>
 
@@ -393,7 +393,7 @@ export default function DashboardPage() {
                       <ChevronRight className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#ea6f2a] group-hover:translate-x-1 transition-all" />
                     </h3>
                     <p className="text-sm text-[#9a9fc4] mt-1.5 leading-relaxed">
-                      Manage your band profile, upload songs, customize soundstage banners, and book studio time.
+                      Manage your band profile, upload songs, customize band banners, and book studio time.
                     </p>
                   </div>
                   {userBand ? (

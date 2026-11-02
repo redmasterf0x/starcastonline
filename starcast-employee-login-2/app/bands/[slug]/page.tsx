@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!band) {
     return {
       title: "Act Not Found | StarCast Media",
-      description: "Discover live artists and bands broadcasting on StarCast Soundstage.",
+      description: "Discover live artists and bands broadcasting on StarCast Online.",
       alternates: { canonical: canonicalUrl },
     }
   }
@@ -69,7 +69,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: dynamicOgUrl,
       width: 1200,
       height: 630,
-      alt: `${band.name} on StarCast Soundstage`,
+      alt: `${band.name} on StarCast Online`,
       type: "image/png",
     },
     ...(directLogoUrl
@@ -85,13 +85,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   ]
 
   return {
-    title: { absolute: `${band.name} | StarCast Soundstage` },
+    title: { absolute: `${band.name} | StarCast Online` },
     description,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: `${band.name} | StarCast Soundstage`,
+      title: `${band.name} | StarCast Online`,
       description,
       type: "profile",
       url: canonicalUrl,
@@ -100,7 +100,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: `${band.name} | StarCast Soundstage`,
+      title: `${band.name} | StarCast Online`,
       description,
       images: [dynamicOgUrl],
     },

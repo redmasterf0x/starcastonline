@@ -1167,13 +1167,13 @@ export default function CommunityPage() {
               <div>
                 <div className="flex items-center gap-2 text-[#20efe0] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-1.5">
                   <Radio className="w-4 h-4 text-[#ea6f2a] animate-pulse" />
-                  <span>STARCAST SOUNDSTAGE // TOPEKA RESIDENTS &amp; ACTS</span>
+                  <span>STARCAST BANDS &amp; ARTISTS // TOPEKA</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-[#f5f7ff] tracking-tight">
-                  Soundstage Bands &amp; Artist Roster
+                  Bands &amp; Artist Directory
                 </h2>
                 <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-2xl leading-relaxed">
-                  Discover soundstage musicians, follow their updates, catch live set alerts, and grab direct QR code passes.
+                  Discover regional musicians, follow their updates, catch live set alerts, and grab direct QR code passes.
                 </p>
               </div>
 
@@ -1240,7 +1240,7 @@ export default function CommunityPage() {
             {bandsLoading ? (
               <div className="text-center py-20 text-[#dbe0fb] space-y-3">
                 <div className="w-9 h-9 border-2 border-[#ea6f2a] border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-xs font-mono tracking-wider text-[#20efe0]">TUNING SOUNDSTAGE FREQUENCIES...</p>
+                <p className="text-xs font-mono tracking-wider text-[#20efe0]">TUNING BAND FREQUENCIES...</p>
               </div>
             ) : bandsView === "discover" ? (
               <>
@@ -1249,7 +1249,7 @@ export default function CommunityPage() {
                     <Music className="w-12 h-12 mx-auto mb-3 opacity-40 text-[#ea6f2a]" />
                     <p className="text-base sm:text-lg font-bold text-[#f5f7ff]">
                       {bandsList.length === 0
-                        ? "No registered soundstage acts yet."
+                        ? "No registered bands yet."
                         : "No acts match your search."}
                     </p>
                     <p className="text-sm text-[#dbe0fb] mt-2 max-w-md mx-auto leading-relaxed">
@@ -1468,7 +1468,7 @@ export default function CommunityPage() {
                           onClick={() => {
                             setShareBandData({
                               title: `${post.band_name} Dispatch`,
-                              subtitle: "StarCast Band Soundstage",
+                              subtitle: "StarCast Band Page",
                               url: `${typeof window !== "undefined" ? window.location.origin : ""}/bands/${post.band_slug}#post-${post.id}`,
                               text: `${post.band_name} just shared a new dispatch on StarCast!`,
                             })
@@ -1484,7 +1484,7 @@ export default function CommunityPage() {
 
                         <Button asChild size="sm" variant="ghost" className="text-xs text-[#20efe0] hover:text-white h-8 px-2.5">
                           <Link href={`/bands/${post.band_slug}#post-${post.id}`}>
-                            Visit Soundstage →
+                            Visit Band Page →
                           </Link>
                         </Button>
                       </div>

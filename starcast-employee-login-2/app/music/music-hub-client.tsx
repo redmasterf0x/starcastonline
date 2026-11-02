@@ -9,7 +9,6 @@ import {
   toggleLikeAlbum,
   incrementTrackPlay,
 } from "@/app/actions/band-tracks"
-import { followBand, unfollowBand, type BandDirectoryEntry } from "@/app/actions/band-pages"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -23,40 +22,29 @@ import {
   Search,
   Headphones,
   Sliders,
-  Sparkles,
   Radio,
   Disc3,
   ExternalLink,
   Flame,
-  Clock,
   ArrowRight,
   Heart,
-  Pencil,
   Users,
-  UserPlus,
-  UserCheck,
-  Layers,
   ChevronRight,
   ShieldCheck,
 } from "lucide-react"
 
 import { useGlobalAudio, type GlobalTrack } from "@/components/music/global-audio-context"
-import { EditTrackModal } from "@/components/music/edit-track-modal"
-import { EditAlbumModal } from "@/components/music/edit-album-modal"
-import { EditBandModal } from "@/components/bands/edit-band-modal"
 
 const GENRES = ["All", "Rock", "Indie", "Metal", "Hip Hop", "Electronic", "Pop", "Country", "Acoustic", "Jazz"]
 const TABS = [
   { id: "all", label: "All Tracks", icon: Music },
+  { id: "producers", label: "Producer Beats", icon: Sliders },
   { id: "albums", label: "Albums & EPs", icon: Disc3 },
-  { id: "bands", label: "Bands & Artists", icon: Users },
-  { id: "producers", label: "Producers & Beats", icon: Sliders },
 ]
 
 interface MusicHubClientProps {
   initialTracks: BandTrackItem[]
   initialAlbums: BandAlbumItem[]
-  initialBands: BandDirectoryEntry[]
   currentUser?: { id: string; name?: string; image?: string } | null
 }
 
@@ -70,23 +58,13 @@ function formatDuration(secs: number) {
 export function MusicHubClient({
   initialTracks,
   initialAlbums,
-  initialBands,
   currentUser,
 }: MusicHubClientProps) {
   const [tracks, setTracks] = useState<BandTrackItem[]>(initialTracks)
   const [albums, setAlbums] = useState<BandAlbumItem[]>(initialAlbums)
-  const [bands, setBands] = useState<BandDirectoryEntry[]>(initialBands)
-  const [activeTab, setActiveTab] = useState<"all" | "albums" | "bands" | "producers">("all")
+  const [activeTab, setActiveTab] = useState<"all" | "producers" | "albums">("all")
   const [selectedGenre, setSelectedGenre] = useState("All")
   const [searchQuery, setSearchQuery] = useState("")
-
-  // Edit Modals state
-  const [editingTrack, setEditingTrack] = useState<BandTrackItem | null>(null)
-  const [editingAlbum, setEditingAlbum] = useState<BandAlbumItem | null>(null)
-  const [editingBand, setEditingBand] = useState<BandDirectoryEntry | null>(null)
-
-  // Follow busy state per band
-  const [followBusyMap, setFollowBusyMap] = useState<Record<string, boolean>>({})
 
   const { currentTrack, isPlaying, playTrack, togglePlay } = useGlobalAudio()
 
@@ -173,7 +151,7 @@ export function MusicHubClient({
     }
   }
 
-  // Like Album Handler - CRITICAL: Automatically likes all songs in that album!
+  // Like Album Handler - AUTOMATICALLY likes all songs in that album
   const handleLikeAlbum = async (e: React.MouseEvent, album: BandAlbumItem) => {
     e.preventDefault()
     e.stopPropagation()
@@ -196,7 +174,7 @@ export function MusicHubClient({
       )
     )
 
-    // When liking an album, AUTOMATICALLY like all tracks in that album optimistically!
+    // When liking an album, automatically mark all songs in that album as liked
     if (nextLiked) {
       const albumTrackIdSet = new Set(album.tracks.map((t) => t.id))
       setTracks((prev) =>
@@ -241,56 +219,6 @@ export function MusicHubClient({
     }
   }
 
-  // Follow Band Handler
-  const handleToggleFollowBand = async (e: React.MouseEvent, bandItem: BandDirectoryEntry) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (!currentUser) {
-      toast.error("Please sign in to follow acts.")
-      return
-    }
-
-    if (bandItem.is_owner) {
-      toast.error("You own this band page!")
-      return
-    }
-
-    setFollowBusyMap((prev) => ({ ...prev, [bandItem.id]: true }))
-    const wasFollowing = Boolean(bandItem.is_following)
-    const nextFollowing = !wasFollowing
-    const nextCount = wasFollowing
-      ? Math.max(0, bandItem.follower_count - 1)
-      : bandItem.follower_count + 1
-
-    // Optimistic UI update
-    setBands((prev) =>
-      prev.map((b) =>
-        b.id === bandItem.id ? { ...b, is_following: nextFollowing, follower_count: nextCount } : b
-      )
-    )
-
-    try {
-      if (wasFollowing) {
-        await unfollowBand(bandItem.id)
-        toast.success(`Unfollowed ${bandItem.name}`)
-      } else {
-        await followBand(bandItem.id)
-        toast.success(`Following ${bandItem.name}! You will receive new release updates.`)
-      }
-    } catch (err: any) {
-      // Rollback
-      setBands((prev) =>
-        prev.map((b) =>
-          b.id === bandItem.id ? { ...b, is_following: wasFollowing, follower_count: bandItem.follower_count } : b
-        )
-      )
-      toast.error(err?.message || "Failed to update follow status.")
-    } finally {
-      setFollowBusyMap((prev) => ({ ...prev, [bandItem.id]: false }))
-    }
-  }
-
   // Play full album
   const handlePlayAlbum = (album: BandAlbumItem) => {
     if (!album.tracks || album.tracks.length === 0) return
@@ -330,16 +258,6 @@ export function MusicHubClient({
     return matchesGenre && matchesQuery
   })
 
-  const filteredBands = bands.filter((b) => {
-    const q = searchQuery.toLowerCase().trim()
-    const matchesQuery =
-      !q ||
-      b.name.toLowerCase().includes(q) ||
-      b.genre?.toLowerCase().includes(q) ||
-      b.bio?.toLowerCase().includes(q)
-    return matchesQuery
-  })
-
   const trendingTracks = [...tracks].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 4)
 
   return (
@@ -367,7 +285,7 @@ export function MusicHubClient({
             </h1>
 
             <p className="text-sm sm:text-base text-[#9a9fc4] leading-relaxed">
-              Stream free original tracks, producer beats, and full albums from bands and solo artists. Follow your favorite acts, like tracks to build your library, and support local music.
+              Stream free original tracks, producer beats, and full albums from bands and solo artists. Like tracks to build your library, or visit artist band pages for their complete discography.
             </p>
 
             <div className="pt-2 flex flex-col sm:flex-row items-center gap-3 justify-center md:justify-start">
@@ -376,7 +294,7 @@ export function MusicHubClient({
                 className="bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:opacity-90 text-white font-bold h-12 px-6 rounded-2xl shadow-xl shadow-[#ea6f2a]/25 w-full sm:w-auto"
               >
                 <Link href="/bands">
-                  <Users className="w-5 h-5 mr-2" /> Explore Bands &amp; Artists
+                  <Users className="w-5 h-5 mr-2" /> Explore Bands Directory
                 </Link>
               </Button>
               <Button
@@ -489,8 +407,12 @@ export function MusicHubClient({
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
                   {tab.id === "all" && <Badge className="ml-1 bg-black/40 text-[10px]">{tracks.length}</Badge>}
+                  {tab.id === "producers" && (
+                    <Badge className="ml-1 bg-black/40 text-[10px]">
+                      {tracks.filter((t) => Boolean(t.producer)).length}
+                    </Badge>
+                  )}
                   {tab.id === "albums" && <Badge className="ml-1 bg-black/40 text-[10px]">{albums.length}</Badge>}
-                  {tab.id === "bands" && <Badge className="ml-1 bg-black/40 text-[10px]">{bands.length}</Badge>}
                 </button>
               )
             })}
@@ -508,26 +430,24 @@ export function MusicHubClient({
           </div>
         </div>
 
-        {/* Genre Filter Pills (visible on tracks and albums tabs) */}
-        {activeTab !== "bands" && (
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {GENRES.map((g) => (
-              <button
-                key={g}
-                onClick={() => setSelectedGenre(g)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all ${
-                  selectedGenre === g
-                    ? "bg-[#20efe0] text-[#05051f] border-[#20efe0] shadow-md shadow-[#20efe0]/20"
-                    : "bg-[#0c0c3f] text-[#9a9fc4] border-[#20205a] hover:border-[#ea6f2a]/50 hover:text-[#f5f7ff]"
-                }`}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Genre Filter Pills */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {GENRES.map((g) => (
+            <button
+              key={g}
+              onClick={() => setSelectedGenre(g)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all ${
+                selectedGenre === g
+                  ? "bg-[#20efe0] text-[#05051f] border-[#20efe0] shadow-md shadow-[#20efe0]/20"
+                  : "bg-[#0c0c3f] text-[#9a9fc4] border-[#20205a] hover:border-[#ea6f2a]/50 hover:text-[#f5f7ff]"
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
 
-        {/* ── TAB 1: ALL TRACKS / PRODUCER BEATS ── */}
+        {/* ── TRACKS TAB (ALL TRACKS / PRODUCER BEATS) ── */}
         {(activeTab === "all" || activeTab === "producers") && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -536,6 +456,14 @@ export function MusicHubClient({
                 {activeTab === "producers" ? "Producer Beats & Instrumentals" : "Individual Tracks & Singles"}
                 <span className="text-xs text-[#9a9fc4] font-normal">({filteredTracks.length})</span>
               </h2>
+
+              <Link
+                href="/bands"
+                className="text-xs text-[#20efe0] hover:underline flex items-center gap-1 font-medium"
+              >
+                <span>Browse Bands</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
             {filteredTracks.length === 0 ? (
@@ -595,17 +523,6 @@ export function MusicHubClient({
                           <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-[#05051f]/85 backdrop-blur-md border border-[#20efe0]/30 text-[10px] font-mono text-[#20efe0]">
                             {track.genre}
                           </span>
-                        )}
-
-                        {/* Owner / Admin Quick Edit button */}
-                        {track.canEdit && (
-                          <button
-                            onClick={() => setEditingTrack(track)}
-                            className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#05051f]/85 backdrop-blur-md border border-[#20205a] text-[#ffd166] hover:text-white hover:border-[#ffd166] transition-colors"
-                            title="Edit Song Info (Owner / Admin)"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
                         )}
                       </div>
 
@@ -674,7 +591,7 @@ export function MusicHubClient({
                             href={`/music/${track.slug || track.id}`}
                             className="text-[#ea6f2a] hover:underline font-semibold flex items-center gap-1 text-[11px]"
                           >
-                            Details <ExternalLink className="w-3 h-3" />
+                            Song Page <ExternalLink className="w-3 h-3" />
                           </Link>
                         </div>
                       </div>
@@ -686,7 +603,7 @@ export function MusicHubClient({
           </div>
         )}
 
-        {/* ── TAB 2: ALBUMS & EPS (WITH ALBUM LIKING) ── */}
+        {/* ── ALBUMS & EPS TAB ── */}
         {activeTab === "albums" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -699,6 +616,14 @@ export function MusicHubClient({
                   Liking an album automatically likes and saves all songs in that album to your collection!
                 </p>
               </div>
+
+              <Link
+                href="/bands"
+                className="text-xs text-[#20efe0] hover:underline flex items-center gap-1 font-medium"
+              >
+                <span>Browse Bands</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
             {filteredAlbums.length === 0 ? (
@@ -749,17 +674,6 @@ export function MusicHubClient({
                           <span className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-[#05051f]/85 backdrop-blur-md text-[10px] font-mono text-[#9a9fc4]">
                             {album.releaseYear}
                           </span>
-                        )}
-
-                        {/* Owner / Admin Edit Album button */}
-                        {album.canEdit && (
-                          <button
-                            onClick={() => setEditingAlbum(album)}
-                            className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-[#05051f]/85 backdrop-blur-md border border-[#20205a] text-[#ffd166] hover:text-white hover:border-[#ffd166] transition-colors"
-                            title="Edit Album (Owner / Admin)"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
                         )}
                       </div>
 
@@ -812,176 +726,7 @@ export function MusicHubClient({
             )}
           </div>
         )}
-
-        {/* ── TAB 3: BANDS & ARTISTS DIRECTORY ── */}
-        {activeTab === "bands" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-[#f5f7ff] flex items-center gap-2">
-                  <Users className="w-5 h-5 text-[#ea6f2a]" /> Bands, Solo Artists &amp; Producers
-                  <span className="text-xs text-[#9a9fc4] font-normal">({filteredBands.length})</span>
-                </h2>
-                <p className="text-xs text-[#9a9fc4] mt-0.5">
-                  Follow acts to receive automatic notifications and updates in your community feed whenever they drop new music.
-                </p>
-              </div>
-            </div>
-
-            {filteredBands.length === 0 ? (
-              <div className="py-16 text-center rounded-3xl border border-dashed border-[#20205a] bg-[#0c0c3f]/40 p-8 space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-[#ea6f2a]/10 border border-[#ea6f2a]/30 flex items-center justify-center mx-auto text-[#ea6f2a]">
-                  <Users className="w-8 h-8" />
-                </div>
-                <h3 className="text-lg font-bold text-[#f5f7ff]">No Bands Found</h3>
-                <p className="text-xs text-[#9a9fc4] max-w-md mx-auto">
-                  Try a different search query or explore the directory.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredBands.map((bandItem) => {
-                  const avatar = bandItem.logo_url || "/placeholder.svg"
-                  const isFollowing = Boolean(bandItem.is_following)
-                  const busy = followBusyMap[bandItem.id]
-
-                  return (
-                    <div
-                      key={bandItem.id}
-                      className="rounded-2xl border border-[#20205a] bg-[#0c0c3f]/80 overflow-hidden flex flex-col justify-between group hover:border-[#ea6f2a]/50 transition-all shadow-lg p-5 space-y-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="relative w-12 h-12 rounded-full overflow-hidden bg-[#05051f] border border-[#20205a] shrink-0">
-                            <img src={avatar} alt={bandItem.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div>
-                            <Link
-                              href={`/bands/${bandItem.slug}`}
-                              className="font-bold text-sm sm:text-base text-[#f5f7ff] hover:text-[#20efe0] transition-colors line-clamp-1 block"
-                            >
-                              {bandItem.name}
-                            </Link>
-                            <span className="text-[11px] text-[#ffd166] capitalize">
-                              {bandItem.type || "Band"} • {bandItem.genre || "Music"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Owner / Admin Edit Band button */}
-                        {bandItem.is_owner && (
-                          <button
-                            onClick={() => setEditingBand(bandItem)}
-                            className="p-1.5 rounded-lg bg-[#05051f] border border-[#20205a] text-[#ffd166] hover:text-white transition-colors"
-                            title="Edit Band (Owner / Admin)"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-
-                      {bandItem.bio && (
-                        <p className="text-xs text-[#9a9fc4] line-clamp-2 leading-relaxed">
-                          {bandItem.bio}
-                        </p>
-                      )}
-
-                      <div className="pt-3 border-t border-[#20205a]/60 flex items-center justify-between">
-                        <span className="text-xs text-[#9a9fc4]">
-                          <strong className="text-[#f5f7ff] font-bold">{bandItem.follower_count}</strong>{" "}
-                          {bandItem.follower_count === 1 ? "follower" : "followers"}
-                        </span>
-
-                        <div className="flex items-center gap-2">
-                          {/* Follow Button */}
-                          {!bandItem.is_owner && (
-                            <Button
-                              size="sm"
-                              variant={isFollowing ? "outline" : "default"}
-                              disabled={busy}
-                              onClick={(e) => handleToggleFollowBand(e, bandItem)}
-                              className={`text-xs h-8 px-3 rounded-xl font-semibold transition-all ${
-                                isFollowing
-                                  ? "border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/15"
-                                  : "bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:opacity-90 text-white shadow-md shadow-[#ea6f2a]/20"
-                              }`}
-                            >
-                              {isFollowing ? (
-                                <>
-                                  <UserCheck className="w-3.5 h-3.5 mr-1 text-[#20efe0]" /> Following
-                                </>
-                              ) : (
-                                <>
-                                  <UserPlus className="w-3.5 h-3.5 mr-1" /> Follow
-                                </>
-                              )}
-                            </Button>
-                          )}
-
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs h-8 px-2 text-[#9a9fc4] hover:text-[#f5f7ff]"
-                          >
-                            <Link href={`/bands/${bandItem.slug}`}>Page</Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </main>
-
-      {/* ── MODALS FOR EDITING ── */}
-      {/* 1. Edit Track Modal */}
-      <EditTrackModal
-        track={editingTrack}
-        isOpen={Boolean(editingTrack)}
-        onClose={() => setEditingTrack(null)}
-        onSaved={(updated) => {
-          setTracks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-        }}
-      />
-
-      {/* 2. Edit Album Modal */}
-      <EditAlbumModal
-        album={editingAlbum}
-        isOpen={Boolean(editingAlbum)}
-        onClose={() => setEditingAlbum(null)}
-        onSaved={(newName, newCover) => {
-          if (editingAlbum) {
-            setAlbums((prev) =>
-              prev.map((a) =>
-                a.bandId === editingAlbum.bandId && a.albumName === editingAlbum.albumName
-                  ? { ...a, albumName: newName, coverArtUrl: newCover || a.coverArtUrl }
-                  : a
-              )
-            )
-            setTracks((prev) =>
-              prev.map((t) =>
-                t.bandId === editingAlbum.bandId && t.albumName === editingAlbum.albumName
-                  ? { ...t, albumName: newName, coverArtUrl: newCover || t.coverArtUrl }
-                  : t
-              )
-            )
-          }
-        }}
-      />
-
-      {/* 3. Edit Band Modal */}
-      <EditBandModal
-        band={editingBand}
-        isOpen={Boolean(editingBand)}
-        onClose={() => setEditingBand(null)}
-        onSaved={(updated) => {
-          setBands((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)))
-        }}
-      />
 
       <Footer />
     </div>
