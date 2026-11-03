@@ -20,10 +20,10 @@ export default async function MusicPage() {
   const session = await auth.api.getSession({ headers: await headers() })
   const currentUser = session?.user
     ? {
-        id: session.user.id,
-        name: session.user.name,
-        image: session.user.image || undefined,
-      }
+      id: session.user.id,
+      name: session.user.name,
+      image: session.user.image || undefined,
+    }
     : null
 
   const tracks = await getAllPublicTracks({ limit: 500 })

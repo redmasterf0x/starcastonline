@@ -10,7 +10,7 @@ export const revalidate = 1800 // Revalidate every 30 minutes
 export const metadata: Metadata = {
   title: "Watch Topeka Shows & Live Broadcasts | StarCast Media YouTube Network",
   description:
-    "Stream uncut podcasts, interviews, and soundstage music performances directly from StarCast Media (@starcastlivemedia) — Topeka's premier YouTube media company and video broadcast studio. Featuring The Observation Deck, The Psyco G Spot, Star Talk, Talkin' With 40, and Hollywood: After Babylon.",
+    "Stream uncut podcasts, interviews, and live music studio performances directly from StarCast Media (@starcastlivemedia) — Topeka's premier YouTube media company and video broadcast studio. Featuring The Observation Deck, The Psyco G Spot, Star Talk, Talkin' With 40, The Middle Show, and Hollywood: After Babylon.",
   keywords: [
     "youtube media company topeka",
     "watch starcast media",
@@ -22,8 +22,9 @@ export const metadata: Metadata = {
     "star talk topeka",
     "the psyco g spot",
     "talkin with 40",
+    "the middle show topeka",
     "hollywood after babylon",
-    "live soundstage topeka",
+    "live music studio topeka",
     "topeka podcast studio",
     "streaming media topeka",
     "kansas live media",
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Watch Shows & Live Broadcasts | StarCast Media YouTube Network",
     description:
-      "Broadcast portal streaming directly from Topeka's premier media company @starcastlivemedia. Stream The Observation Deck, Psyco G Spot, Star Talk, and live soundstage sessions.",
+      "Broadcast portal streaming directly from Topeka's premier media company @starcastlivemedia. Stream The Observation Deck, Psyco G Spot, Star Talk, and live studio sessions.",
     url: "https://starcast.online/watch",
     siteName: "StarCast Media | Topeka Media Company",
     images: [
@@ -53,7 +54,7 @@ export const metadata: Metadata = {
     creator: "@starcastlivemedia",
     title: "Watch Shows & Live Streams | StarCast Media Topeka",
     description:
-      "Stream uncut podcasts, interviews, and soundstage music performances directly from @starcastlivemedia on StarCast Online.",
+      "Stream uncut podcasts, interviews, and live music performances directly from @starcastlivemedia on StarCast Online.",
     images: ["https://starcast.online/images/spacemanlogo.png"],
   },
 }

@@ -86,10 +86,10 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
       prev.map((b) =>
         b.id === band.id
           ? {
-              ...b,
-              is_following: next,
-              follower_count: b.follower_count + (next ? 1 : -1),
-            }
+            ...b,
+            is_following: next,
+            follower_count: b.follower_count + (next ? 1 : -1),
+          }
           : b
       )
     )
@@ -114,10 +114,10 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
         prev.map((b) =>
           b.id === band.id
             ? {
-                ...b,
-                is_following: !next,
-                follower_count: b.follower_count + (!next ? 1 : -1),
-              }
+              ...b,
+              is_following: !next,
+              follower_count: b.follower_count + (!next ? 1 : -1),
+            }
             : b
         )
       )
@@ -216,11 +216,10 @@ export function BandsDirectoryClient({ initialBands }: BandsDirectoryClientProps
               <button
                 key={opt.value}
                 onClick={() => setTypeFilter(opt.value)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  typeFilter === opt.value
+                className={`px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${typeFilter === opt.value
                     ? "bg-[#20efe0] text-[#05051f] shadow-[0_0_15px_rgba(32,239,224,0.3)]"
                     : "bg-[#0c0c3f]/60 text-[#9a9fc4] border border-[#20205a]/60 hover:border-[#20efe0]/40 hover:text-white"
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -359,10 +358,10 @@ function BandCard({
                   {band.type === "artist"
                     ? "Solo Artist"
                     : band.type === "producer"
-                    ? "Producer"
-                    : band.type === "dj"
-                    ? "DJ / Electronic"
-                    : "Band"}
+                      ? "Producer"
+                      : band.type === "dj"
+                        ? "DJ / Electronic"
+                        : "Band"}
                 </Badge>
 
                 {band.genre && (
@@ -420,11 +419,10 @@ function BandCard({
             <Button
               variant="outline"
               onClick={() => onToggleFollow(band)}
-              className={`text-xs sm:text-sm h-11 rounded-xl font-medium transition-all px-3.5 ${
-                band.is_following
+              className={`text-xs sm:text-sm h-11 rounded-xl font-medium transition-all px-3.5 ${band.is_following
                   ? "border-emerald-700/50 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/60"
                   : "border-[#20205a] text-[#dbe0fb] hover:text-white hover:border-[#ea6f2a]/50"
-              }`}
+                }`}
             >
               {band.is_following ? (
                 <>

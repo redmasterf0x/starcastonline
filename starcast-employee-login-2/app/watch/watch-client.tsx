@@ -33,8 +33,9 @@ const SHOW_TABS = [
   { id: "The Observation Deck", label: "The Observation Deck" },
   { id: "The Psyco G Spot", label: "The Psyco G Spot" },
   { id: "Talkin' With 40", label: "Talkin' With 40" },
-  { id: "Star Talk", label: "Star Talk" },
+  { id: "The Middle Show", label: "The Middle Show" },
   { id: "Hollywood: After Babylon", label: "Hollywood: After Babylon" },
+  { id: "Star Talk", label: "Star Talk" },
   { id: "Performances", label: "Live Performances" },
 ]
 
@@ -485,7 +486,7 @@ export function WatchClient({ initialVideos }: WatchClientProps) {
             {/* Row 6: Live Performances */}
             {performanceVideos.length > 0 && (
               <VideoCarouselRow
-                title="Soundstage Live Performances"
+                title="Live Studio Performances"
                 subtitle="Raw acoustic sessions, full-band live takes, and studio concert recordings"
                 videos={performanceVideos}
                 onPlay={handleOpenVideo}
