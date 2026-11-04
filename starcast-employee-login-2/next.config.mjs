@@ -60,6 +60,22 @@ const nextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/google-merchant-feed.xml',
+        destination: '/api/merchant-center/feed',
+      },
+      {
+        source: '/products.xml',
+        destination: '/api/merchant-center/feed',
+      },
+      {
+        source: '/google:hash([a-zA-Z0-9]+).html',
+        destination: '/api/merchant-center/verify?code=:hash',
+      },
+    ]
+  },
 }
 
 export default nextConfig

@@ -86,8 +86,42 @@ export default async function ProductPage({ params }: Props) {
     .filter((p) => p.category === product.category || product.category === "All")
     .slice(0, 4)
 
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    image: product.images.length > 0
+      ? product.images.map((img) => (img.startsWith("http") ? img : `https://starcast.online${img}`))
+      : ["https://starcast.online/images/spacemanlogo.png"],
+    description: product.description || `Buy ${product.title} at StarCast Supply Company.`,
+    sku: product.handle,
+    brand: {
+      "@type": "Brand",
+      name: "StarCast Supply Co.",
+    },
+    offers: {
+      "@type": "Offer",
+      url: `https://starcast.online/merch/${product.handle}`,
+      priceCurrency: product.currencyCode || "USD",
+      price: (product.rawPrice || product.minPrice || 0).toFixed(2),
+      availability: product.availableForSale
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
+      seller: {
+        "@type": "Organization",
+        name: "StarCast Media LLC",
+      },
+    },
+  }
+
   return (
     <CartProvider>
+      {/* Schema.org Product structured data for Google Merchant Center & Shopping crawlers */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <div className="public-shell min-h-screen text-[#f5f7ff] bg-[#05051f]">
         <div className="relative z-10">
           <ResponsiveHeader currentPage="/merch" />

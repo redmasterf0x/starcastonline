@@ -121,6 +121,9 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-capable": "yes",
   },
   manifest: "/manifest.webmanifest",
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+  },
   category: "Media Production & Broadcasting",
   classification: "Media Company, Video Production, Broadcasting & Advertising",
   alternates: {
