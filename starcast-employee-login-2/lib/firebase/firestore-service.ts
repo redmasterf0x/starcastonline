@@ -56,18 +56,23 @@ export interface CommunityPostRecord {
 
 // Inbound Email Operations
 export async function saveInboundEmail(email: Omit<InboundEmailRecord, "id" | "createdAt"> & { id?: string }): Promise<string> {
-  const db = getFirestoreDb();
-  const collection = db.collection("inbound_emails");
-  const docRef = email.id ? collection.doc(email.id) : collection.doc();
-  
-  await docRef.set({
-    ...email,
-    id: docRef.id,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  }, { merge: true });
+  try {
+    const db = getFirestoreDb();
+    const collection = db.collection("inbound_emails");
+    const docRef = email.id ? collection.doc(email.id) : collection.doc();
+    
+    await docRef.set({
+      ...email,
+      id: docRef.id,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
 
-  return docRef.id;
+    return docRef.id;
+  } catch (err: any) {
+    console.warn("[Firestore] saveInboundEmail fallback (not configured or unavailable):", err?.message || err);
+    return email.id || "fallback-inbound-id";
+  }
 }
 
 export async function getInboundEmails(limitCount: number = 50): Promise<InboundEmailRecord[]> {
