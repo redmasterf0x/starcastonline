@@ -24,6 +24,7 @@ const siteLinks = [
   { label: "Sponsor", href: "/sponsors" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
+  { label: "Return Policy", href: "/return-policy" },
   { label: "Music Agreement", href: "/music/agreement" },
 ]
 
@@ -94,6 +95,10 @@ export function Footer({ isTopLevel = false }: FooterProps = {}) {
             <span className="text-white/20">&middot;</span>
             <Link href="/terms" className="text-[#aeb2ce] hover:text-[#ffd166] transition-colors underline-offset-2 hover:underline">
               Terms &amp; Conditions
+            </Link>
+            <span className="text-white/20">&middot;</span>
+            <Link href="/return-policy" className="text-[#aeb2ce] hover:text-[#20efe0] transition-colors underline-offset-2 hover:underline">
+              Return Policy
             </Link>
           </div>
           <p className="font-medium uppercase tracking-[0.18em] text-[#d77a42]">To media and beyond</p>

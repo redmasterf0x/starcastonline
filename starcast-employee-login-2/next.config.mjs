@@ -58,6 +58,16 @@ const nextConfig = {
         destination: '/delete-account',
         permanent: true,
       },
+      {
+        source: '/merch/returns',
+        destination: '/return-policy',
+        permanent: true,
+      },
+      {
+        source: '/refund-policy',
+        destination: '/return-policy',
+        permanent: true,
+      },
     ]
   },
   async rewrites() {

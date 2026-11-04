@@ -388,11 +388,14 @@ export function ProductDetail({ product, relatedProducts }: ProductDetailProps) 
               <div className="text-[11px] font-bold text-white">Fast Shipping</div>
               <div className="text-[10px] text-[#7f84ad]">Direct tracking email</div>
             </div>
-            <div className="rounded-xl border border-[#20205a]/80 bg-[#05052d]/60 p-3 text-center space-y-1">
-              <RotateCcw className="w-5 h-5 mx-auto text-[#ea6f2a]" />
-              <div className="text-[11px] font-bold text-white">StarCast Quality</div>
-              <div className="text-[10px] text-[#7f84ad]">100% Broadcast merch</div>
-            </div>
+            <Link
+              href="/return-policy"
+              className="rounded-xl border border-[#20205a]/80 bg-[#05052d]/60 p-3 text-center space-y-1 hover:border-[#ea6f2a]/60 transition-colors block group"
+            >
+              <RotateCcw className="w-5 h-5 mx-auto text-[#ea6f2a] group-hover:scale-110 transition-transform" />
+              <div className="text-[11px] font-bold text-white group-hover:text-[#ffd166] transition-colors">30-Day Returns</div>
+              <div className="text-[10px] text-[#20efe0] group-hover:underline">Free Return Labels →</div>
+            </Link>
           </div>
         </div>
       </div>
