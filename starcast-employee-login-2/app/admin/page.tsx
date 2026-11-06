@@ -37,7 +37,7 @@ import {
   UserPlus, UserMinus, Building2, ExternalLink, Star, Calendar,
   TrendingUp, BarChart3, Settings, ChevronRight, Sparkles, Music,
   Ban, ShieldCheck, Ticket, CheckCircle2, AlertCircle, DollarSign,
-  LifeBuoy, Headphones, ShoppingBag,
+  LifeBuoy, Headphones,
 } from "lucide-react"
 
 interface User {
@@ -378,13 +378,6 @@ export default function AdminPage() {
               <Music className="w-4 h-4" />
               Upload &amp; Post Song
             </Button>
-            <Link
-              href="/admin/merchant"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#ffd166] via-[#f2a04a] to-[#ea6f2a] text-[#05052d] font-bold text-sm hover:brightness-110 shadow-lg shadow-[#ffd166]/25 transition-all"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              Merchant API
-            </Link>
             <Link
               href="/admin/support"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#ea6f2a] via-[#f2a04a] to-[#ffd166] text-[#05052d] font-bold text-sm hover:brightness-110 shadow-lg shadow-[#ea6f2a]/25 transition-all"
