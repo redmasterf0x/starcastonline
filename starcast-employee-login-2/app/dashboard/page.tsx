@@ -375,8 +375,8 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Artist Portal Card */}
-            <Link href="/portal" className="block group h-full">
+            {/* Music & Studio Card */}
+            <Link href="/music" className="block group h-full">
               <Card className="h-full border border-[#20205a] bg-[#0c0c3f]/60 transition-all hover:border-[#ea6f2a]/60 hover:shadow-[0_0_25px_rgba(234,111,42,0.15)] group-hover:bg-[#0c0c3f]/80">
                 <CardContent className="p-5 flex flex-col justify-between h-full">
                   <div>
@@ -385,15 +385,15 @@ export default function DashboardPage() {
                         <Music className="w-5 h-5" />
                       </div>
                       <Badge variant="outline" className="border-[#ea6f2a]/40 text-[#ea6f2a] bg-[#ea6f2a]/10 text-[11px]">
-                        Soundstage
+                        Music
                       </Badge>
                     </div>
                     <h3 className="text-lg font-semibold text-[#f5f7ff] group-hover:text-[#ea6f2a] transition-colors flex items-center justify-between">
-                      Artist Portal
+                      Music &amp; Artist Pages
                       <ChevronRight className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#ea6f2a] group-hover:translate-x-1 transition-all" />
                     </h3>
                     <p className="text-sm text-[#9a9fc4] mt-1.5 leading-relaxed">
-                      Manage your band profile, upload songs, customize band banners, and book studio time.
+                      Stream songs, manage your Artist, Band, Producer, or DJ page, upload tracks, and edit your music catalog.
                     </p>
                   </div>
                   {userBand ? (

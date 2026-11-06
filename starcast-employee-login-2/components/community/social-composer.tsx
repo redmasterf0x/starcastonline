@@ -291,7 +291,7 @@ export function SocialComposer({
                   <Textarea
                     value={deckContent}
                     onChange={(e) => setDeckContent(e.target.value)}
-                    placeholder="Broadcast to the network... Paste YouTube, Spotify, or Soundstage links, or attach a StarVote poll!"
+                    placeholder="Broadcast to the network... Paste YouTube, Spotify, or StarCast Music links, or attach a StarVote poll!"
                     maxLength={2000}
                     className="w-full bg-[#05052d]/90 border-[#20205a] text-[#f5f7ff] rounded-2xl min-h-[90px] resize-none text-sm sm:text-base p-3.5 placeholder:text-[#6b7299] focus-visible:ring-[#ffd166]/50"
                   />
@@ -454,7 +454,7 @@ export function SocialComposer({
               <Textarea
                 value={discussionContent}
                 onChange={(e) => setDiscussionContent(e.target.value)}
-                placeholder="Share your thoughts, review a soundstage track, or start a thread... Links to YouTube & Spotify embed automatically!"
+                placeholder="Share your thoughts, review a song, or start a thread... Links to YouTube & Spotify embed automatically!"
                 className="w-full bg-[#05052d]/90 border-[#20205a] text-[#f5f7ff] rounded-2xl min-h-[100px] resize-none text-sm p-3.5 placeholder:text-[#6b7299] focus-visible:ring-[#ea6f2a]/50"
               />
 

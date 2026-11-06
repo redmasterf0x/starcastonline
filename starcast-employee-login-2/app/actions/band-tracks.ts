@@ -792,7 +792,7 @@ export async function addBandTrack(bandId: string, input: TrackInput) {
 
       const postBody =
         input.description?.trim() ||
-        `🎵 New release: "${input.title.trim()}" is now streaming on the soundstage!`
+        `🎵 New release: "${input.title.trim()}" is now streaming on StarCast Music!`
 
       await db.insert(bandPosts).values({
         bandId,

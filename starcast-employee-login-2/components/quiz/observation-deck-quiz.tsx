@@ -376,7 +376,7 @@ function getRank(score: number, total: number) {
   }
   if (pct >= 60) {
     return {
-      title: "Soundstage Regular",
+      title: "Studio Regular",
       emoji: "🎸",
       badgeColor: "from-[#ea6f2a] to-[#ffd166]",
       desc: "Solid score! You catch the live shows and know Topeka's creative music and broadcast pulse.",

@@ -85,7 +85,7 @@ export function LinkTree({ links }: { links: LinkItem[] }) {
       <div className="flex items-center gap-2 mb-2">
         <Radio className="w-4 h-4 text-[#ea6f2a]" />
         <h3 className="text-xs font-mono font-bold tracking-widest uppercase text-[#9a9fc4]">
-          Artist Links &amp; Soundstage Channels
+          Artist Links &amp; Channels
         </h3>
       </div>
 

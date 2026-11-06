@@ -600,9 +600,9 @@ export function BandPageClient({
             variant="outline"
             className="border-[#20efe0]/35 bg-[#0c0c3f]/55 text-[#c9fbf7] shadow-[0_0_20px_rgba(32,239,224,0.08)] hover:border-[#20efe0]/60 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff] rounded-xl h-10 sm:h-11 px-4 text-xs sm:text-sm font-semibold"
           >
-            <Link href="/bands">
+            <Link href="/music?tab=artists">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Bands Directory
+              Back to Music
             </Link>
           </Button>
 
@@ -693,12 +693,12 @@ export function BandPageClient({
                   </h1>
                   <Badge className="bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/40 font-mono text-xs uppercase px-2.5 py-0.5">
                     {band.type === "artist"
-                      ? "Solo Artist"
+                      ? "Artist Page"
                       : band.type === "producer"
-                      ? "Producer"
+                      ? "Producer Page"
                       : band.type === "dj"
-                      ? "DJ / Electronic"
-                      : "Band"}
+                      ? "DJ Page"
+                      : "Band Page"}
                   </Badge>
                   {band.genre && (
                     <Badge variant="outline" className="border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10 font-mono text-xs">
@@ -753,7 +753,15 @@ export function BandPageClient({
                     ) : (
                       <Bell className="w-4 h-4 mr-2" />
                     )}
-                    {isFollowing ? "Following Band (Alerts Active)" : "Follow Band"}
+                    {isFollowing
+                      ? "Following (Alerts Active)"
+                      : band.type === "artist"
+                      ? "Follow Artist"
+                      : band.type === "producer"
+                      ? "Follow Producer"
+                      : band.type === "dj"
+                      ? "Follow DJ"
+                      : "Follow Band"}
                   </Button>
                 ) : (
                   <Button
@@ -762,7 +770,13 @@ export function BandPageClient({
                   >
                     <Link href="/login">
                       <Bell className="w-4 h-4 mr-2" />
-                      Follow Band
+                      {band.type === "artist"
+                        ? "Follow Artist"
+                        : band.type === "producer"
+                        ? "Follow Producer"
+                        : band.type === "dj"
+                        ? "Follow DJ"
+                        : "Follow Band"}
                     </Link>
                   </Button>
                 )
@@ -802,18 +816,15 @@ export function BandPageClient({
                     className="border-[#ffd166]/50 bg-[#ffd166]/10 text-[#ffd166] hover:bg-[#ffd166]/20 rounded-xl h-11 sm:h-12 px-5 text-sm font-semibold"
                   >
                     <Pencil className="w-4 h-4 mr-2" />
-                    Edit Act Profile
+                    Edit Page
                   </Button>
 
                   <Button
-                    asChild
-                    variant="outline"
-                    className="border-[#ea6f2a]/50 text-[#ea6f2a] hover:bg-[#ea6f2a]/15 rounded-xl ml-auto h-11 sm:h-12 px-5 text-sm font-semibold"
+                    onClick={() => setUploadModalOpen(true)}
+                    className="bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] hover:opacity-95 text-white rounded-xl ml-auto h-11 sm:h-12 px-5 text-sm font-bold shadow-lg shadow-[#ea6f2a]/20"
                   >
-                    <Link href="/portal">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Artist Portal Studio
-                    </Link>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Song / Track
                   </Button>
                 </>
               )}

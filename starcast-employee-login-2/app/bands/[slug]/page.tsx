@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     rawBio.length > 170
       ? rawBio.slice(0, 167) + "..."
-      : rawBio || `Listen to music, get tickets, and follow ${band.name} on the StarCast Soundstage.`
+      : rawBio || `Listen to music, get tickets, and follow ${band.name} on StarCast Music.`
 
   const dynamicOgUrl = `${baseUrl}/api/og-band/${encodedSlug}`
 

@@ -107,7 +107,7 @@ const INITIAL_BANDS: Array<{
     type: "band",
     slug: "starcast-sessions",
     genre: "Space Rock / Neo-Psychedelia",
-    bio: "The official resident soundstage collective for StarCast Online. Performing live broadcasts, interstellar jam sessions, and sonic experiments direct from Studio A.",
+    bio: "The official resident music collective for StarCast Online. Performing live broadcasts, interstellar jam sessions, and sonic experiments direct from Studio A.",
     logoUrl: "/images/starcast-mascot.png",
     bannerUrl: "",
     isPublic: true,
@@ -331,10 +331,13 @@ export async function listPublicBands(): Promise<BandDirectoryEntry[]> {
   }
 
   const bandIds = rows.map((b) => b.id)
-  const [followerCounts, followed] = await Promise.all([
+  const [followerCounts, followed, perms] = await Promise.all([
     getFollowerCounts(bandIds),
     getFollowedBandIds(viewerId, bandIds),
+    viewerId != null ? getViewerPermissions() : Promise.resolve(null),
   ])
+
+  const isAdmin = Boolean(perms?.isAdmin)
 
   return rows.map((b) => ({
     id: b.id,
@@ -347,7 +350,7 @@ export async function listPublicBands(): Promise<BandDirectoryEntry[]> {
     banner_url: b.bannerUrl ?? "",
     follower_count: followerCounts.get(b.id) ?? 0,
     is_following: followed.has(b.id),
-    is_owner: viewerId != null && viewerId === b.ownerUserId,
+    is_owner: isAdmin || (viewerId != null && viewerId === b.ownerUserId),
   }))
 }
 

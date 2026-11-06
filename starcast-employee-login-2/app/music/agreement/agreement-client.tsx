@@ -93,7 +93,7 @@ export function MusicAgreementClient() {
                   STARCAST MEDIA
                 </span>
                 <span className="block text-xs font-mono text-[#ffd166] print:text-gray-600 uppercase tracking-widest">
-                  Live Media &amp; Soundstage Broadcast Network
+                  Live Media &amp; Music Broadcast Network
                 </span>
               </div>
             </div>
@@ -141,7 +141,7 @@ export function MusicAgreementClient() {
               <span className="text-[#ea6f2a] print:text-black font-mono">1.</span> PARTIES &amp; SCOPE
             </h2>
             <p>
-              This Agreement is entered into between <strong>StarCast Media LLC</strong> (&quot;StarCast&quot; or &quot;Platform&quot;) and the individual, band, record producer, or musical act uploading sound recordings to StarCast Online (&quot;Artist&quot;, &quot;Musician&quot;, or &quot;Licensor&quot;). This Agreement governs all audio recordings, tracks, singles, EPs, albums, lyrics, and artwork uploaded through the StarCast Artist Portal or soundstage features.
+              This Agreement is entered into between <strong>StarCast Media LLC</strong> (&quot;StarCast&quot; or &quot;Platform&quot;) and the individual, band, record producer, DJ, or musical act uploading sound recordings to StarCast Online (&quot;Artist&quot;, &quot;Musician&quot;, or &quot;Licensor&quot;). This Agreement governs all audio recordings, tracks, singles, EPs, albums, lyrics, and artwork uploaded through StarCast Music or Artist/Band/Producer/DJ pages.
             </p>
           </section>
 
@@ -245,7 +245,7 @@ export function MusicAgreementClient() {
               </div>
               <div className="p-4 rounded-xl border border-[#20205a] print:border-gray-400 bg-[#05051f] print:bg-white space-y-2 text-xs">
                 <div className="font-serif italic text-base text-white print:text-black">
-                  StarCast Media Legal &amp; Soundstage Registry
+                  StarCast Media Legal &amp; Music Registry
                 </div>
                 <div><strong>Entity:</strong> StarCast Live Media LLC</div>
                 <div><strong>Location:</strong> Topeka, Kansas, USA</div>

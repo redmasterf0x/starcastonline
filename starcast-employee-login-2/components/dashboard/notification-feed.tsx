@@ -281,7 +281,7 @@ export function NotificationFeed() {
                       ? n.postTitle.includes("||")
                         ? n.postTitle.split("||")
                         : [n.postTitle, ""]
-                      : ["Band Soundstage", ""]
+                      : ["Artist / Band Page", ""]
 
                     return (
                       <div className="flex-1 min-w-0 text-xs space-y-1">
@@ -383,7 +383,7 @@ export function NotificationFeed() {
                               href={bandSlug ? `/bands/${bandSlug}` : "/community"}
                               className="text-[11px] text-[#20efe0] hover:text-white inline-flex items-center gap-1 font-semibold bg-[#20efe0]/10 hover:bg-[#20efe0]/20 px-2.5 py-1 rounded-lg border border-[#20efe0]/30 transition-colors"
                             >
-                              <Radio className="w-3 h-3 text-[#38ef7d]" /> Visit Soundstage <ExternalLink className="w-2.5 h-2.5" />
+                              <Radio className="w-3 h-3 text-[#38ef7d]" /> Visit Page <ExternalLink className="w-2.5 h-2.5" />
                             </Link>
                             <button
                               type="button"
@@ -393,7 +393,7 @@ export function NotificationFeed() {
                                   ? `${window.location.origin}/bands/${bandSlug || ""}`
                                   : `https://starcast.online/bands/${bandSlug || ""}`
                                 setShareItem({
-                                  title: bandTitle || "StarCast Band Soundstage",
+                                  title: bandTitle || "StarCast Music Page",
                                   subtitle: n.snippet || undefined,
                                   url,
                                 })

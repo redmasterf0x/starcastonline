@@ -644,7 +644,7 @@ export default function PortalPage() {
               <>
                 {/* Band profile card */}
                 <Card className="border-[#20205a]/50 bg-[#0c0c3f]/60 overflow-hidden">
-                  {/* Soundstage Banner */}
+                  {/* Artist / Band Banner */}
                   <div className="relative w-full h-36 sm:h-52 bg-[#05052d] overflow-hidden group">
                     {selectedBand.banner_url ? (
                       <img
@@ -1195,7 +1195,7 @@ export default function PortalPage() {
                 <span className="text-[11px] text-[#9a9fc4]">Banner & profile picture</span>
               </div>
 
-              {/* Soundstage Banner */}
+              {/* Artist / Band Banner */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-[#f5f7ff]">Page Header Banner</Label>

@@ -400,7 +400,7 @@ function BandCard({
           >
             <Link href={`/bands/${band.slug}`}>
               <Disc className="w-4 h-4 mr-1.5 text-[#20efe0]" />
-              Soundstage
+              Music
             </Link>
           </Button>
 

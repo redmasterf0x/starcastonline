@@ -100,7 +100,7 @@ export function BandShareModal({
                 Share With Fans &amp; Friends
               </DialogTitle>
               <DialogDescription className="text-xs text-[#9a9fc4]">
-                Spread the soundstage broadcast across social channels or copy the direct link.
+                Spread the music across social channels or copy the direct link.
               </DialogDescription>
             </div>
           </div>

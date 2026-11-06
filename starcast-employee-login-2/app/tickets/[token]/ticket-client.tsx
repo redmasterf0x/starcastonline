@@ -175,7 +175,7 @@ export function TicketClient({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#ea6f2a] animate-pulse print:hidden" />
                 <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#ea6f2a] print:text-black font-mono">
-                  StarCast Live Soundstage
+                  StarCast Live Music
                 </span>
               </div>
 

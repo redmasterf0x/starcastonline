@@ -22,7 +22,7 @@ import {
 export const metadata: Metadata = {
   title: "Terms and Conditions | StarCast Online",
   description:
-    "Comprehensive Terms of Service, soundstage rules, 100% artist music rights, acoustic fingerprinting compliance, live ticketing, community standards, and SMS terms for StarCast Online.",
+    "Comprehensive Terms of Service, studio rules, 100% artist music rights, acoustic fingerprinting compliance, live ticketing, community standards, and SMS terms for StarCast Online.",
 }
 
 export default function TermsPage() {
@@ -62,7 +62,7 @@ export default function TermsPage() {
             Welcome to the StarCast Media Ecosystem
           </div>
           <p className="leading-relaxed">
-            StarCast Online (<strong>starcast.online</strong>) is a unified multimedia network: a broadcast network for original shows and live programming, an artist soundstage with 100% artist-owned music streaming and acoustic fingerprint protections, a live event ticketing exchange, an interactive member community, an official merchandise storefront, and a production studio. These Terms define rights, obligations, and safety across all platform features.
+            StarCast Online (<strong>starcast.online</strong>) is a unified multimedia network: a broadcast network for original shows and live programming, an artist, band, producer, and DJ music platform with 100% artist-owned music streaming and acoustic fingerprint protections, a live event ticketing exchange, an interactive member community, an official merchandise storefront, and a production studio. These Terms define rights, obligations, and safety across all platform features.
           </p>
         </div>
 
@@ -146,7 +146,7 @@ export default function TermsPage() {
               <Music className="w-5 h-5 text-[#ffd166]" /> 4. Artist, Band &amp; Music Rights (100% Artist Ownership)
             </h2>
             <p>
-              StarCast Online is designed from the ground up as a pro-artist soundstage and music portal:
+              StarCast Online is designed from the ground up as a pro-artist music and studio platform:
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
@@ -287,10 +287,10 @@ export default function TermsPage() {
           {/* Section 10 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#f5f7ff] flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#ffd166]" /> 10. Studio Rehearsal Bookings &amp; Soundstage Passes
+              <Calendar className="w-5 h-5 text-[#ffd166]" /> 10. Studio Rehearsal Bookings &amp; Studio Passes
             </h2>
             <p>
-              Rehearsal studio slots, equipment rentals, soundstage tracking sessions, and monthly passes at StarCast Soundstage in Topeka, Kansas, are subject to booking confirmation and venue house rules:
+              Rehearsal studio slots, equipment rentals, studio tracking sessions, and monthly passes at StarCast Studio in Topeka, Kansas, are subject to booking confirmation and venue house rules:
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>

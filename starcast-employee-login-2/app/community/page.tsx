@@ -1153,7 +1153,7 @@ export default function CommunityPage() {
           </div>
         )}
 
-        {/* Bands Tab — Soundstage Artists & Resident Acts */}
+        {/* Bands Tab — Music Artists, Bands, Producers & DJs */}
         {activeTab === "bands" && (
           <div className="space-y-6">
             {bandActionError && (
@@ -1162,15 +1162,15 @@ export default function CommunityPage() {
               </p>
             )}
 
-            {/* Soundstage Dispatch Banner */}
+            {/* Music Dispatch Banner */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#0c0c3f]/90 via-[#05052d]/95 to-[#101048]/90 border border-[#20205a]/80 shadow-2xl">
               <div>
                 <div className="flex items-center gap-2 text-[#20efe0] text-xs sm:text-sm font-mono font-bold tracking-widest uppercase mb-1.5">
                   <Radio className="w-4 h-4 text-[#ea6f2a] animate-pulse" />
-                  <span>STARCAST BANDS &amp; ARTISTS // TOPEKA</span>
+                  <span>STARCAST MUSIC // ARTISTS, BANDS, PRODUCERS &amp; DJS</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-[#f5f7ff] tracking-tight">
-                  Bands &amp; Artist Directory
+                  Artists, Bands, Producers &amp; DJs
                 </h2>
                 <p className="text-sm sm:text-base text-[#dbe0fb] mt-2 max-w-2xl leading-relaxed">
                   Discover regional musicians, follow their updates, catch live set alerts, and grab direct QR code passes.
@@ -1182,9 +1182,9 @@ export default function CommunityPage() {
                   asChild
                   className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl px-5 shadow-lg shadow-[#ea6f2a]/25 text-sm sm:text-base h-11"
                 >
-                  <Link href="/portal">
+                  <Link href="/music?tab=artists">
                     <Plus className="w-4 h-4 mr-1.5" />
-                    Register Your Act
+                    Create Your Page
                   </Link>
                 </Button>
 
@@ -1193,9 +1193,9 @@ export default function CommunityPage() {
                   variant="outline"
                   className="border-[#20efe0]/50 bg-[#0c0c3f]/70 text-[#c9fbf7] hover:bg-[#20efe0]/20 hover:text-white rounded-xl px-5 text-sm sm:text-base h-11"
                 >
-                  <Link href="/bands">
+                  <Link href="/music">
                     <ExternalLink className="w-4 h-4 mr-1.5" />
-                    Full Directory
+                    Open Music Hub
                   </Link>
                 </Button>
               </div>
@@ -1265,7 +1265,7 @@ export default function CommunityPage() {
                         key={b.id}
                         className="group relative rounded-3xl border border-[#20205a]/70 bg-gradient-to-b from-[#0c0c3f]/70 via-[#070725]/80 to-[#05051f] overflow-hidden flex flex-col justify-between hover:border-[#ea6f2a]/50 transition-all duration-300 hover:shadow-[0_0_35px_rgba(234,111,42,0.18)]"
                       >
-                        {/* Soundstage Banner Header */}
+                        {/* Artist / Band Banner Header */}
                         <div className="relative w-full h-28 sm:h-36 bg-[#05052d] overflow-hidden">
                           {b.banner_url ? (
                             <img

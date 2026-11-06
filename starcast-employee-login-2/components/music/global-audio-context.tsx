@@ -81,7 +81,7 @@ export function GlobalAudioProvider({ children }: { children: React.ReactNode })
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentTrack.title,
       artist: currentTrack.artistName || currentTrack.bandName || "StarCast Media",
-      album: currentTrack.albumName || "StarCast Soundstage",
+      album: currentTrack.albumName || "StarCast Music",
       artwork: [
         { src: artworkUrl, sizes: "96x96", type: "image/png" },
         { src: artworkUrl, sizes: "128x128", type: "image/png" },

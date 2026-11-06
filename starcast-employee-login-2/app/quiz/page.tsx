@@ -9,7 +9,7 @@ import { Tv, Music, MessageCircle, ArrowLeft, Sparkles, HelpCircle } from "lucid
 export const metadata: Metadata = {
   title: "Take the StarCast Quiz | Test Your Show Knowledge",
   description:
-    "Take the StarCast Quiz and test your show knowledge on The Observation Deck, Hollywood: After Babylon, Star Talk, show hosts, episode guests, and Midwest soundstages.",
+    "Take the StarCast Quiz and test your show knowledge on The Observation Deck, Hollywood: After Babylon, Star Talk, show hosts, episode guests, and Midwest music.",
   alternates: {
     canonical: "https://starcast.online/quiz",
   },
@@ -72,7 +72,7 @@ export default function QuizPage() {
           <div className="mt-10 p-6 rounded-3xl border border-[#20205a]/60 bg-[#0c0c3f]/50 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-[#f5f7ff]">Looking to prep before your next attempt?</p>
-              <p className="text-xs text-[#cbd0f2] mt-0.5">Stream the latest shows and catch soundstage live cuts.</p>
+              <p className="text-xs text-[#cbd0f2] mt-0.5">Stream the latest shows and catch live studio cuts.</p>
             </div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <Button asChild variant="outline" size="sm" className="border-[#ea6f2a]/40 text-[#ea6f2a] hover:bg-[#ea6f2a]/20 rounded-xl text-xs font-semibold">

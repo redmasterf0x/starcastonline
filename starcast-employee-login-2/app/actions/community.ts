@@ -102,7 +102,7 @@ export async function listCommunityCategories() {
     const defaults = [
       { name: "General Discussion", slug: "general", icon: "💬", showTitle: "Community Lounge", topic: "general" },
       { name: "Shows & Originals", slug: "shows", icon: "📺", showTitle: "StarCast Shows", topic: "shows" },
-      { name: "Bands & Music", slug: "music", icon: "🎸", showTitle: "Soundstage", topic: "music" },
+      { name: "Bands & Music", slug: "music", icon: "🎸", showTitle: "Music", topic: "music" },
       { name: "Production & Studio", slug: "production", icon: "🎙️", showTitle: "StarCast Studios", topic: "production" },
       { name: "The Lounge (Off-Topic)", slug: "lounge", icon: "☕", showTitle: "Community Lounge", topic: "general" },
     ]

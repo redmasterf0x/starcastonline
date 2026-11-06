@@ -80,7 +80,7 @@ export function SocialContent({ text, className = "", enableEmbeds = true }: Soc
           embeds.push({ type: "soundcloud", url })
         }
 
-        // StarCast soundstage check
+        // StarCast Music check
         const scMatch = url.match(/(?:starcast\.online)?\/music\/([a-zA-Z0-9_-]+)/)
         if (!isMedia && scMatch) {
           isMedia = true
@@ -207,7 +207,7 @@ export function SocialContent({ text, className = "", enableEmbeds = true }: Soc
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#20efe0]/20 text-[#20efe0] border border-[#20efe0]/40">
-                            Soundstage Track
+                            StarCast Music Track
                           </span>
                         </div>
                         <h4 className="text-white font-bold text-sm sm:text-base truncate capitalize mt-0.5">

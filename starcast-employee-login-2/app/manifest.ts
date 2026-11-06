@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "StarCast Media | Topeka Broadcast Network",
     short_name: "StarCast",
-    description: "Topeka's #1 Media Company, YouTube Broadcast Network, and Soundstage Studio.",
+    description: "Topeka's #1 Media Company, YouTube Broadcast Network, and Music Studio.",
     start_url: "/",
     display: "standalone",
     background_color: "#06062e",

@@ -7,7 +7,7 @@ import { getPlaylistVideos } from "@/lib/youtube"
 export const metadata: Metadata = {
   title: "Original Shows & Podcasts | StarCast Media Topeka",
   description:
-    "Explore StarCast Media's original show lineup filmed live in Topeka, Kansas. Stream The Observation Deck, Star Talk, The Psyco G Spot, Hollywood: After Babylon, and Soundstage Live Performances.",
+    "Explore StarCast Media's original show lineup filmed live in Topeka, Kansas. Stream The Observation Deck, Star Talk, The Psyco G Spot, Hollywood: After Babylon, and Live Music Performances.",
   keywords: [
     "topeka media company",
     "topeka podcasts",

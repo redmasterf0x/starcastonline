@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     template: "%s | StarCast Media Topeka | Topeka Media Company",
   },
   description:
-    "StarCast Media (@starcastlivemedia) is Topeka's leading local media company, YouTube broadcast network, and video production studio. We deliver uncut original talk shows, live music soundstages, sports broadcasting, podcast recordings, and targeted local advertising across Topeka, Kansas.",
+    "StarCast Media (@starcastlivemedia) is Topeka's leading local media company, YouTube broadcast network, and video production studio. We deliver uncut original talk shows, live music performances, sports broadcasting, podcast recordings, and targeted local advertising across Topeka, Kansas.",
   keywords: [
     "topeka media company",
     "media company topeka",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     "topeka broadcasting company",
     "podcast studio topeka",
     "topeka recording studio",
-    "topeka soundstage",
+    "topeka music studio",
     "topeka advertising agency",
     "starcast media",
     "starcast online",
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     siteName: "StarCast Media | Topeka Media Company",
     title: "StarCast Media | #1 Topeka Media Company & YouTube Broadcast Network",
     description:
-      "Topeka's premier local media company and YouTube studio. Live broadcasts, podcast soundstages, music performances, and targeted advertising in Topeka, Kansas.",
+      "Topeka's premier local media company and YouTube studio. Live broadcasts, podcast studios, music performances, and targeted advertising in Topeka, Kansas.",
     images: [
       {
         url: "/images/spacemanlogo.png",
@@ -85,7 +85,7 @@ export const metadata: Metadata = {
     creator: "@starcastlivemedia",
     title: "StarCast Media | Topeka Media Company & YouTube Network",
     description:
-      "Topeka's premier local media company & broadcast studio. Stream uncut shows, podcasts, and soundstage music in Topeka, KS.",
+      "Topeka's premier local media company & broadcast studio. Stream uncut shows, podcasts, and original music in Topeka, KS.",
     images: ["/images/spacemanlogo.png"],
   },
   robots: {
@@ -155,7 +155,7 @@ export default function RootLayout({
       "StarCast Broadcast Studio",
     ],
     description:
-      "Topeka's premier local media company, YouTube broadcast network, and video production studio offering multi-camera live streaming, podcast recording, soundstage performances, sports broadcasting, and local business advertising in Topeka, Kansas.",
+      "Topeka's premier local media company, YouTube broadcast network, and video production studio offering multi-camera live streaming, podcast recording, live music performances, sports broadcasting, and local business advertising in Topeka, Kansas.",
     url: "https://starcast.online",
     logo: {
       "@type": "ImageObject",
@@ -210,7 +210,7 @@ export default function RootLayout({
       "Media Production",
       "Video Production",
       "Podcast Studio Recording",
-      "Live Soundstage Streaming",
+      "Live Music Streaming",
       "Sports Broadcasting",
       "Event Coverage",
       "Local Business Advertising",
@@ -244,9 +244,9 @@ export default function RootLayout({
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Podcast Studio & Soundstage Recording",
+            name: "Podcast Studio & Music Recording",
             description:
-              "State-of-the-art studio recording facility for audio and visual podcasts, interviews, and live soundstage acoustic performances.",
+              "State-of-the-art studio recording facility for audio and visual podcasts, interviews, and live music performances.",
           },
         },
         {
@@ -340,7 +340,7 @@ export default function RootLayout({
         "@type": "ListItem",
         position: 4,
         name: "Music & Artists",
-        description: "Spotlighting Topeka and Midwest independent bands, soundstage live takes, and discographies.",
+        description: "Spotlighting Topeka and Midwest independent artists, bands, producers, DJs, and discographies.",
         url: "https://starcast.online/music",
       },
       {

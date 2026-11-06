@@ -78,7 +78,7 @@ export default function PrivacyPolicyPage() {
               <Link href="https://starcast.online" className="text-[#ffd166] underline">
                 starcast.online
               </Link>{" "}
-              and associated broadcast, artist soundstage, event ticketing, community discussion, and media services. We believe that privacy is a fundamental right. We do not sell, rent, monetize, or harvest user personal data. This Privacy Policy details how we collect, protect, and handle information across all site capabilities.
+              and associated broadcast, artist/band/producer/DJ pages, event ticketing, community discussion, and media services. We believe that privacy is a fundamental right. We do not sell, rent, monetize, or harvest user personal data. This Privacy Policy details how we collect, protect, and handle information across all site capabilities.
             </p>
           </section>
 
@@ -99,7 +99,7 @@ export default function PrivacyPolicyPage() {
                 <strong>Phone Numbers:</strong> Mobile numbers entered voluntarily for SMS one-time verification passcodes (OTP), mobile phone sign-in, and authorized crew shift alerts.
               </li>
               <li>
-                <strong>Artist &amp; Soundstage Music Data:</strong> Band titles, artist names, album art, audio master files, lyrics, producer credits, and <strong>Acoustic Fingerprints</strong> (SHA-256 master hashes and spectral perceptual fingerprints generated for copyright prior-art protection).
+                <strong>Artist &amp; Music Data:</strong> Band titles, artist names, album art, audio master files, lyrics, producer credits, and <strong>Acoustic Fingerprints</strong> (SHA-256 master hashes and spectral perceptual fingerprints generated for copyright prior-art protection).
               </li>
               <li>
                 <strong>Event Ticketing &amp; Financial Information:</strong> When you purchase tickets or sponsor packages, payments are processed directly through <strong>Stripe</strong>. StarCast does not store complete credit card or payment credential numbers on our servers. When bands or crew receive payouts, financial routing is managed via secure <strong>Stripe Connect</strong>.

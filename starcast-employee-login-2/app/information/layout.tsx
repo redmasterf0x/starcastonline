@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     "topeka recording studio",
     "topeka podcast studio",
     "media production company topeka kansas",
-    "topeka soundstage facility",
+    "topeka music studio facility",
     "topeka broadcast network",
   ],
   alternates: {

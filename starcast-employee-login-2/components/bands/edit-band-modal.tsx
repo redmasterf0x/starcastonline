@@ -159,7 +159,7 @@ export function EditBandModal({ band, isOpen, onClose, onSaved }: EditBandModalP
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-[#0a0a2e] border-[#20205a] text-[#f5f7ff] p-6 rounded-2xl shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2 text-[#f5f7ff]">
-            <Users className="w-5 h-5 text-[#ea6f2a]" /> Edit Band / Artist Profile
+            <Users className="w-5 h-5 text-[#ea6f2a]" /> Edit Artist / Band / Producer / DJ Page
           </DialogTitle>
         </DialogHeader>
 
@@ -251,16 +251,16 @@ export function EditBandModal({ band, isOpen, onClose, onSaved }: EditBandModalP
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-[#9a9fc4]">Act Type</Label>
+                  <Label className="text-xs text-[#9a9fc4]">Page Type</Label>
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                     className="w-full rounded-md bg-[#05051f] border border-[#20205a] text-[#f5f7ff] h-9 px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#20efe0]"
                   >
-                    <option value="band">Band / Group</option>
-                    <option value="artist">Solo Artist / Singer</option>
-                    <option value="producer">Producer / Beatmaker</option>
-                    <option value="dj">DJ / Electronic</option>
+                    <option value="artist">Artist Page</option>
+                    <option value="band">Band Page</option>
+                    <option value="producer">Producer Page</option>
+                    <option value="dj">DJ Page</option>
                   </select>
                 </div>
 

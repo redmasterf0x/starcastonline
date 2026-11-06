@@ -39,7 +39,7 @@ const SHOWS = [
     views: "1.2K Live",
     badge: "LIVE NOW",
     thumbnail: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&auto=format&fit=crop&q=80",
-    description: "Deep dive conversations with Topeka creators, artists, and regional voices live from the StarCast Soundstage."
+    description: "Deep dive conversations with Topeka creators, artists, and regional voices live from StarCast Studio."
   },
   {
     id: "star-talk",
@@ -83,7 +83,7 @@ const ARTICLES = [
     category: "SPOTLIGHT",
     tagColor: "bg-[#ea6f2a]",
     image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80",
-    excerpt: "From underground musicians to community trailblazers, StarCast is putting Midwest creators on the global radar with dedicated soundstages."
+    excerpt: "From underground musicians to community trailblazers, StarCast is putting Midwest creators on the global radar with dedicated artist, band, producer, and DJ pages."
   },
   {
     id: "2",
@@ -128,7 +128,7 @@ const INITIAL_POSTS = [
     time: "34m ago",
     category: "Shows",
     title: "Predictions for the upcoming 'Observation Deck' episode?",
-    content: "Who's excited for Friday night? I'm hoping to hear about the new soundstage expansion and the guest DJ set.",
+    content: "Who's excited for Friday night? I'm hoping to hear about the new studio expansion and the guest DJ set.",
     replies: 18,
     likes: 64
   },

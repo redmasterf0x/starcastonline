@@ -56,7 +56,7 @@ export function CommunityRightRail({
           <span>StarCast Network</span>
         </div>
         <h3 className="font-extrabold text-[#f5f7ff] text-base leading-snug">
-          Live Soundstage &amp; Studio Sessions
+          Featured Artists, Bands, Producers &amp; DJs
         </h3>
         <p className="text-xs text-[#dbe0fb] mt-1.5 leading-relaxed">
           Watch original shows, artist interviews, and live performances direct from StarCast Studios.
@@ -103,7 +103,7 @@ export function CommunityRightRail({
 
         {suggestedBands.length === 0 ? (
           <p className="text-xs text-[#9a9fc4] py-3 text-center">
-            No new soundstage bands right now.
+            No new artist or band pages right now.
           </p>
         ) : (
           <div className="space-y-3.5">

@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Sponsor & Advertise in Topeka | StarCast Media Advertising Packages",
   description:
-    "Promote your business with Topeka's premier media company. High-impact episode sponsorships, YouTube video commercials, soundstage ad placements, and digital marketing across StarCast Media in Topeka, KS.",
+    "Promote your business with Topeka's premier media company. High-impact episode sponsorships, YouTube video commercials, music & show ad placements, and digital marketing across StarCast Media in Topeka, KS.",
   keywords: [
     "topeka advertising",
     "advertise in topeka",

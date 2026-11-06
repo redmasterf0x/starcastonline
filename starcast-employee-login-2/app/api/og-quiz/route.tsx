@@ -154,7 +154,7 @@ export async function GET() {
               marginTop: "8px",
             }}
           >
-            {["🎲 The Observation Deck", "🎬 Hollywood: After Babylon", "🎙️ Star Talk", "🎸 Live Soundstages"].map(
+            {["🎲 The Observation Deck", "🎬 Hollywood: After Babylon", "🎙️ Star Talk", "🎸 StarCast Music"].map(
               (tag) => (
                 <div
                   key={tag}

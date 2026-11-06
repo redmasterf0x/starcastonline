@@ -79,7 +79,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   let name = "StarCast Artist"
   let genre = "Broadcasting Live"
   let bio = ""
-  let actType = "SOUNDSTAGE RESIDENT"
+  let actType = "STARCAST MUSIC"
   let rawLogoUrl: string | null = null
   let rawBannerUrl: string | null = null
   let followerCount = 0
@@ -90,7 +90,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 
     if (band) {
       name = cleanText(band.name) || "StarCast Artist"
-      genre = band.genre ? cleanText(band.genre) : "StarCast Soundstage"
+      genre = band.genre ? cleanText(band.genre) : "StarCast Music"
       actType = (band.type === "artist" ? "SOLO ARTIST" : band.type === "producer" ? "PRODUCER" : band.type === "dj" ? "DJ / ELECTRONIC" : "BAND / ACT")
       followerCount = band.follower_count || 0
 
@@ -212,7 +212,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
                     textTransform: "uppercase",
                   }}
                 >
-                  STARCAST SOUNDSTAGE
+                  STARCAST MUSIC
                 </span>
               </div>
 
@@ -368,7 +368,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
                 }}
               />
               <span style={{ fontSize: 16, color: "#f5f7ff", fontWeight: 700 }}>
-                Listen to Music, Tickets &amp; Soundstage Updates
+                Listen to Music, Tickets &amp; Artist Updates
               </span>
             </div>
 

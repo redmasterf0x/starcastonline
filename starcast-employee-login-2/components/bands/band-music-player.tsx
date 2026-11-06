@@ -193,7 +193,7 @@ export function BandMusicPlayer({
         <div>
           <h3 className="text-lg sm:text-xl font-black text-[#f5f7ff]">Release Your Original Music</h3>
           <p className="text-xs sm:text-sm text-[#9a9fc4] max-w-md mx-auto mt-1">
-            Upload your studio tracks, singles, and MP3 cuts to give your soundstage a dedicated discography and stream on StarCast!
+            Upload your studio tracks, singles, and MP3 cuts to give your page a dedicated discography and stream on StarCast!
           </p>
         </div>
         {onUploadClick && (

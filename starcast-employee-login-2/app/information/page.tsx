@@ -135,7 +135,7 @@ export default function InformationPage() {
                 Founded by <strong>Ray Starnes</strong> in 2025 in Topeka, Kansas, StarCast Media is built on one core mantra: <span className="text-[#ffd166] font-semibold print:text-black">Building Worlds</span>.
               </p>
               <p>
-                StarCast is not just a website; it is an integrated media engine combining original video broadcast universes, independent music soundstages, pro-artist copyright protection, live event ticketing, community discussion, and physical studio rehearsal spaces into a single seamless digital galaxy.
+                StarCast is not just a website; it is an integrated media engine combining original video broadcast universes, independent artist, band, producer &amp; DJ pages, pro-artist copyright protection, live event ticketing, community discussion, and physical studio rehearsal spaces into a single seamless digital galaxy.
               </p>
             </CardContent>
           </Card>
@@ -164,19 +164,19 @@ export default function InformationPage() {
                 </p>
               </div>
 
-              {/* Feature 2: Band Soundstage & Music Streaming */}
+              {/* Feature 2: Artist, Band, Producer & DJ Pages & Music Streaming */}
               <div className="p-4 rounded-xl bg-[#05052d]/90 border border-[#20205a]/60 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-bold text-[#f5f7ff] print:text-black">
                     <Music className="w-4 h-4 text-[#20efe0]" />
-                    <h3>2. Soundstage &amp; 100% Artist-Owned Music Streaming</h3>
+                    <h3>2. Artist, Band, Producer &amp; DJ Pages + 100% Artist-Owned Music Streaming</h3>
                   </div>
                   <Link href="/music" className="text-xs text-[#20efe0] hover:underline font-mono print:hidden">
                     Listen to Music &rarr;
                   </Link>
                 </div>
                 <p className="text-xs sm:text-sm text-[#9a9fc4] print:text-gray-700">
-                  Artists and bands get dedicated soundstage profiles (<code>/bands/[slug]</code>) with custom music catalogs, play tracking, fan follows, lyrics, and free lossless/MP3 streaming. Artists retain <strong>100% exclusive master and publishing copyrights</strong> with zero cuts taken by StarCast.
+                  Artists, bands, producers, and DJs get dedicated pages (<code>/bands/[slug]</code>) with custom music catalogs, play tracking, fan follows, lyrics, and free lossless/MP3 streaming. Artists retain <strong>100% exclusive master and publishing copyrights</strong> with zero cuts taken by StarCast.
                 </p>
               </div>
 
@@ -272,12 +272,12 @@ export default function InformationPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-bold text-[#f5f7ff] print:text-black">
                     <Calendar className="w-4 h-4 text-[#ffd166]" />
-                    <h3>8. Rehearsal Studio &amp; Multi-Cam Production Soundstage</h3>
+                    <h3>8. Rehearsal Studio &amp; Multi-Cam Production Studio</h3>
                   </div>
                   <span className="text-xs text-[#7f84ad] font-mono">Topeka, KS</span>
                 </div>
                 <p className="text-xs sm:text-sm text-[#9a9fc4] print:text-gray-700">
-                  Physical rehearsal facilities and production soundstages offering multi-camera 4K switching, live streaming, promo edits, tracking sessions, and monthly band soundstage passes. Staff console features automated SMS crew callout reminders via cron.
+                  Physical rehearsal facilities and production studios offering multi-camera 4K switching, live streaming, promo edits, tracking sessions, and monthly band studio passes. Staff console features automated SMS crew callout reminders via cron.
                 </p>
               </div>
             </CardContent>
@@ -295,7 +295,7 @@ export default function InformationPage() {
                 We are building an independent alternative to fragmented social media and music giants:
               </p>
               <ul className="list-disc pl-5 space-y-2">
-                <li><strong>All-In-One Soundstage:</strong> Bands no longer need separate sites for music streaming, ticketing, fan updates, and merch.</li>
+                <li><strong>All-In-One Music Hub:</strong> Artists, bands, producers, and DJs no longer need separate sites for music streaming, ticketing, fan updates, and merch.</li>
                 <li><strong>Creator Protection First:</strong> Artists own their art. Acoustic fingerprints establish prior-art against AI scrapers and theft.</li>
                 <li><strong>24/7 Digital Broadcast:</strong> Live programming that treats online video like a genuine television network.</li>
               </ul>
@@ -325,7 +325,7 @@ export default function InformationPage() {
               </Link>
               <div className="p-4 bg-[#05052d] border border-[#20205a] rounded-xl print:bg-transparent print:border print:border-gray-300 print:p-3 space-y-2 text-xs sm:text-sm">
                 <p className="text-[#f5f7ff] font-semibold print:text-black flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#ea6f2a]" /> Headquarters &amp; Soundstage:
+                  <MapPin className="w-4 h-4 text-[#ea6f2a]" /> Headquarters &amp; Studio:
                 </p>
                 <p className="text-[#c4c7da] print:text-black">
                   StarCast Live Media LLC &middot; Topeka, Kansas, USA

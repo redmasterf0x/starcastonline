@@ -151,7 +151,7 @@ export function BandQrModal({ isOpen, onOpenChange, band }: BandQrModalProps) {
                 <div className="min-w-0">
                   <h4 className="text-base font-bold text-[#f5f7ff] truncate">{band.name}</h4>
                   <p className="text-xs text-[#9a9fc4] truncate">
-                    {band.genre || "Soundstage Act"} • {band.type === "artist" ? "Solo Artist" : "Band"}
+                    {band.genre || "StarCast Music"} • {band.type === "artist" ? "Solo Artist" : band.type === "producer" ? "Producer" : band.type === "dj" ? "DJ" : "Band"}
                   </p>
                 </div>
               </div>
