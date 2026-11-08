@@ -54,14 +54,7 @@ export async function createSponsorCheckout(formData: SponsorFormData) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      // Stripe API 2026-03-25 (stripe v21+) renamed "embedded" -> "embedded_page".
-      // Sending the old value returns a 400 and the checkout never loads.
-      ui_mode: "embedded_page",
       payment_method_types: ["card"],
-      // Build the line item from our own catalog price (price_data) instead of a
-      // hardcoded Stripe price ID. Price IDs are per-mode (a test-mode ID is
-      // invalid in live mode and vice-versa), so inlining the amount here makes
-      // the same code charge correctly whether the active key is test or live.
       line_items: [
         {
           quantity: 1,
@@ -76,9 +69,6 @@ export async function createSponsorCheckout(formData: SponsorFormData) {
         },
       ],
       customer_email: formData.companyEmail,
-      // Automatic capture (the default): the card is actually charged and funds
-      // are collected as soon as the customer completes checkout. (The previous
-      // "manual" capture only authorized a hold that expired without collecting.)
       payment_intent_data: {
         metadata: {
           sponsor_id: sponsor.id,
@@ -91,7 +81,8 @@ export async function createSponsorCheckout(formData: SponsorFormData) {
         package_id: pkg.id,
         company_name: formData.companyName,
       },
-      return_url: `${baseUrl}/sponsors/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/sponsors/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/sponsors?cancelled=1`,
     })
 
     await db
@@ -99,7 +90,7 @@ export async function createSponsorCheckout(formData: SponsorFormData) {
       .set({ stripeSessionId: session.id })
       .where(eq(sponsors.id, sponsor.id))
 
-    return { clientSecret: session.client_secret, sessionId: session.id }
+    return { checkoutUrl: session.url, sessionId: session.id }
   } catch (error: any) {
     await db.delete(sponsors).where(eq(sponsors.id, sponsor.id)).catch(() => {})
     return { error: error?.message || "Failed to create checkout session" }
