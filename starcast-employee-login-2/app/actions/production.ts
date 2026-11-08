@@ -3,6 +3,7 @@
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
+import { revalidatePath } from "next/cache"
 import {
   productions,
   productionCrew,
@@ -41,9 +42,9 @@ async function requireCrew() {
 }
 
 /**
- * Requires the viewer to be staff AND have permission to add/edit calendar
- * events. Admins and crew members have calendar access.
- */
+  * Requires the viewer to be staff AND have permission to add/edit calendar
+  * events. Admins and crew members have calendar access.
+  */
 async function requireCalendarManager() {
   const crew = await requireCrew()
   if (!crew.canManageCalendar) throw new Error("Forbidden")
@@ -79,17 +80,29 @@ export async function getProductionViewer() {
   }
 }
 
-/** All productions plus a crew-count map keyed by production id. */
+/** All productions plus crew counts and crew assignments keyed by production id. */
 export async function listProductions() {
   await requireCrew()
   const rows = await db.select().from(productions).orderBy(asc(productions.startDate))
   const crewRows = await db
-    .select({ productionId: productionCrew.productionId })
+    .select({
+      productionId: productionCrew.productionId,
+      userId: productionCrew.userId,
+      role: productionCrew.role,
+    })
     .from(productionCrew)
 
   const crewCounts: Record<string, number> = {}
+  const crewByProduction: Record<string, { user_id: string; role: string }[]> = {}
   for (const c of crewRows) {
     crewCounts[c.productionId] = (crewCounts[c.productionId] ?? 0) + 1
+    if (!crewByProduction[c.productionId]) {
+      crewByProduction[c.productionId] = []
+    }
+    crewByProduction[c.productionId].push({
+      user_id: c.userId,
+      role: c.role ?? "",
+    })
   }
 
   const mapped = rows.map((p) => ({
@@ -103,6 +116,7 @@ export async function listProductions() {
     is_recurring: p.isRecurring,
     recurrence_frequency: p.recurrenceFrequency,
     recurrence_end_date: iso(p.recurrenceEndDate),
+    assigned_crew: crewByProduction[p.id] ?? [],
   }))
 
   return { productions: mapped, crewCounts }
@@ -238,7 +252,7 @@ export async function createProduction(
   const [row] = await db
     .insert(productions)
     .values({
-      title: input.title,
+      title: input.title.trim(),
       description: input.description || null,
       startDate: new Date(input.start_date),
       endDate: input.end_date ? new Date(input.end_date) : null,
@@ -264,6 +278,8 @@ export async function createProduction(
     )
   }
 
+  revalidatePath("/production")
+
   return {
     id: row.id,
     title: row.title,
@@ -272,8 +288,12 @@ export async function createProduction(
   }
 }
 
-/** Update an existing production. */
-export async function updateProduction(id: string, input: ProductionInput) {
+/** Update an existing production and optionally its crew assignments. */
+export async function updateProduction(
+  id: string,
+  input: ProductionInput,
+  crew?: { user_id: string; role?: string | null }[],
+) {
   await requireCalendarManager()
   validateProductionInput(input)
 
@@ -286,7 +306,7 @@ export async function updateProduction(id: string, input: ProductionInput) {
   const result = await db
     .update(productions)
     .set({
-      title: input.title,
+      title: input.title.trim(),
       description: input.description || null,
       startDate: new Date(input.start_date),
       endDate: input.end_date ? new Date(input.end_date) : null,
@@ -302,6 +322,22 @@ export async function updateProduction(id: string, input: ProductionInput) {
   if (!result || result.length === 0) {
     throw new Error("Production not found in database or could not be updated")
   }
+
+  if (crew !== undefined) {
+    await db.delete(productionCrew).where(eq(productionCrew.productionId, baseId))
+    if (crew.length > 0) {
+      await db.insert(productionCrew).values(
+        crew.map((c) => ({
+          productionId: baseId,
+          userId: c.user_id,
+          role: c.role || null,
+          notifiedAt: new Date(),
+        })),
+      )
+    }
+  }
+
+  revalidatePath("/production")
 
   return {
     id: result[0].id,
@@ -321,6 +357,16 @@ export async function deleteProduction(id: string) {
     throw new Error("Production not found or could not be deleted")
   }
 
+  revalidatePath("/production")
+  return { success: true }
+}
+
+/** Clear all productions and crew assignments from the calendar. */
+export async function clearAllProductions() {
+  await requireCalendarManager()
+  await db.delete(productionCrew)
+  await db.delete(productions)
+  revalidatePath("/production")
   return { success: true }
 }
 
@@ -330,7 +376,7 @@ export async function submitProductionRequest(input: ProductionInput) {
   validateProductionInput(input)
   await db.insert(productionRequests).values({
     userId,
-    title: input.title,
+    title: input.title.trim(),
     description: input.description || null,
     requestedDate: input.start_date ? new Date(input.start_date) : null,
     location: input.location || null,
@@ -341,6 +387,7 @@ export async function submitProductionRequest(input: ProductionInput) {
         ? parseRecurrenceEndDate(input.recurrence_end_date)
         : null,
   })
+  revalidatePath("/production")
 }
 
 /** Approve a request: create the production and mark the request approved. */
@@ -383,6 +430,7 @@ export async function approveProductionRequest(request: {
     .update(productionRequests)
     .set({ status: "approved" })
     .where(eq(productionRequests.id, request.id))
+  revalidatePath("/production")
 }
 
 /** Reject a production request. */
@@ -392,4 +440,5 @@ export async function rejectProductionRequest(requestId: string) {
     .update(productionRequests)
     .set({ status: "rejected" })
     .where(eq(productionRequests.id, requestId))
+  revalidatePath("/production")
 }

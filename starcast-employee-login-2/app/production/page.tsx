@@ -3,19 +3,20 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-  import { authClient } from "@/lib/auth-client"
-  import {
-    getProductionViewer,
-    listProductions,
-    listProductionRequests,
-    listCrewMembers,
-    createProduction,
-    updateProduction,
-    deleteProduction,
-    submitProductionRequest,
-    approveProductionRequest,
-    rejectProductionRequest,
-  } from "@/app/actions/production"
+import { authClient } from "@/lib/auth-client"
+import {
+  getProductionViewer,
+  listProductions,
+  listProductionRequests,
+  listCrewMembers,
+  createProduction,
+  updateProduction,
+  deleteProduction,
+  clearAllProductions,
+  submitProductionRequest,
+  approveProductionRequest,
+  rejectProductionRequest,
+} from "@/app/actions/production"
 import { getPayoutStatus, startPayoutOnboarding, openPayoutDashboard } from "@/app/actions/stripe-connect"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
@@ -58,7 +59,8 @@ interface Production {
   is_recurring: boolean
   recurrence_frequency: string | null
   recurrence_end_date: string | null
-  created_at: string
+  created_at?: string
+  assigned_crew?: { user_id: string; role: string }[]
 }
 
 interface ProductionRequest {
@@ -111,8 +113,7 @@ function formatDateLocal(dateString: string | null) {
   const date = new Date(dateString)
   if (isNaN(date.getTime())) return ""
   const pad = (value: number) => String(value).padStart(2, "0")
-  // If stored as UTC midnight
-  if (dateString.includes("T00:00:00") || (dateString.endsWith("Z") && date.getUTCHours() === 0 && date.getUTCMinutes() === 0)) {
+  if (dateString.includes("T00:00:00") || dateString.includes("T23:59:59")) {
     return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
   }
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -156,7 +157,9 @@ function nextOccurrence(date: Date, frequency: string, anchorDay: number) {
 }
 
 function expandProductionOccurrences(production: Production) {
-  if (!production.is_recurring || !production.recurrence_frequency || !production.recurrence_end_date) return [production]
+  if (!production.is_recurring || !production.recurrence_frequency || !production.recurrence_end_date) {
+    return [production]
+  }
 
   const rawEndDate = formatDateLocal(production.recurrence_end_date)
   if (!rawEndDate) return [production]
@@ -186,8 +189,9 @@ function expandProductionOccurrences(production: Production) {
 export default function ProductionPage() {
   const router = useRouter()
   const { toast } = useToast()
-  
+
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isCrew, setIsCrew] = useState(false)
   const [canManageCalendar, setCanManageCalendar] = useState(false)
@@ -198,10 +202,11 @@ export default function ProductionPage() {
   const [requests, setRequests] = useState<ProductionRequest[]>([])
   const [allCrew, setAllCrew] = useState<CrewMember[]>([])
   const [selectedCrew, setSelectedCrew] = useState<{ user_id: string; role: string }[]>([])
-  
+
   const [addDialog, setAddDialog] = useState(false)
   const [editDialog, setEditDialog] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState(false)
+  const [clearDialog, setClearDialog] = useState(false)
   const [requestDialog, setRequestDialog] = useState(false)
   const [selectedProduction, setSelectedProduction] = useState<Production | null>(null)
   const [selectedOccurrence, setSelectedOccurrence] = useState<Production | null>(null)
@@ -215,7 +220,7 @@ export default function ProductionPage() {
     transfersActive: boolean
     status: "not_connected" | "onboarding" | "active"
   } | null>(null)
-  
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -225,18 +230,14 @@ export default function ProductionPage() {
     status: "upcoming",
     is_recurring: false,
     recurrence_frequency: "",
-    recurrence_end_date: ""
+    recurrence_end_date: "",
   })
 
   useEffect(() => {
     const init = async () => {
       const allowed = await checkUserRole()
       if (allowed) {
-        await Promise.all([
-          fetchProductions(),
-          fetchRequests(),
-          fetchAllCrew(),
-        ])
+        await Promise.all([fetchProductions(), fetchRequests(), fetchAllCrew()])
       }
     }
     init()
@@ -359,10 +360,12 @@ export default function ProductionPage() {
 
   const handleSaveProduction = async () => {
     if (!validateForm()) return
+    setSaving(true)
 
     const startIso = localDateTimeToUtcIso(formData.start_date)
     if (!startIso) {
       toast({ title: "Invalid start date", description: "Please enter a valid start date and time.", variant: "destructive" })
+      setSaving(false)
       return
     }
     const endIso = localDateTimeToUtcIso(formData.end_date)
@@ -386,12 +389,11 @@ export default function ProductionPage() {
       )
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to save production", variant: "destructive" })
+      setSaving(false)
       return
     }
 
-    // Send notification emails to assigned crew
     if (selectedCrew.length > 0) {
-      // Send notification email to each crew member
       await Promise.all(
         selectedCrew.map((c) => {
           const member = allCrew.find((m) => m.user_id === c.user_id)
@@ -408,12 +410,16 @@ export default function ProductionPage() {
               productionLocation: newProduction.location,
               role: c.role || null,
             }),
-          })
+          }).catch(() => {})
         })
       )
     }
 
-    toast({ title: "Success", description: `Production created${selectedCrew.length > 0 ? ` and ${selectedCrew.length} crew member${selectedCrew.length > 1 ? "s" : ""} notified` : ""}` })
+    toast({
+      title: "Success",
+      description: `Production created${selectedCrew.length > 0 ? ` and ${selectedCrew.length} crew member${selectedCrew.length > 1 ? "s" : ""} notified` : ""}`,
+    })
+    setSaving(false)
     setAddDialog(false)
     setSelectedCrew([])
     resetForm()
@@ -425,13 +431,14 @@ export default function ProductionPage() {
     const baseId = selectedProduction.id.split("--occurrence-")[0]
     const recurrenceEndClean = formData.recurrence_end_date ? formData.recurrence_end_date.slice(0, 10) : null
 
+    setSaving(true)
     try {
-      if (editScope === "occurrence" && selectedOccurrence) {
-        // Detach this specific occurrence and create as a standalone event on this date/time
-        const startIso = localDateTimeToUtcIso(formData.start_date)
-        if (!startIso) throw new Error("Invalid start date and time")
-        const endIso = localDateTimeToUtcIso(formData.end_date)
+      const startIso = localDateTimeToUtcIso(formData.start_date)
+      if (!startIso) throw new Error("Invalid start date and time")
+      const endIso = localDateTimeToUtcIso(formData.end_date)
 
+      if (editScope === "occurrence" && selectedOccurrence && selectedProduction.is_recurring) {
+        // Create standalone event for this occurrence date/time
         await createProduction(
           {
             title: formData.title,
@@ -442,70 +449,83 @@ export default function ProductionPage() {
             status: formData.status,
             is_recurring: false,
           },
-          [],
+          selectedCrew.map((c) => ({ user_id: c.user_id, role: c.role })),
         )
         toast({ title: "Success", description: "Episode detached and scheduled as a standalone event" })
-      } else if (selectedProduction.is_recurring && selectedOccurrence) {
-        // User opened from a specific occurrence (e.g. in October) and is updating the recurring series.
-        // If they changed the time or day-of-week, apply that adjustment cleanly to the series base start date:
+      } else if (formData.is_recurring && selectedProduction.is_recurring && selectedOccurrence) {
+        // Updating the entire recurring series from a specific occurrence
         const editedLocal = new Date(formData.start_date)
         const baseLocal = new Date(selectedProduction.start_date)
         baseLocal.setHours(editedLocal.getHours(), editedLocal.getMinutes(), 0, 0)
 
         const occLocal = new Date(selectedOccurrence.start_date)
-        const dayShift = Math.round((editedLocal.getTime() - occLocal.getTime()) / 86400000)
+        const dayShift = Math.round(
+          (new Date(editedLocal.getFullYear(), editedLocal.getMonth(), editedLocal.getDate()).getTime() -
+            new Date(occLocal.getFullYear(), occLocal.getMonth(), occLocal.getDate()).getTime()) /
+            86400000
+        )
         if (dayShift !== 0) {
           baseLocal.setDate(baseLocal.getDate() + dayShift)
         }
 
-        const updatedSeriesStartIso = baseLocal.toISOString()
+        // If the new series start is somehow after the edited date, use the edited date directly
+        const finalSeriesStart = baseLocal > editedLocal ? editedLocal : baseLocal
+        const updatedSeriesStartIso = finalSeriesStart.toISOString()
+
         let updatedSeriesEndIso: string | null = null
         if (formData.end_date) {
           const editedEndLocal = new Date(formData.end_date)
-          const baseEndLocal = selectedProduction.end_date ? new Date(selectedProduction.end_date) : new Date(baseLocal)
-          baseEndLocal.setHours(editedEndLocal.getHours(), editedEndLocal.getMinutes(), 0, 0)
-          if (dayShift !== 0) baseEndLocal.setDate(baseEndLocal.getDate() + dayShift)
-          updatedSeriesEndIso = baseEndLocal.toISOString()
+          const durationMs = editedEndLocal.getTime() - editedLocal.getTime()
+          if (durationMs >= 0) {
+            updatedSeriesEndIso = new Date(finalSeriesStart.getTime() + durationMs).toISOString()
+          }
         }
 
-        await updateProduction(baseId, {
-          title: formData.title,
-          description: formData.description || null,
-          start_date: updatedSeriesStartIso,
-          end_date: updatedSeriesEndIso,
-          location: formData.location || null,
-          status: formData.status,
-          is_recurring: formData.is_recurring,
-          recurrence_frequency: formData.recurrence_frequency,
-          recurrence_end_date: recurrenceEndClean,
-        })
+        await updateProduction(
+          baseId,
+          {
+            title: formData.title,
+            description: formData.description || null,
+            start_date: updatedSeriesStartIso,
+            end_date: updatedSeriesEndIso,
+            location: formData.location || null,
+            status: formData.status,
+            is_recurring: true,
+            recurrence_frequency: formData.recurrence_frequency,
+            recurrence_end_date: recurrenceEndClean,
+          },
+          selectedCrew.map((c) => ({ user_id: c.user_id, role: c.role })),
+        )
         toast({ title: "Success", description: "Recurring series updated successfully" })
       } else {
-        // Standard non-recurring or direct series update from list view
-        const startIso = localDateTimeToUtcIso(formData.start_date)
-        if (!startIso) throw new Error("Invalid start date and time")
-        const endIso = localDateTimeToUtcIso(formData.end_date)
-
-        await updateProduction(baseId, {
-          title: formData.title,
-          description: formData.description || null,
-          start_date: startIso,
-          end_date: endIso,
-          location: formData.location || null,
-          status: formData.status,
-          is_recurring: formData.is_recurring,
-          recurrence_frequency: formData.recurrence_frequency,
-          recurrence_end_date: recurrenceEndClean,
-        })
+        // Direct update (either non-recurring, or repeat was unchecked, or editing base event directly)
+        await updateProduction(
+          baseId,
+          {
+            title: formData.title,
+            description: formData.description || null,
+            start_date: startIso,
+            end_date: endIso,
+            location: formData.location || null,
+            status: formData.status,
+            is_recurring: formData.is_recurring,
+            recurrence_frequency: formData.is_recurring ? formData.recurrence_frequency : null,
+            recurrence_end_date: formData.is_recurring ? recurrenceEndClean : null,
+          },
+          selectedCrew.map((c) => ({ user_id: c.user_id, role: c.role })),
+        )
         toast({ title: "Success", description: "Production updated successfully" })
       }
 
       setEditDialog(false)
       setSelectedProduction(null)
       setSelectedOccurrence(null)
+      setSelectedCrew([])
       await fetchProductions()
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to update production", variant: "destructive" })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -513,15 +533,34 @@ export default function ProductionPage() {
     if (!selectedProduction) return
     const baseId = selectedProduction.id.split("--occurrence-")[0]
 
+    setSaving(true)
     try {
       await deleteProduction(baseId)
       toast({ title: "Success", description: "Production deleted successfully" })
       setDeleteDialog(false)
+      setEditDialog(false)
       setSelectedProduction(null)
       setSelectedOccurrence(null)
       await fetchProductions()
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Failed to delete production", variant: "destructive" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleClearAllProductions = async () => {
+    setSaving(true)
+    try {
+      await clearAllProductions()
+      toast({ title: "Calendar Cleared", description: "All production events have been removed." })
+      setClearDialog(false)
+      setProductions([])
+      setCrewCounts({})
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to clear calendar", variant: "destructive" })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -592,6 +631,7 @@ export default function ProductionPage() {
     setSelectedProduction(baseProd)
     setSelectedOccurrence(isOccurrence ? prod : null)
     setEditScope("series")
+    setSelectedCrew(baseProd.assigned_crew ? [...baseProd.assigned_crew] : [])
 
     const effectiveStart = isOccurrence ? prod.start_date : baseProd.start_date
     const effectiveEnd = isOccurrence ? prod.end_date : baseProd.end_date
@@ -628,7 +668,7 @@ export default function ProductionPage() {
       status: "upcoming",
       is_recurring: false,
       recurrence_frequency: "",
-      recurrence_end_date: ""
+      recurrence_end_date: "",
     })
     setSelectedProduction(null)
     setSelectedOccurrence(null)
@@ -636,28 +676,35 @@ export default function ProductionPage() {
   }
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return ""
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric"
+      year: "numeric",
     })
   }
 
   const formatTime = (dateString: string) => {
+    if (!dateString) return ""
     return new Date(dateString).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
-      hour12: true
+      hour12: true,
     })
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "upcoming": return "border-blue-500 text-blue-400 bg-blue-950/30"
-      case "in-progress": return "border-green-500 text-green-400 bg-green-950/30"
-      case "completed": return "border-gray-500 text-gray-400 bg-gray-950/30"
-      case "cancelled": return "border-red-500 text-red-400 bg-red-950/30"
-      default: return "border-[#20205a] text-[#9a9fc4]"
+      case "upcoming":
+        return "border-blue-500 text-blue-300 bg-blue-950/50"
+      case "in-progress":
+        return "border-emerald-500 text-emerald-300 bg-emerald-950/50"
+      case "completed":
+        return "border-slate-500 text-slate-300 bg-slate-900/50"
+      case "cancelled":
+        return "border-red-500 text-red-300 bg-red-950/50"
+      default:
+        return "border-[#20205a] text-[#9a9fc4]"
     }
   }
 
@@ -670,13 +717,11 @@ export default function ProductionPage() {
   const productionsForDay = (day: Date) =>
     calendarProductions.filter((production) => isSameDay(new Date(production.start_date), day))
 
-  // Build a 6-row (42 cell) grid covering the visible month, padded with
-  // leading/trailing days so the grid always starts on Sunday.
   const buildCalendarDays = () => {
     const year = calendarMonth.getFullYear()
     const month = calendarMonth.getMonth()
     const firstOfMonth = new Date(year, month, 1)
-    const startOffset = firstOfMonth.getDay() // 0 = Sunday
+    const startOffset = firstOfMonth.getDay()
     const gridStart = new Date(year, month, 1 - startOffset)
     return Array.from({ length: 42 }, (_, i) => {
       const d = new Date(gridStart)
@@ -688,7 +733,6 @@ export default function ProductionPage() {
   const goToMonth = (delta: number) =>
     setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1))
 
-  // Open the Add dialog pre-filled with the clicked day (default 9:00 AM call time).
   const openAddForDate = (day: Date) => {
     if (!canManageCalendar) return
     const pad = (n: number) => String(n).padStart(2, "0")
@@ -711,7 +755,7 @@ export default function ProductionPage() {
   return (
     <div className="min-h-screen bg-transparent flex flex-col">
       <ResponsiveHeader isLoggedIn={true} isAdmin={isAdmin} isCrew={isCrew} onSignOut={handleSignOut} />
-      
+
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
         <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -725,6 +769,7 @@ export default function ProductionPage() {
               <Button
                 onClick={() => {
                   resetForm()
+                  setSelectedCrew([])
                   setAddDialog(true)
                 }}
                 className="bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
@@ -732,6 +777,16 @@ export default function ProductionPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Add Production</span>
                 <span className="sm:hidden">Add</span>
+              </Button>
+            )}
+            {canManageCalendar && productions.length > 0 && (
+              <Button
+                onClick={() => setClearDialog(true)}
+                variant="outline"
+                className="border-red-500/40 bg-red-950/25 text-red-300 hover:bg-red-900/40 hover:text-white"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear Calendar
               </Button>
             )}
             {isCrew && !canManageCalendar && (
@@ -775,9 +830,11 @@ export default function ProductionPage() {
           <Button
             onClick={() => setViewMode("calendar")}
             variant={viewMode === "calendar" ? "default" : "outline"}
-            className={viewMode === "calendar" 
-              ? "bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
-              : "border-[#20205a] text-[#9a9fc4] hover:bg-[#20205a]/20 bg-transparent"}
+            className={
+              viewMode === "calendar"
+                ? "bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
+                : "border-[#20205a] text-[#9a9fc4] hover:bg-[#20205a]/20 bg-transparent"
+            }
           >
             <Calendar className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Calendar View</span>
@@ -787,9 +844,11 @@ export default function ProductionPage() {
           <Button
             onClick={() => setViewMode("list")}
             variant={viewMode === "list" ? "default" : "outline"}
-            className={viewMode === "list" 
-              ? "bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
-              : "border-[#20205a] text-[#9a9fc4] hover:bg-[#20205a]/20 bg-transparent"}
+            className={
+              viewMode === "list"
+                ? "bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
+                : "border-[#20205a] text-[#9a9fc4] hover:bg-[#20205a]/20 bg-transparent"
+            }
           >
             <List className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">List View</span>
@@ -799,9 +858,11 @@ export default function ProductionPage() {
           <Button
             onClick={() => setViewMode("mailbox")}
             variant={viewMode === "mailbox" ? "default" : "outline"}
-            className={viewMode === "mailbox" 
-              ? "bg-[#20efe0] hover:bg-[#1cd8ca] text-[#05051f] font-bold shadow-md shadow-[#20efe0]/20"
-              : "border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/10 bg-transparent"}
+            className={
+              viewMode === "mailbox"
+                ? "bg-[#20efe0] hover:bg-[#1cd8ca] text-[#05051f] font-bold shadow-md shadow-[#20efe0]/20"
+                : "border-[#20efe0]/40 text-[#20efe0] hover:bg-[#20efe0]/10 bg-transparent"
+            }
           >
             <Mail className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Staff Mailbox</span>
@@ -814,367 +875,409 @@ export default function ProductionPage() {
         ) : (
           <>
             {/* Crew Panel */}
-        <Card className="border-[#20205a] bg-[#0c0c3f]/50 mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-[#f5f7ff] text-lg flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#ea6f2a]" />
-              Crew Members
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {allCrew.length === 0 ? (
-              <p className="text-[#9a9fc4] text-sm">No crew members found</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {allCrew.map((member) => (
-                  <div
-                    key={member.user_id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-[#05052d]/50 border border-[#20205a]/50 hover:border-[#ea6f2a]/30 transition-colors cursor-pointer"
-                    onClick={() => router.push(`/profile/${member.user_id}`)}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ea6f2a]/20 to-[#20205a] overflow-hidden flex-shrink-0 flex items-center justify-center">
-                      {member.profile_pic ? (
-                        <img src={member.profile_pic} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-sm text-[#f5f7ff] font-medium">
-                          {member.first_name?.[0]}{member.last_name?.[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[#f5f7ff] font-medium text-sm truncate">
-                        {member.first_name} {member.last_name}
-                      </p>
-                      {member.location && (
-                        <p className="text-[#9a9fc4] text-xs truncate flex items-center gap-1">
-                          <MapPin className="w-3 h-3 flex-shrink-0" />
-                          {member.location}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {canManageCalendar && requests.filter(r => r.status === "pending").length > 0 && (
-          <Card className="border-[#20205a] bg-[#0c0c3f]/50 mb-6">
-            <CardHeader>
-              <CardTitle className="text-[#f5f7ff]">Pending Requests ({requests.filter(r => r.status === "pending").length})</CardTitle>
-              <CardDescription className="text-[#9a9fc4]">Production requests from crew members</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {requests.filter(r => r.status === "pending").map((req) => (
-                <div key={req.id} className="p-4 bg-transparent rounded-lg border border-[#20205a]">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="text-[#f5f7ff] font-medium mb-1">{req.title}</h3>
-                      <p className="text-xs text-[#9a9fc4] mb-2">
-                        Requested by {req.requester?.first_name} {req.requester?.last_name} • {formatDate(req.created_at)}
-                      </p>
-                      {req.description && (
-                        <p className="text-sm text-[#9a9fc4] mb-2">{req.description}</p>
-                      )}
-                      <div className="flex flex-wrap gap-2 text-xs text-[#9a9fc4]">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(req.requested_date)} at {formatTime(req.requested_date)}
-                        </span>
-                        {req.location && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {req.location}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => handleApproveRequest(req)}
-                        size="sm"
-                        className="bg-green-900/30 hover:bg-green-900/50 text-green-400 border border-green-700"
+            <Card className="border-[#20205a] bg-[#0c0c3f]/50 mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-[#f5f7ff] text-lg flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#ea6f2a]" />
+                  Crew Members
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {allCrew.length === 0 ? (
+                  <p className="text-[#9a9fc4] text-sm">No crew members found</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {allCrew.map((member) => (
+                      <div
+                        key={member.user_id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-[#05052d]/50 border border-[#20205a]/50 hover:border-[#ea6f2a]/30 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/profile/${member.user_id}`)}
                       >
-                        <CheckCircle className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Approve</span>
-                      </Button>
-                      <Button
-                        onClick={() => handleRejectRequest(req.id)}
-                        size="sm"
-                        variant="outline"
-                        className="border-red-800 text-red-400 hover:bg-red-950/50 bg-transparent"
-                      >
-                        <XCircle className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Reject</span>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {viewMode === "list" && (
-          <div className="space-y-4">
-            {productions.length === 0 ? (
-              <Card className="border-[#20205a] bg-[#0c0c3f]/50">
-                <CardContent className="py-12 text-center">
-                  <p className="text-[#9a9fc4]">No upcoming productions</p>
-                </CardContent>
-              </Card>
-            ) : (
-              productions.map((prod) => (
-                <Card key={prod.id} className="border-[#20205a] bg-[#0c0c3f]/50">
-                  <CardHeader className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
-                      <div className="flex-1 w-full">
-                        <CardTitle className="text-[#f5f7ff] text-lg sm:text-xl mb-2">{prod.title}</CardTitle>
-                        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-[#9a9fc4] mb-3">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4 flex-shrink-0" />
-                            <span>{formatDate(prod.start_date)} at {formatTime(prod.start_date)}</span>
-                          </div>
-                          {prod.location && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4 flex-shrink-0" />
-                              <span>{prod.location}</span>
-                            </div>
-                          )}
-                          {prod.is_recurring && prod.recurrence_frequency && prod.recurrence_end_date && (
-                            <div className="flex items-center gap-1 text-[#f08a4a]">
-                              <Calendar className="w-4 h-4 flex-shrink-0" />
-                              <span className="capitalize">Repeats {prod.recurrence_frequency} through {formatDate(prod.recurrence_end_date)}</span>
-                            </div>
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ea6f2a]/20 to-[#20205a] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          {member.profile_pic ? (
+                            <img src={member.profile_pic} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-sm text-[#f5f7ff] font-medium">
+                              {member.first_name?.[0]}
+                              {member.last_name?.[0]}
+                            </span>
                           )}
                         </div>
-                        {prod.description && (
-                          <p className="text-sm text-[#9a9fc4] whitespace-pre-wrap">{prod.description}</p>
-                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[#f5f7ff] font-medium text-sm truncate">
+                            {member.first_name} {member.last_name}
+                          </p>
+                          {member.location && (
+                            <p className="text-[#9a9fc4] text-xs truncate flex items-center gap-1">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              {member.location}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${getStatusColor(prod.status)}`}>
-                          {prod.status}
-                        </span>
-                        {canManageCalendar && (
-                          <div className="flex gap-1">
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {canManageCalendar && requests.filter((r) => r.status === "pending").length > 0 && (
+              <Card className="border-[#20205a] bg-[#0c0c3f]/50 mb-6">
+                <CardHeader>
+                  <CardTitle className="text-[#f5f7ff]">
+                    Pending Requests ({requests.filter((r) => r.status === "pending").length})
+                  </CardTitle>
+                  <CardDescription className="text-[#9a9fc4]">Production requests from crew members</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {requests
+                    .filter((r) => r.status === "pending")
+                    .map((req) => (
+                      <div key={req.id} className="p-4 bg-transparent rounded-lg border border-[#20205a]">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="flex-1">
+                            <h3 className="text-[#f5f7ff] font-medium mb-1">{req.title}</h3>
+                            <p className="text-xs text-[#9a9fc4] mb-2">
+                              Requested by {req.requester?.first_name} {req.requester?.last_name} • {formatDate(req.created_at)}
+                            </p>
+                            {req.description && <p className="text-sm text-[#9a9fc4] mb-2">{req.description}</p>}
+                            <div className="flex flex-wrap gap-2 text-xs text-[#9a9fc4]">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {formatDate(req.requested_date)} at {formatTime(req.requested_date)}
+                              </span>
+                              {req.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {req.location}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
                             <Button
-                              onClick={() => openEditDialog(prod)}
+                              onClick={() => handleApproveRequest(req)}
                               size="sm"
-                              variant="ghost"
-                              className="text-[#ea6f2a] hover:bg-[#ea6f2a]/20"
+                              className="bg-green-900/30 hover:bg-green-900/50 text-green-400 border border-green-700"
                             >
-                              <Edit className="w-4 h-4" />
+                              <CheckCircle className="w-4 h-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Approve</span>
                             </Button>
                             <Button
-                              onClick={() => openDeleteDialog(prod)}
+                              onClick={() => handleRejectRequest(req.id)}
                               size="sm"
-                              variant="ghost"
-                              className="text-red-400 hover:bg-red-900/20"
+                              variant="outline"
+                              className="border-red-800 text-red-400 hover:bg-red-950/50 bg-transparent"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <XCircle className="w-4 h-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Reject</span>
                             </Button>
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))
+                    ))}
+                </CardContent>
+              </Card>
             )}
-          </div>
-        )}
 
-        {viewMode === "calendar" && (
-          <section className="overflow-hidden rounded-2xl border border-[#20efe0]/20 bg-[#080936]/75 shadow-[0_0_40px_rgba(32,239,224,0.07),0_20px_60px_rgba(5,5,45,0.3)] backdrop-blur-sm">
-            {/* Calendar toolbar */}
-            <div className="flex flex-col gap-3 border-b border-[#20efe0]/10 bg-[#121344]/65 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-1 rounded-full bg-[#20efe0] shadow-[0_0_14px_rgba(32,239,224,0.65)]" aria-hidden="true" />
-                <div>
-                  <div className="mb-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#20efe0]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#20efe0] shadow-[0_0_8px_rgba(32,239,224,0.8)]" />
-                    Schedule grid online
-                  </div>
-                  <h2 className="text-xl font-bold text-[#f5f7ff] sm:text-2xl">
-                    {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                  </h2>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => goToMonth(-1)}
-                  variant="outline"
-                  size="sm"
-                  className="border-[#6374b5]/45 bg-[#0c0c3f]/55 text-[#d4d8ee] hover:border-[#20efe0]/45 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
-                  aria-label="Previous month"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                  onClick={() => setCalendarMonth(new Date())}
-                  variant="outline"
-                  size="sm"
-                  className="border-[#6374b5]/45 bg-[#0c0c3f]/55 text-[#d4d8ee] hover:border-[#20efe0]/45 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
-                >
-                  Today
-                </Button>
-                <Button
-                  onClick={() => goToMonth(1)}
-                  variant="outline"
-                  size="sm"
-                  className="border-[#6374b5]/45 bg-[#0c0c3f]/55 text-[#d4d8ee] hover:border-[#20efe0]/45 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
-                  aria-label="Next month"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Weekday header */}
-            <div className="grid grid-cols-7 gap-px border-b border-[#20efe0]/10 bg-[#0e1040] px-2 sm:px-3">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                <div key={d} className="py-3 text-center font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#aeb8dd] sm:text-xs">
-                  <span className="hidden sm:inline">{d}</span>
-                  <span className="sm:hidden">{d[0]}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Month grid */}
-            <div className="grid grid-cols-7 gap-px bg-[#2a326b]/70 p-px">
-              {buildCalendarDays().map((day, i) => {
-                const inMonth = day.getMonth() === calendarMonth.getMonth()
-                const isToday = isSameDay(day, new Date())
-                const dayProds = productionsForDay(day)
-                return (
-                  <div
-                    key={i}
-                    onClick={() => openAddForDate(day)}
-                    className={`relative flex min-h-[84px] flex-col gap-1 overflow-hidden p-1.5 transition-all sm:min-h-[120px] sm:p-2 ${
-                      inMonth ? "bg-[#0c0d3d]" : "bg-[#07082c]"
-                    } ${isToday ? "z-10 ring-1 ring-inset ring-[#20efe0]/75 shadow-[inset_0_0_24px_rgba(32,239,224,0.09),0_0_18px_rgba(32,239,224,0.13)]" : ""} ${canManageCalendar ? "cursor-pointer hover:z-10 hover:bg-[#15174c] hover:shadow-[inset_0_0_20px_rgba(32,239,224,0.05)]" : ""}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs sm:text-sm font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
-                          isToday
-                            ? "bg-[#20efe0] text-[#05052d] shadow-[0_0_14px_rgba(32,239,224,0.55)]"
-                            : inMonth
-                              ? "text-[#f5f7ff]"
-                              : "text-[#9a9fc4]/40"
-                        }`}
-                      >
-                        {day.getDate()}
-                      </span>
-                      {canManageCalendar && inMonth && (
-                        <Plus className="w-3 h-3 text-[#9a9fc4]/50" />
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 overflow-hidden">
-                      {dayProds.slice(0, 3).map((prod) => (
-                        <button
-                          key={prod.id}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (canManageCalendar) openEditDialog(prod)
-                          }}
-                          className={`truncate rounded border px-1.5 py-1 text-left text-[10px] leading-tight shadow-[0_0_10px_rgba(234,111,42,0.07)] transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#20efe0] sm:text-xs ${getStatusColor(prod.status)}`}
-                          title={`${prod.title} — ${formatTime(prod.start_date)}${crewCounts[prod.id] ? ` · ${crewCounts[prod.id]} crew` : ""}`}
-                        >
-                          <span className="font-medium">{formatTime(prod.start_date)}</span>{" "}
-                          <span className="truncate">{prod.title}</span>
-                          {crewCounts[prod.id] ? (
-                            <span className="hidden sm:inline-flex items-center gap-0.5 ml-1 opacity-80">
-                              <Users className="w-2.5 h-2.5" />
-                              {crewCounts[prod.id]}
+            {viewMode === "list" && (
+              <div className="space-y-4">
+                {productions.length === 0 ? (
+                  <Card className="border-[#20205a] bg-[#0c0c3f]/50">
+                    <CardContent className="py-12 text-center">
+                      <p className="text-[#9a9fc4]">No upcoming productions</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  productions.map((prod) => (
+                    <Card key={prod.id} className="border-[#20205a] bg-[#0c0c3f]/50">
+                      <CardHeader className="p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                          <div className="flex-1 w-full">
+                            <CardTitle className="text-[#f5f7ff] text-lg sm:text-xl mb-2">{prod.title}</CardTitle>
+                            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-[#9a9fc4] mb-3">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4 flex-shrink-0" />
+                                <span>
+                                  {formatDate(prod.start_date)} at {formatTime(prod.start_date)}
+                                </span>
+                              </div>
+                              {prod.location && (
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                                  <span>{prod.location}</span>
+                                </div>
+                              )}
+                              {prod.is_recurring && prod.recurrence_frequency && prod.recurrence_end_date && (
+                                <div className="flex items-center gap-1 text-[#f08a4a]">
+                                  <Calendar className="w-4 h-4 flex-shrink-0" />
+                                  <span className="capitalize">
+                                    Repeats {prod.recurrence_frequency} through {formatDate(prod.recurrence_end_date)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            {prod.description && (
+                              <p className="text-sm text-[#9a9fc4] whitespace-pre-wrap">{prod.description}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${getStatusColor(prod.status)}`}
+                            >
+                              {prod.status}
                             </span>
-                          ) : null}
-                        </button>
-                      ))}
-                      {dayProds.length > 3 && (
-                        <span className="text-[10px] text-[#9a9fc4] pl-1">+{dayProds.length - 3} more</span>
-                      )}
+                            {canManageCalendar && (
+                              <div className="flex gap-1">
+                                <Button
+                                  onClick={() => openEditDialog(prod)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-[#ea6f2a] hover:bg-[#ea6f2a]/20"
+                                  title="Edit Production"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => openDeleteDialog(prod)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-red-400 hover:bg-red-900/20"
+                                  title="Delete Production"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+
+            {viewMode === "calendar" && (
+              <section className="overflow-hidden rounded-2xl border border-[#20efe0]/20 bg-[#080936]/75 shadow-[0_0_40px_rgba(32,239,224,0.07),0_20px_60px_rgba(5,5,45,0.3)] backdrop-blur-sm">
+                {/* Calendar toolbar */}
+                <div className="flex flex-col gap-3 border-b border-[#20efe0]/10 bg-[#121344]/65 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="h-8 w-1 rounded-full bg-[#20efe0] shadow-[0_0_14px_rgba(32,239,224,0.65)]"
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <div className="mb-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#20efe0]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#20efe0] shadow-[0_0_8px_rgba(32,239,224,0.8)]" />
+                        Schedule grid online
+                      </div>
+                      <h2 className="text-xl font-bold text-[#f5f7ff] sm:text-2xl">
+                        {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                      </h2>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-            {canManageCalendar && (
-              <p className="border-t border-[#20efe0]/10 bg-[#0e1040]/80 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.08em] text-[#9fa8cf] sm:text-xs sm:normal-case sm:tracking-normal">
-                Click any day to schedule a show. Click a show to edit it or assign crew.
-              </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => goToMonth(-1)}
+                      variant="outline"
+                      size="sm"
+                      className="border-[#6374b5]/45 bg-[#0c0c3f]/55 text-[#d4d8ee] hover:border-[#20efe0]/45 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={() => setCalendarMonth(new Date())}
+                      variant="outline"
+                      size="sm"
+                      className="border-[#6374b5]/45 bg-[#0c0c3f]/55 text-[#d4d8ee] hover:border-[#20efe0]/45 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      onClick={() => goToMonth(1)}
+                      variant="outline"
+                      size="sm"
+                      className="border-[#6374b5]/45 bg-[#0c0c3f]/55 text-[#d4d8ee] hover:border-[#20efe0]/45 hover:bg-[#20efe0]/10 hover:text-[#f5f7ff]"
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Weekday header */}
+                <div className="grid grid-cols-7 gap-px border-b border-[#20efe0]/10 bg-[#0e1040] px-2 sm:px-3">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                    <div
+                      key={d}
+                      className="py-3 text-center font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#aeb8dd] sm:text-xs"
+                    >
+                      <span className="hidden sm:inline">{d}</span>
+                      <span className="sm:hidden">{d[0]}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Month grid */}
+                <div className="grid grid-cols-7 gap-px bg-[#2a326b]/70 p-px">
+                  {buildCalendarDays().map((day, i) => {
+                    const inMonth = day.getMonth() === calendarMonth.getMonth()
+                    const isToday = isSameDay(day, new Date())
+                    const dayProds = productionsForDay(day)
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => openAddForDate(day)}
+                        className={`relative flex min-h-[84px] flex-col gap-1 overflow-hidden p-1.5 transition-all sm:min-h-[120px] sm:p-2 ${
+                          inMonth ? "bg-[#0c0d3d]" : "bg-[#07082c]"
+                        } ${isToday ? "z-10 ring-1 ring-inset ring-[#20efe0]/75 shadow-[inset_0_0_24px_rgba(32,239,224,0.09),0_0_18px_rgba(32,239,224,0.13)]" : ""} ${canManageCalendar ? "cursor-pointer hover:z-10 hover:bg-[#15174c] hover:shadow-[inset_0_0_20px_rgba(32,239,224,0.05)]" : ""}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-xs sm:text-sm font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
+                              isToday
+                                ? "bg-[#20efe0] text-[#05052d] shadow-[0_0_14px_rgba(32,239,224,0.55)]"
+                                : inMonth
+                                  ? "text-[#f5f7ff]"
+                                  : "text-[#9a9fc4]/40"
+                            }`}
+                          >
+                            {day.getDate()}
+                          </span>
+                          {canManageCalendar && inMonth && <Plus className="w-3 h-3 text-[#9a9fc4]/50" />}
+                        </div>
+                        <div className="flex flex-col gap-1 overflow-hidden">
+                          {dayProds.slice(0, 3).map((prod) => {
+                            const baseId = prod.id.split("--occurrence-")[0]
+                            return (
+                              <button
+                                key={prod.id}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (canManageCalendar) openEditDialog(prod)
+                                }}
+                                className={`truncate rounded border px-1.5 py-1 text-left text-[10px] leading-tight shadow-[0_0_10px_rgba(234,111,42,0.07)] transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#20efe0] sm:text-xs ${getStatusColor(prod.status)}`}
+                                title={`${prod.title} — ${formatTime(prod.start_date)}${crewCounts[baseId] ? ` · ${crewCounts[baseId]} crew` : ""}`}
+                              >
+                                <span className="font-medium">{formatTime(prod.start_date)}</span>{" "}
+                                <span className="truncate">{prod.title}</span>
+                                {crewCounts[baseId] ? (
+                                  <span className="hidden sm:inline-flex items-center gap-0.5 ml-1 opacity-80">
+                                    <Users className="w-2.5 h-2.5" />
+                                    {crewCounts[baseId]}
+                                  </span>
+                                ) : null}
+                              </button>
+                            )
+                          })}
+                          {dayProds.length > 3 && (
+                            <span className="text-[10px] text-[#9a9fc4] pl-1">+{dayProds.length - 3} more</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {canManageCalendar && (
+                  <p className="border-t border-[#20efe0]/10 bg-[#0e1040]/80 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.08em] text-[#9fa8cf] sm:text-xs sm:normal-case sm:tracking-normal">
+                    Click any day to schedule a show. Click any scheduled show to edit or delete it.
+                  </p>
+                )}
+              </section>
             )}
-          </section>
-        )}
           </>
         )}
       </main>
 
       <Footer />
 
-      <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) { setSelectedCrew([]); resetForm() } }}>
-        <DialogContent className="bg-transparent border-[#20205a]">
+      {/* ── ADD PRODUCTION DIALOG ── */}
+      <Dialog
+        open={addDialog}
+        onOpenChange={(open) => {
+          setAddDialog(open)
+          if (!open) {
+            setSelectedCrew([])
+            resetForm()
+          }
+        }}
+      >
+        <DialogContent className="bg-[#0b0f33] border-[#20205a] text-[#f5f7ff] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-[#f5f7ff]">Add Production</DialogTitle>
             <DialogDescription className="text-[#9a9fc4]">Create a new production event</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="add-title" className="text-[#f5f7ff]">Title</Label>
+              <Label htmlFor="add-title" className="text-[#f5f7ff]">
+                Title
+              </Label>
               <Input
                 id="add-title"
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
             <div>
-              <Label htmlFor="add-description" className="text-[#f5f7ff]">Description</Label>
+              <Label htmlFor="add-description" className="text-[#f5f7ff]">
+                Description
+              </Label>
               <Textarea
                 id="add-description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
-            <div>
-              <Label htmlFor="add-start-date" className="text-[#f5f7ff]">Start Date & Time</Label>
-              <Input
-                id="add-start-date"
-                type="datetime-local"
-                value={formData.start_date}
-                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="add-start-date" className="text-[#f5f7ff]">
+                  Start Date &amp; Time
+                </Label>
+                <Input
+                  id="add-start-date"
+                  type="datetime-local"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="add-end-date" className="text-[#f5f7ff]">
+                  End Date &amp; Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span>
+                </Label>
+                <Input
+                  id="add-end-date"
+                  type="datetime-local"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
             </div>
             <div>
-              <Label htmlFor="add-end-date" className="text-[#f5f7ff]">End Date & Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span></Label>
-              <Input
-                id="add-end-date"
-                type="datetime-local"
-                value={formData.end_date}
-                onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
-              />
-            </div>
-            <div>
-              <Label htmlFor="add-location" className="text-[#f5f7ff]">Location</Label>
+              <Label htmlFor="add-location" className="text-[#f5f7ff]">
+                Location
+              </Label>
               <Input
                 id="add-location"
                 value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
             <div>
-              <Label htmlFor="add-status" className="text-[#f5f7ff]">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+              <Label htmlFor="add-status" className="text-[#f5f7ff]">
+                Status
+              </Label>
+              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                 <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-transparent border-[#20205a]">
+                <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectItem value="upcoming">Upcoming</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
@@ -1187,48 +1290,64 @@ export default function ProductionPage() {
                 type="checkbox"
                 id="add-recurring"
                 checked={formData.is_recurring}
-                onChange={(e) => setFormData({...formData, is_recurring: e.target.checked})}
-                className="w-4 h-4 bg-[#0c0c3f] border-[#20205a] rounded"
+                onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
+                className="w-4 h-4 accent-[#ea6f2a] bg-[#0c0c3f] border-[#20205a] rounded"
               />
-              <Label htmlFor="add-recurring" className="text-[#f5f7ff]">Repeat</Label>
+              <Label htmlFor="add-recurring" className="text-[#f5f7ff]">
+                Repeat
+              </Label>
             </div>
             {formData.is_recurring && (
-              <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-[#20205a] bg-[#0c0c3f]/50 p-3">
                 <div>
-                  <Label htmlFor="add-frequency" className="text-[#f5f7ff]">Frequency</Label>
-                  <Select value={formData.recurrence_frequency} onValueChange={(value) => setFormData({...formData, recurrence_frequency: value})}>
+                  <Label htmlFor="add-frequency" className="text-[#f5f7ff]">
+                    Frequency
+                  </Label>
+                  <Select
+                    value={formData.recurrence_frequency}
+                    onValueChange={(value) => setFormData({ ...formData, recurrence_frequency: value })}
+                  >
                     <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       <SelectValue placeholder="Select frequency" />
                     </SelectTrigger>
-                    <SelectContent className="bg-transparent border-[#20205a]">
+                    <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       {recurrenceOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="add-recurrence-end" className="text-[#f5f7ff]">Repeat End Date</Label>
+                  <Label htmlFor="add-recurrence-end" className="text-[#f5f7ff]">
+                    Repeat End Date
+                  </Label>
                   <Input
                     id="add-recurrence-end"
                     type="date"
                     min={formData.start_date.slice(0, 10)}
                     value={formData.recurrence_end_date}
-                    onChange={(e) => setFormData({...formData, recurrence_end_date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, recurrence_end_date: e.target.value })}
                     className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
                   />
                 </div>
-              </>
+              </div>
             )}
 
             {/* Crew Assignment */}
             <div>
-              <Label className="text-[#f5f7ff] mb-2 block">Assign Crew <span className="text-[#9a9fc4] font-normal text-xs">(optional — they'll get an email notification)</span></Label>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <Label className="text-[#f5f7ff] mb-2 block">
+                Assign Crew <span className="text-[#9a9fc4] font-normal text-xs">(optional — notifies crew)</span>
+              </Label>
+              <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
                 {allCrew.map((member) => {
                   const assigned = selectedCrew.find((c) => c.user_id === member.user_id)
                   return (
-                    <div key={member.user_id} className="flex items-center gap-3 p-2 rounded-md border border-[#20205a] bg-transparent">
+                    <div
+                      key={member.user_id}
+                      className="flex items-center gap-3 p-2 rounded-md border border-[#20205a] bg-[#0c0c3f]/40"
+                    >
                       <input
                         type="checkbox"
                         id={`crew-${member.user_id}`}
@@ -1250,9 +1369,11 @@ export default function ProductionPage() {
                         <Input
                           placeholder="Role (optional)"
                           value={assigned.role}
-                          onChange={(e) => setSelectedCrew((prev) =>
-                            prev.map((c) => c.user_id === member.user_id ? { ...c, role: e.target.value } : c)
-                          )}
+                          onChange={(e) =>
+                            setSelectedCrew((prev) =>
+                              prev.map((c) => (c.user_id === member.user_id ? { ...c, role: e.target.value } : c))
+                            )
+                          }
                           className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] text-xs h-7 w-32 flex-shrink-0"
                         />
                       )}
@@ -1262,70 +1383,99 @@ export default function ProductionPage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleSaveProduction} className="bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]">
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setAddDialog(false)} className="border-[#20205a] text-[#9a9fc4]">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProduction}
+              disabled={saving}
+              className="bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
+            >
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Create Production{selectedCrew.length > 0 ? ` & Notify ${selectedCrew.length} Crew` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* ── EDIT PRODUCTION DIALOG ── */}
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent className="bg-transparent border-[#20205a]">
+        <DialogContent className="bg-[#0b0f33] border-[#20205a] text-[#f5f7ff] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-[#f5f7ff]">Edit Production</DialogTitle>
+            <DialogDescription className="text-[#9a9fc4]">
+              Update schedule details, crew assignments, or delete this event.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-title" className="text-[#f5f7ff]">Title</Label>
+              <Label htmlFor="edit-title" className="text-[#f5f7ff]">
+                Title
+              </Label>
               <Input
                 id="edit-title"
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
             <div>
-              <Label htmlFor="edit-description" className="text-[#f5f7ff]">Description</Label>
+              <Label htmlFor="edit-description" className="text-[#f5f7ff]">
+                Description
+              </Label>
               <Textarea
                 id="edit-description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
-            <div>
-              <Label htmlFor="edit-start-date" className="text-[#f5f7ff]">Start Date & Time</Label>
-              <Input
-                id="edit-start-date"
-                type="datetime-local"
-                value={formData.start_date}
-                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-end-date" className="text-[#f5f7ff]">End Date & Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span></Label>
-              <Input
-                id="edit-end-date"
-                type="datetime-local"
-                value={formData.end_date}
-                onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="edit-start-date" className="text-[#f5f7ff]">
+                  Start Date &amp; Time
+                </Label>
+                <Input
+                  id="edit-start-date"
+                  type="datetime-local"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-end-date" className="text-[#f5f7ff]">
+                  End Date &amp; Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span>
+                </Label>
+                <Input
+                  id="edit-end-date"
+                  type="datetime-local"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
             </div>
 
             {selectedProduction?.is_recurring && (
               <div className="rounded-lg border border-[#20efe0]/30 bg-[#080936]/80 p-3 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-semibold text-[#20efe0]">
                   <Calendar className="w-4 h-4 text-[#20efe0] flex-shrink-0" />
-                  <span>Repeating {selectedProduction.recurrence_frequency} show (through {formatDate(selectedProduction.recurrence_end_date || "")})</span>
+                  <span>
+                    Repeating {selectedProduction.recurrence_frequency} show (through{" "}
+                    {formatDate(selectedProduction.recurrence_end_date || "")})
+                  </span>
                 </div>
                 {selectedOccurrence ? (
                   <div className="pt-1 flex flex-col gap-2">
-                    <label className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-xs transition-colors ${
-                      editScope === "series" ? "border-[#20efe0] bg-[#20efe0]/15 text-[#f5f7ff]" : "border-[#20205a] text-[#9a9fc4]"
-                    }`}>
+                    <label
+                      className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-xs transition-colors ${
+                        editScope === "series"
+                          ? "border-[#20efe0] bg-[#20efe0]/15 text-[#f5f7ff]"
+                          : "border-[#20205a] text-[#9a9fc4]"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="edit-scope"
@@ -1335,12 +1485,18 @@ export default function ProductionPage() {
                       />
                       <div>
                         <span className="font-medium text-[#f5f7ff]">Update all shows in series</span>
-                        <p className="text-[11px] text-[#9a9fc4]">Applies the new time and details across every scheduled episode.</p>
+                        <p className="text-[11px] text-[#9a9fc4]">
+                          Applies the new time and details across every scheduled episode.
+                        </p>
                       </div>
                     </label>
-                    <label className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-xs transition-colors ${
-                      editScope === "occurrence" ? "border-[#ea6f2a] bg-[#ea6f2a]/15 text-[#f5f7ff]" : "border-[#20205a] text-[#9a9fc4]"
-                    }`}>
+                    <label
+                      className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-xs transition-colors ${
+                        editScope === "occurrence"
+                          ? "border-[#ea6f2a] bg-[#ea6f2a]/15 text-[#f5f7ff]"
+                          : "border-[#20205a] text-[#9a9fc4]"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="edit-scope"
@@ -1349,8 +1505,12 @@ export default function ProductionPage() {
                         className="accent-[#ea6f2a] mt-0.5"
                       />
                       <div>
-                        <span className="font-medium text-[#f5f7ff]">Change this single episode only ({formatDate(selectedOccurrence.start_date)})</span>
-                        <p className="text-[11px] text-[#9a9fc4]">Detaches this specific date and schedules it as a standalone show.</p>
+                        <span className="font-medium text-[#f5f7ff]">
+                          Add standalone episode on this date ({formatDate(selectedOccurrence.start_date)})
+                        </span>
+                        <p className="text-[11px] text-[#9a9fc4]">
+                          Creates a separate standalone show on this specific date.
+                        </p>
                       </div>
                     </label>
                   </div>
@@ -1361,22 +1521,27 @@ export default function ProductionPage() {
                 )}
               </div>
             )}
+
             <div>
-              <Label htmlFor="edit-location" className="text-[#f5f7ff]">Location</Label>
+              <Label htmlFor="edit-location" className="text-[#f5f7ff]">
+                Location
+              </Label>
               <Input
                 id="edit-location"
                 value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
             <div>
-              <Label htmlFor="edit-status" className="text-[#f5f7ff]">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+              <Label htmlFor="edit-status" className="text-[#f5f7ff]">
+                Status
+              </Label>
+              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                 <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-transparent border-[#20205a]">
+                <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectItem value="upcoming">Upcoming</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
@@ -1392,25 +1557,36 @@ export default function ProductionPage() {
                 onChange={(event) => setFormData({ ...formData, is_recurring: event.target.checked })}
                 className="h-4 w-4 accent-[#ea6f2a]"
               />
-              <Label htmlFor="edit-recurring" className="text-[#f5f7ff]">Repeat</Label>
+              <Label htmlFor="edit-recurring" className="text-[#f5f7ff]">
+                Repeat
+              </Label>
             </div>
             {formData.is_recurring && (
-              <div className="grid gap-4 rounded-lg border border-[#20205a] bg-[#0c0c3f]/50 p-4 sm:grid-cols-2">
+              <div className="grid gap-3 rounded-lg border border-[#20205a] bg-[#0c0c3f]/50 p-3 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="edit-frequency" className="text-[#f5f7ff]">Frequency</Label>
-                  <Select value={formData.recurrence_frequency} onValueChange={(value) => setFormData({ ...formData, recurrence_frequency: value })}>
+                  <Label htmlFor="edit-frequency" className="text-[#f5f7ff]">
+                    Frequency
+                  </Label>
+                  <Select
+                    value={formData.recurrence_frequency}
+                    onValueChange={(value) => setFormData({ ...formData, recurrence_frequency: value })}
+                  >
                     <SelectTrigger id="edit-frequency" className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       <SelectValue placeholder="Select frequency" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0c0c3f] border-[#20205a]">
+                    <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       {recurrenceOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="edit-recurrence-end" className="text-[#f5f7ff]">Repeat End Date</Label>
+                  <Label htmlFor="edit-recurrence-end" className="text-[#f5f7ff]">
+                    Repeat End Date
+                  </Label>
                   <Input
                     id="edit-recurrence-end"
                     type="date"
@@ -1422,77 +1598,207 @@ export default function ProductionPage() {
                 </div>
               </div>
             )}
+
+            {/* Crew Assignment in Edit Dialog */}
+            <div>
+              <Label className="text-[#f5f7ff] mb-2 block">Assigned Crew</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {allCrew.map((member) => {
+                  const assigned = selectedCrew.find((c) => c.user_id === member.user_id)
+                  return (
+                    <div
+                      key={member.user_id}
+                      className="flex items-center gap-3 p-2 rounded-md border border-[#20205a] bg-[#0c0c3f]/40"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`edit-crew-${member.user_id}`}
+                        checked={!!assigned}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedCrew((prev) => [...prev, { user_id: member.user_id, role: "" }])
+                          } else {
+                            setSelectedCrew((prev) => prev.filter((c) => c.user_id !== member.user_id))
+                          }
+                        }}
+                        className="w-4 h-4 accent-[#ea6f2a] flex-shrink-0"
+                      />
+                      <label
+                        htmlFor={`edit-crew-${member.user_id}`}
+                        className="text-[#f5f7ff] text-sm flex-1 cursor-pointer"
+                      >
+                        {member.first_name} {member.last_name}
+                        <span className="text-[#9a9fc4] text-xs ml-2">{member.email}</span>
+                      </label>
+                      {assigned && (
+                        <Input
+                          placeholder="Role (optional)"
+                          value={assigned.role}
+                          onChange={(e) =>
+                            setSelectedCrew((prev) =>
+                              prev.map((c) => (c.user_id === member.user_id ? { ...c, role: e.target.value } : c))
+                            )
+                          }
+                          className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff] text-xs h-7 w-32 flex-shrink-0"
+                        />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleUpdateProduction} className="bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]">
-              Update Production
+
+          <DialogFooter className="pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditDialog(false)
+                setDeleteDialog(true)
+              }}
+              disabled={saving}
+              className="border-red-500/50 bg-red-950/30 text-red-300 hover:bg-red-900/50 hover:text-white sm:mr-auto"
+            >
+              <Trash2 className="w-4 h-4 mr-1.5" />
+              Delete Event
             </Button>
+            <div className="flex items-center gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialog(false)}
+                disabled={saving}
+                className="border-[#20205a] text-[#9a9fc4]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleUpdateProduction}
+                disabled={saving}
+                className="bg-[#ea6f2a] hover:bg-[#f2a04a] text-[#f5f7ff]"
+              >
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save Changes
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* ── DELETE SINGLE / SERIES PRODUCTION DIALOG ── */}
       <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <DialogContent className="bg-transparent border-[#20205a]">
+        <DialogContent className="bg-[#0b0f33] border-[#20205a] text-[#f5f7ff] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[#f5f7ff]">Delete Production</DialogTitle>
             <DialogDescription className="text-[#9a9fc4]">
               {selectedProduction?.is_recurring
-                ? "Are you sure you want to delete this repeating production? This will delete all scheduled occurrences in this series. This action cannot be undone."
+                ? "Are you sure you want to delete this repeating production? This will delete all scheduled occurrences in this series."
                 : "Are you sure you want to delete this production? This action cannot be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialog(false)} className="border-[#20205a] text-[#9a9fc4] bg-transparent">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialog(false)}
+              disabled={saving}
+              className="border-[#20205a] text-[#9a9fc4] bg-transparent"
+            >
               Cancel
             </Button>
-            <Button onClick={handleDeleteProduction} className="bg-red-900 hover:bg-red-800 text-[#f5f7ff]">
+            <Button
+              onClick={handleDeleteProduction}
+              disabled={saving}
+              className="bg-red-700 hover:bg-red-600 text-[#f5f7ff]"
+            >
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Delete
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* ── CLEAR ENTIRE CALENDAR DIALOG ── */}
+      <Dialog open={clearDialog} onOpenChange={setClearDialog}>
+        <DialogContent className="bg-[#0b0f33] border-[#20205a] text-[#f5f7ff] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#f5f7ff]">Clear Entire Production Calendar?</DialogTitle>
+            <DialogDescription className="text-[#9a9fc4]">
+              This will permanently remove all scheduled productions and series from the calendar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setClearDialog(false)}
+              disabled={saving}
+              className="border-[#20205a] text-[#9a9fc4] bg-transparent"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleClearAllProductions}
+              disabled={saving}
+              className="bg-red-700 hover:bg-red-600 text-white"
+            >
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Clear All Events
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── REQUEST PRODUCTION DIALOG ── */}
       <Dialog open={requestDialog} onOpenChange={setRequestDialog}>
-        <DialogContent className="bg-transparent border-[#20205a]">
+        <DialogContent className="bg-[#0b0f33] border-[#20205a] text-[#f5f7ff] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-[#f5f7ff]">Request Production</DialogTitle>
             <DialogDescription className="text-[#9a9fc4]">Submit a request for admin approval</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="req-title" className="text-[#f5f7ff]">Title</Label>
+              <Label htmlFor="req-title" className="text-[#f5f7ff]">
+                Title
+              </Label>
               <Input
                 id="req-title"
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
             <div>
-              <Label htmlFor="req-description" className="text-[#f5f7ff]">Description</Label>
+              <Label htmlFor="req-description" className="text-[#f5f7ff]">
+                Description
+              </Label>
               <Textarea
                 id="req-description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
             <div>
-              <Label htmlFor="req-start-date" className="text-[#f5f7ff]">Requested Date & Time</Label>
+              <Label htmlFor="req-start-date" className="text-[#f5f7ff]">
+                Requested Date &amp; Time
+              </Label>
               <Input
                 id="req-start-date"
                 type="datetime-local"
                 value={formData.start_date}
-                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
             <div>
-              <Label htmlFor="req-location" className="text-[#f5f7ff]">Location</Label>
+              <Label htmlFor="req-location" className="text-[#f5f7ff]">
+                Location
+              </Label>
               <Input
                 id="req-location"
                 value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
@@ -1501,38 +1807,49 @@ export default function ProductionPage() {
                 type="checkbox"
                 id="req-recurring"
                 checked={formData.is_recurring}
-                onChange={(e) => setFormData({...formData, is_recurring: e.target.checked})}
-                className="w-4 h-4 bg-[#0c0c3f] border-[#20205a] rounded"
+                onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
+                className="w-4 h-4 accent-[#ea6f2a] bg-[#0c0c3f] border-[#20205a] rounded"
               />
-              <Label htmlFor="req-recurring" className="text-[#f5f7ff]">Repeat</Label>
+              <Label htmlFor="req-recurring" className="text-[#f5f7ff]">
+                Repeat
+              </Label>
             </div>
             {formData.is_recurring && (
-              <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="req-frequency" className="text-[#f5f7ff]">Frequency</Label>
-                  <Select value={formData.recurrence_frequency} onValueChange={(value) => setFormData({...formData, recurrence_frequency: value})}>
+                  <Label htmlFor="req-frequency" className="text-[#f5f7ff]">
+                    Frequency
+                  </Label>
+                  <Select
+                    value={formData.recurrence_frequency}
+                    onValueChange={(value) => setFormData({ ...formData, recurrence_frequency: value })}
+                  >
                     <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       <SelectValue placeholder="Select frequency" />
                     </SelectTrigger>
-                    <SelectContent className="bg-transparent border-[#20205a]">
+                    <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       {recurrenceOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="req-recurrence-end" className="text-[#f5f7ff]">Repeat End Date</Label>
+                  <Label htmlFor="req-recurrence-end" className="text-[#f5f7ff]">
+                    Repeat End Date
+                  </Label>
                   <Input
                     id="req-recurrence-end"
                     type="date"
                     min={formData.start_date.slice(0, 10)}
                     value={formData.recurrence_end_date}
-                    onChange={(e) => setFormData({...formData, recurrence_end_date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, recurrence_end_date: e.target.value })}
                     className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
                   />
                 </div>
-              </>
+              </div>
             )}
           </div>
           <DialogFooter>
