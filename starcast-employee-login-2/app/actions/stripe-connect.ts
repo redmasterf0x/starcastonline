@@ -37,55 +37,55 @@ export async function getPayoutStatus(): Promise<PayoutStatus> {
     return { connected: false, transfersActive: false, status: "not_connected" }
   }
 
-  const account = await stripe.v2.core.accounts.retrieve(stripeAccountId, {
-    include: ["configuration.recipient"],
-  })
+  try {
+    const account = await stripe.accounts.retrieve(stripeAccountId)
+    const transfersActive = Boolean(account.payouts_enabled)
+    const status: PayoutStatus["status"] = transfersActive ? "active" : "onboarding"
 
-  const transfersActive =
-    account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status === "active"
-  const status: PayoutStatus["status"] = transfersActive ? "active" : "onboarding"
+    await db.update(profiles).set({ stripeAccountStatus: status }).where(eq(profiles.id, viewer.profileId!))
 
-  await db.update(profiles).set({ stripeAccountStatus: status }).where(eq(profiles.id, viewer.profileId!))
-
-  return { connected: true, transfersActive, status }
+    return { connected: true, transfersActive, status }
+  } catch (err: any) {
+    console.error("getPayoutStatus error:", err)
+    return { connected: true, transfersActive: false, status: "onboarding" }
+  }
 }
 
 /**
- * Creates (if needed) the crew member's Stripe recipient account and returns a
- * one-time onboarding URL to collect the info Stripe needs before payouts can
- * be sent. Safe to call again to resume an incomplete onboarding.
+ * Creates (if needed) the crew member's Stripe Express connected account and returns a
+ * one-time onboarding URL to link their payout account (debit card or bank account).
+ * Safe to call again to resume an incomplete onboarding.
  */
 export async function startPayoutOnboarding(): Promise<{ url: string }> {
   const viewer = await requireCrewProfile()
 
   const rows = await db
-    .select({ stripeAccountId: profiles.stripeAccountId, email: user.email })
+    .select({ stripeAccountId: profiles.stripeAccountId, email: user.email, firstName: profiles.firstName, lastName: profiles.lastName })
     .from(profiles)
     .innerJoin(user, eq(user.id, profiles.userId))
     .where(eq(profiles.id, viewer.profileId!))
     .limit(1)
   let stripeAccountId = rows[0]?.stripeAccountId
-  const contactEmail = rows[0]?.email
+  const contactEmail = rows[0]?.email || undefined
+  const fullName = `${rows[0]?.firstName || ""} ${rows[0]?.lastName || ""}`.trim() || undefined
 
   if (!stripeAccountId) {
-    const account = await stripe.v2.core.accounts.create({
-      dashboard: "express",
-      contact_email: contactEmail,
-      identity: { country: "US" },
-      defaults: {
-        responsibilities: {
-          fees_collector: "application",
-          losses_collector: "application",
-        },
+    const account = await stripe.accounts.create({
+      type: "express",
+      country: "US",
+      email: contactEmail,
+      business_type: "individual",
+      capabilities: {
+        transfers: { requested: true },
       },
-      configuration: {
-        recipient: {
-          capabilities: {
-            stripe_balance: {
-              stripe_transfers: { requested: true },
-            },
-          },
-        },
+      business_profile: {
+        name: fullName ? `${fullName} (Starcast Crew)` : "Starcast Media Crew Member",
+        url: baseUrl,
+        mcc: "7922", // Theatrical producers / entertainment services
+      },
+      metadata: {
+        profile_id: viewer.profileId!,
+        user_id: viewer.userId,
       },
     })
     stripeAccountId = account.id
@@ -95,16 +95,11 @@ export async function startPayoutOnboarding(): Promise<{ url: string }> {
       .where(eq(profiles.id, viewer.profileId!))
   }
 
-  const link = await stripe.v2.core.accountLinks.create({
+  const link = await stripe.accountLinks.create({
     account: stripeAccountId,
-    use_case: {
-      type: "account_onboarding",
-      account_onboarding: {
-        configurations: ["recipient"],
-        return_url: returnUrl,
-        refresh_url: returnUrl,
-      },
-    },
+    refresh_url: returnUrl,
+    return_url: returnUrl,
+    type: "account_onboarding",
   })
 
   return { url: link.url }
@@ -115,23 +110,24 @@ export async function openPayoutDashboard(): Promise<{ url: string }> {
   const viewer = await requireCrewProfile()
 
   const rows = await db
-    .select({ stripeAccountId: profiles.stripeAccountId })
+    .select({ stripeAccountId: profiles.stripeAccountId, stripeAccountStatus: profiles.stripeAccountStatus })
     .from(profiles)
     .where(eq(profiles.id, viewer.profileId!))
     .limit(1)
   const stripeAccountId = rows[0]?.stripeAccountId
   if (!stripeAccountId) throw new Error("No connected Stripe account")
 
-  const link = await stripe.v2.core.accountLinks.create({
-    account: stripeAccountId,
-    use_case: {
-      type: "account_update",
-      account_update: {
-        configurations: ["recipient"],
-        return_url: returnUrl,
-        refresh_url: returnUrl,
-      },
-    },
-  })
-  return { url: link.url }
+  try {
+    const link = await stripe.accounts.createLoginLink(stripeAccountId)
+    return { url: link.url }
+  } catch (err: any) {
+    // If onboarding wasn't finished, resume onboarding instead of throwing an error
+    const link = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: returnUrl,
+      return_url: returnUrl,
+      type: "account_onboarding",
+    })
+    return { url: link.url }
+  }
 }

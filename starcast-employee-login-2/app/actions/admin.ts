@@ -52,6 +52,8 @@ export async function adminListUsers() {
     can_manage_calendar: p.canManageCalendar,
     staff_email: p.staffEmail ?? "",
     username: p.username ?? "",
+    stripe_account_id: p.stripeAccountId ?? null,
+    stripe_account_status: p.stripeAccountStatus ?? null,
     social_banned: p.socialBanned,
     social_ban_reason: p.socialBanReason ?? "",
     social_banned_at: p.socialBannedAt ? p.socialBannedAt.toISOString() : null,

@@ -96,13 +96,12 @@ export default function SponsorsPage() {
             {SPONSORSHIP_PACKAGES.map((pkg) => (
               <div
                 key={pkg.id}
-                className={`media-card relative rounded-2xl p-6 ${
-                  pkg.popular
+                className={`media-card relative rounded-2xl p-6 ${pkg.popular
                     ? "border-[#ea6f2a] bg-[#ea6f2a]/5"
                     : pkg.bestValue
-                    ? "border-[#f2a04a] bg-[#f2a04a]/5"
-                    : "border-[#20205a] bg-[#0c0c3f]/60"
-                }`}
+                      ? "border-[#f2a04a] bg-[#f2a04a]/5"
+                      : "border-[#20205a] bg-[#0c0c3f]/60"
+                  }`}
               >
                 {pkg.popular && (
                   <div className="absolute -top-3 left-6 bg-[#ea6f2a] text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
@@ -132,11 +131,10 @@ export default function SponsorsPage() {
 
                 <Button
                   onClick={() => handleSelectPackage(pkg)}
-                  className={`w-full ${
-                    pkg.popular || pkg.bestValue
+                  className={`w-full ${pkg.popular || pkg.bestValue
                       ? "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white"
                       : "bg-[#20205a] hover:bg-[#2a2a66] text-[#f5f7ff]"
-                  }`}
+                    }`}
                 >
                   Get Started
                 </Button>

@@ -58,6 +58,8 @@ interface User {
   can_write_articles?: boolean
   can_manage_calendar?: boolean
   username?: string
+  stripe_account_id?: string | null
+  stripe_account_status?: string | null
   social_banned?: boolean
   social_ban_reason?: string
   social_banned_at?: string | null
@@ -636,6 +638,25 @@ export default function AdminPage() {
                                     Edit
                                   </button>
                                 </div>
+                              )}
+                            </div>
+
+                            {/* Payout Connection Status */}
+                            <div className="mt-2 flex items-center gap-1.5 text-xs">
+                              <DollarSign className="w-3.5 h-3.5 text-[#22b573]" />
+                              <span className="text-[#9a9fc4]">Payouts:</span>
+                              {user.stripe_account_status === "active" ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7fe0ae] bg-[#22b573]/15 px-2 py-0.5 rounded-full border border-[#22b573]/30">
+                                  <Check className="w-3 h-3" /> Stripe Connected
+                                </span>
+                              ) : user.stripe_account_status === "onboarding" ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#f2a04a] bg-[#f2a04a]/15 px-2 py-0.5 rounded-full border border-[#f2a04a]/30">
+                                  Onboarding Incomplete
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-[#9a9fc4]/60 italic">
+                                  Not linked yet
+                                </span>
                               )}
                             </div>
 
