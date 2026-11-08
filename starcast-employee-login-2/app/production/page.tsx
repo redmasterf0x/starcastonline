@@ -97,7 +97,46 @@ const recurrenceOptions = [
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
   { value: "yearly", label: "Yearly" },
-] as const
+]
+
+const DURATION_OPTIONS = [
+  { value: "30", label: "30 minutes" },
+  { value: "45", label: "45 minutes" },
+  { value: "60", label: "1 hour" },
+  { value: "90", label: "1.5 hours" },
+  { value: "120", label: "2 hours" },
+  { value: "150", label: "2.5 hours" },
+  { value: "180", label: "3 hours" },
+  { value: "240", label: "4 hours" },
+  { value: "300", label: "5 hours" },
+  { value: "360", label: "6 hours" },
+  { value: "480", label: "8 hours" },
+]
+
+function getDurationMinutes(start?: string | null, end?: string | null): string {
+  if (!start || !end) return "120"
+  const startMs = new Date(start).getTime()
+  const endMs = new Date(end).getTime()
+  if (isNaN(startMs) || isNaN(endMs) || endMs <= startMs) return "120"
+  const diffMins = Math.round((endMs - startMs) / 60000)
+  return String(diffMins)
+}
+
+function calculateEndDateIso(startDateStr: string, durationMinutesStr: string): string | null {
+  const startIso = localDateTimeToUtcIso(startDateStr)
+  if (!startIso) return null
+  const mins = parseInt(durationMinutesStr, 10)
+  if (isNaN(mins) || mins <= 0) return null
+  const startDate = new Date(startIso)
+  return new Date(startDate.getTime() + mins * 60000).toISOString()
+}
+
+function formatDurationLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainingMins = minutes % 60
+  return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`
+}
 
 function formatDateTimeLocal(dateString: string | null) {
   if (!dateString) return ""
@@ -225,6 +264,7 @@ export default function ProductionPage() {
     title: "",
     description: "",
     start_date: "",
+    duration_minutes: "120",
     end_date: "",
     location: "",
     status: "upcoming",
@@ -338,10 +378,6 @@ export default function ProductionPage() {
       toast({ title: "Missing information", description: "Add a title and start date.", variant: "destructive" })
       return false
     }
-    if (formData.end_date && new Date(formData.end_date) < new Date(formData.start_date)) {
-      toast({ title: "Invalid end date", description: "The end date must be on or after the start date.", variant: "destructive" })
-      return false
-    }
     if (formData.is_recurring && (!formData.recurrence_frequency || !formData.recurrence_end_date)) {
       toast({ title: "Repeat details required", description: "Choose a frequency and repeat end date.", variant: "destructive" })
       return false
@@ -368,7 +404,7 @@ export default function ProductionPage() {
       setSaving(false)
       return
     }
-    const endIso = localDateTimeToUtcIso(formData.end_date)
+    const endIso = calculateEndDateIso(formData.start_date, formData.duration_minutes)
     const recurrenceEndClean = formData.recurrence_end_date ? formData.recurrence_end_date.slice(0, 10) : null
 
     let newProduction: { id: string; title: string; start_date: string | null; location: string | null }
@@ -435,7 +471,7 @@ export default function ProductionPage() {
     try {
       const startIso = localDateTimeToUtcIso(formData.start_date)
       if (!startIso) throw new Error("Invalid start date and time")
-      const endIso = localDateTimeToUtcIso(formData.end_date)
+      const endIso = calculateEndDateIso(formData.start_date, formData.duration_minutes)
 
       if (editScope === "occurrence" && selectedOccurrence && selectedProduction.is_recurring) {
         // Create standalone event for this occurrence date/time
@@ -472,14 +508,8 @@ export default function ProductionPage() {
         const finalSeriesStart = baseLocal > editedLocal ? editedLocal : baseLocal
         const updatedSeriesStartIso = finalSeriesStart.toISOString()
 
-        let updatedSeriesEndIso: string | null = null
-        if (formData.end_date) {
-          const editedEndLocal = new Date(formData.end_date)
-          const durationMs = editedEndLocal.getTime() - editedLocal.getTime()
-          if (durationMs >= 0) {
-            updatedSeriesEndIso = new Date(finalSeriesStart.getTime() + durationMs).toISOString()
-          }
-        }
+        const durationMins = parseInt(formData.duration_minutes, 10) || 120
+        const updatedSeriesEndIso = new Date(finalSeriesStart.getTime() + durationMins * 60000).toISOString()
 
         await updateProduction(
           baseId,
@@ -577,7 +607,7 @@ export default function ProductionPage() {
         title: formData.title,
         description: formData.description || null,
         start_date: startIso,
-        end_date: localDateTimeToUtcIso(formData.end_date),
+        end_date: calculateEndDateIso(formData.start_date, formData.duration_minutes),
         location: formData.location || null,
         status: "pending",
         is_recurring: formData.is_recurring,
@@ -640,6 +670,7 @@ export default function ProductionPage() {
       title: baseProd.title,
       description: baseProd.description || "",
       start_date: formatDateTimeLocal(effectiveStart),
+      duration_minutes: getDurationMinutes(effectiveStart, effectiveEnd),
       end_date: formatDateTimeLocal(effectiveEnd),
       location: baseProd.location || "",
       status: baseProd.status,
@@ -663,6 +694,7 @@ export default function ProductionPage() {
       title: "",
       description: "",
       start_date: "",
+      duration_minutes: "120",
       end_date: "",
       location: "",
       status: "upcoming",
@@ -737,9 +769,8 @@ export default function ProductionPage() {
     if (!canManageCalendar) return
     const pad = (n: number) => String(n).padStart(2, "0")
     const dateStr = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}T09:00`
-    const endDateStr = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}T11:00`
     resetForm()
-    setFormData((prev) => ({ ...prev, start_date: dateStr, end_date: endDateStr }))
+    setFormData((prev) => ({ ...prev, start_date: dateStr, duration_minutes: "120" }))
     setSelectedCrew([])
     setAddDialog(true)
   }
@@ -1000,6 +1031,7 @@ export default function ProductionPage() {
                                 <Clock className="w-4 h-4 flex-shrink-0" />
                                 <span>
                                   {formatDate(prod.start_date)} at {formatTime(prod.start_date)}
+                                  {prod.end_date && ` (${formatDurationLabel(Math.round((new Date(prod.end_date).getTime() - new Date(prod.start_date).getTime()) / 60000))})`}
                                 </span>
                               </div>
                               {prod.location && (
@@ -1246,16 +1278,24 @@ export default function ProductionPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="add-end-date" className="text-[#f5f7ff]">
-                  End Date &amp; Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span>
+                <Label htmlFor="add-duration" className="text-[#f5f7ff]">
+                  Duration
                 </Label>
-                <Input
-                  id="add-end-date"
-                  type="datetime-local"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
-                />
+                <Select
+                  value={formData.duration_minutes}
+                  onValueChange={(value) => setFormData({ ...formData, duration_minutes: value })}
+                >
+                  <SelectTrigger id="add-duration" className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    {DURATION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div>
@@ -1445,16 +1485,24 @@ export default function ProductionPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-end-date" className="text-[#f5f7ff]">
-                  End Date &amp; Time <span className="text-[#9a9fc4] font-normal text-xs">(optional)</span>
+                <Label htmlFor="edit-duration" className="text-[#f5f7ff]">
+                  Duration
                 </Label>
-                <Input
-                  id="edit-end-date"
-                  type="datetime-local"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
-                />
+                <Select
+                  value={formData.duration_minutes}
+                  onValueChange={(value) => setFormData({ ...formData, duration_minutes: value })}
+                >
+                  <SelectTrigger id="edit-duration" className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    {DURATION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -1779,17 +1827,39 @@ export default function ProductionPage() {
                 className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
               />
             </div>
-            <div>
-              <Label htmlFor="req-start-date" className="text-[#f5f7ff]">
-                Requested Date &amp; Time
-              </Label>
-              <Input
-                id="req-start-date"
-                type="datetime-local"
-                value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="req-start-date" className="text-[#f5f7ff]">
+                  Requested Date &amp; Time
+                </Label>
+                <Input
+                  id="req-start-date"
+                  type="datetime-local"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="req-duration" className="text-[#f5f7ff]">
+                  Duration
+                </Label>
+                <Select
+                  value={formData.duration_minutes}
+                  onValueChange={(value) => setFormData({ ...formData, duration_minutes: value })}
+                >
+                  <SelectTrigger id="req-duration" className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    {DURATION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label htmlFor="req-location" className="text-[#f5f7ff]">
