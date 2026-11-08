@@ -109,12 +109,13 @@ export function ResponsiveHeader({
     }
   }
 
-  // DESKTOP: Streamlined top header links (Dashboards, Community, Bands, Portal, Production, Admin moved to Left Drawer)
+  // DESKTOP: Streamlined top header links
   const desktopNavLinks: { href: string; label: string; show: boolean; external?: boolean }[] = [
     { href: "/", label: "Home", show: true },
     { href: "/watch", label: "Watch", show: true },
     { href: "/articles", label: "Articles", show: true },
     { href: "/music", label: "Music", show: true },
+    { href: "/community", label: "Community", show: true },
     { href: "/merch", label: "Merch", show: true },
     { href: "/information", label: "Information", show: true },
   ]
