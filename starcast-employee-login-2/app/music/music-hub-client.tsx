@@ -1335,8 +1335,8 @@ export function MusicHubClient({
       {/* ── SHARE PAGE MODAL ── */}
       {shareBand && (
         <BandShareModal
-          isOpen={!!shareBand}
-          onClose={() => setShareBand(null)}
+          open={!!shareBand}
+          onOpenChange={(open) => !open && setShareBand(null)}
           title={shareBand.name}
           subtitle={`${shareBand.genre || getActPageLabel(shareBand.type)} on StarCast Online`}
           url={
