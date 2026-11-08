@@ -1277,7 +1277,7 @@ export default function ProductionPage() {
                 <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectItem value="upcoming">Upcoming</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
@@ -1310,7 +1310,7 @@ export default function ProductionPage() {
                     <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       <SelectValue placeholder="Select frequency" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       {recurrenceOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -1541,7 +1541,7 @@ export default function ProductionPage() {
                 <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                   <SelectItem value="upcoming">Upcoming</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
@@ -1574,7 +1574,7 @@ export default function ProductionPage() {
                     <SelectTrigger id="edit-frequency" className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       <SelectValue placeholder="Select frequency" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       {recurrenceOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -1827,7 +1827,7 @@ export default function ProductionPage() {
                     <SelectTrigger className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       <SelectValue placeholder="Select frequency" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
+                    <SelectContent className="z-[200] bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                       {recurrenceOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
