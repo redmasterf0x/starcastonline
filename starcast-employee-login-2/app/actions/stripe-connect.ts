@@ -75,12 +75,16 @@ export async function startPayoutOnboarding(): Promise<{ url: string }> {
       country: "US",
       email: contactEmail,
       business_type: "individual",
+      individual: {
+        first_name: rows[0]?.firstName || undefined,
+        last_name: rows[0]?.lastName || undefined,
+        email: contactEmail,
+      },
       capabilities: {
         transfers: { requested: true },
       },
       business_profile: {
-        name: fullName ? `${fullName} (Starcast Crew)` : "Starcast Media Crew Member",
-        url: baseUrl,
+        product_description: "Starcast Media production crew member payouts",
         mcc: "7922", // Theatrical producers / entertainment services
       },
       metadata: {
