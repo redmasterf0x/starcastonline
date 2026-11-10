@@ -25,7 +25,7 @@ import {
   Sparkles,
   Radio,
   Clock,
-  Heart,
+  Star,
   Pencil,
 } from "lucide-react"
 
@@ -492,15 +492,15 @@ export function BandMusicPlayer({
 
                 {/* Right stats & actions */}
                 <div className="flex items-center gap-3 shrink-0 text-xs font-mono text-[#9a9fc4]">
-                  {/* Like Button */}
+                  {/* Star / Like Button */}
                   <button
                     onClick={(e) => handleToggleLike(e, track)}
-                    className={`flex items-center gap-1 text-xs transition-colors hover:text-rose-400 p-1 ${
-                      track.isLiked ? "text-rose-500 font-bold" : "text-[#7f84ad]"
+                    className={`flex items-center gap-1 text-xs transition-colors hover:text-[#ffd166] p-1 cursor-pointer ${
+                      track.isLiked ? "text-[#ffd166] font-bold" : "text-[#7f84ad]"
                     }`}
-                    title={track.isLiked ? "Unlike song" : "Like song"}
+                    title={track.isLiked ? "Unlike song" : "Star song"}
                   >
-                    <Heart className={`w-3.5 h-3.5 ${track.isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
+                    <Star className={`w-3.5 h-3.5 ${track.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""}`} />
                     <span>{track.likeCount || 0}</span>
                   </button>
 

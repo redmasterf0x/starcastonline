@@ -43,7 +43,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ShieldCheck,
-  Heart,
+  Star,
   Pencil,
   UserPlus,
   UserCheck,
@@ -511,12 +511,12 @@ export function SongPlayerView({ track, relatedTracks, initialComments, currentU
                   variant="outline"
                   className={`rounded-xl h-11 px-5 text-xs font-bold transition-all ${
                     trackState.isLiked
-                      ? "bg-rose-500/15 border-rose-500/50 text-rose-400 hover:bg-rose-500/25"
-                      : "border-[#20205a] bg-[#0c0c3f]/80 text-[#f5f7ff] hover:text-rose-400 hover:border-rose-500/40"
+                      ? "bg-[#ffd166]/15 border-[#ffd166]/50 text-[#ffd166] hover:bg-[#ffd166]/25"
+                      : "border-[#20205a] bg-[#0c0c3f]/80 text-[#f5f7ff] hover:text-[#ffd166] hover:border-[#ffd166]/40"
                   }`}
                 >
-                  <Heart className={`w-4 h-4 mr-2 ${trackState.isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
-                  {trackState.isLiked ? "Liked" : "Like Song"} ({trackState.likeCount || 0})
+                  <Star className={`w-4 h-4 mr-2 ${trackState.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""}`} />
+                  {trackState.isLiked ? "Starred" : "Star Song"} ({trackState.likeCount || 0})
                 </Button>
 
                 {/* Follow Act Button */}

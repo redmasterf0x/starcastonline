@@ -62,7 +62,7 @@ import {
   Search, UserPlus, UserCheck, Clock, MessageSquare, Users, 
   ArrowBigUp, MessageCircle, ChevronRight, ChevronLeft, 
   Sparkles, TrendingUp, Send, X, Plus, Image as ImageIcon,
-  Heart, Share2, Bookmark, MoreHorizontal, User, Music, UserMinus,
+  Share2, Bookmark, MoreHorizontal, User, Music, UserMinus,
   QrCode, Radio, ArrowRight, ExternalLink, Bell, BellRing
 } from "lucide-react"
 import { BandShareModal } from "@/components/bands/band-share-modal"

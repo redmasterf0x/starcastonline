@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, Heart } from "lucide-react"
+import { Sparkles, Star } from "lucide-react"
 import {
   togglePostReaction,
   toggleCommentReaction,
@@ -16,7 +16,7 @@ export const COSMIC_REACTIONS: {
   emoji: string
   bgHover: string
 }[] = [
-  { key: "love", label: "Love", emoji: "❤️", bgHover: "hover:bg-red-500/20" },
+  { key: "love", label: "Star", emoji: "⭐", bgHover: "hover:bg-amber-500/20" },
   { key: "fire", label: "Fire", emoji: "🔥", bgHover: "hover:bg-orange-500/20" },
   { key: "riff", label: "Riff", emoji: "🎸", bgHover: "hover:bg-fuchsia-500/20" },
   { key: "cosmic", label: "Cosmic", emoji: "🚀", bgHover: "hover:bg-cyan-500/20" },
@@ -227,10 +227,10 @@ export function CosmicReactions({
             ? "👑"
             : hasUserReacted && userReactions.has("hype")
             ? "💯"
-            : "❤️"}
+            : "⭐"}
         </span>
         <span>
-          {compact && total === 0 ? "Like" : total > 0 ? total : "React"}
+          {compact && total === 0 ? "Star" : total > 0 ? total : "Star"}
         </span>
       </button>
 

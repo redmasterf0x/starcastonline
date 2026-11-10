@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Send, Sparkles, CornerDownRight, Share2 } from "lucide-react"
+import { MessageCircle, Send, Sparkles, CornerDownRight, Share2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   listDeckPosts,

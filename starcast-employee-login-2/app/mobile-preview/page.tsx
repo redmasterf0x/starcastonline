@@ -10,7 +10,7 @@ import {
   Radio,
   Play,
   Share2,
-  Heart,
+  Star,
   MoreVertical,
   Plus,
   Shield,
@@ -547,8 +547,8 @@ export default function MobileAppPreviewPage() {
                           <span className="flex items-center gap-1">
                             <MessageSquare className="w-3 h-3" /> {post.replies} replies
                           </span>
-                          <span className="flex items-center gap-1 hover:text-red-400 cursor-pointer">
-                            <Heart className="w-3 h-3" /> {post.likes}
+                          <span className="flex items-center gap-1 hover:text-[#ffd166] cursor-pointer">
+                            <Star className="w-3 h-3 text-[#ffd166] fill-[#ffd166]" /> {post.likes}
                           </span>
                         </div>
                       </div>

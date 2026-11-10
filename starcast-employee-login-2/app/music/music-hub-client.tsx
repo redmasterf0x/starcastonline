@@ -49,7 +49,7 @@ import {
   ExternalLink,
   Flame,
   ArrowRight,
-  Heart,
+  Star,
   Users,
   ChevronRight,
   ShieldCheck,
@@ -609,12 +609,12 @@ export function MusicHubClient({
 
                   <button
                     onClick={(e) => handleLikeTrack(e, trendingTracks[0])}
-                    className="p-1 rounded-lg text-[#9a9fc4] hover:text-rose-400 transition-colors shrink-0"
-                    title={trendingTracks[0].isLiked ? "Unlike song" : "Like song"}
+                    className="p-1 rounded-lg text-[#9a9fc4] hover:text-[#ffd166] transition-colors shrink-0"
+                    title={trendingTracks[0].isLiked ? "Unlike song" : "Star song"}
                   >
-                    <Heart
+                    <Star
                       className={`w-4 h-4 ${
-                        trendingTracks[0].isLiked ? "text-rose-500 fill-rose-500" : ""
+                        trendingTracks[0].isLiked ? "text-[#ffd166] fill-[#ffd166]" : ""
                       }`}
                     />
                   </button>
@@ -905,14 +905,14 @@ export function MusicHubClient({
                           <div className="flex items-center gap-3">
                             <button
                               onClick={(e) => handleLikeTrack(e, track)}
-                              className={`flex items-center gap-1 text-xs transition-colors hover:text-rose-400 cursor-pointer ${
-                                track.isLiked ? "text-rose-500 font-bold" : "text-[#9a9fc4]"
+                              className={`flex items-center gap-1 text-xs transition-colors hover:text-[#ffd166] cursor-pointer ${
+                                track.isLiked ? "text-[#ffd166] font-bold" : "text-[#9a9fc4]"
                               }`}
-                              title={track.isLiked ? "Unlike song" : "Like song"}
+                              title={track.isLiked ? "Unlike song" : "Star song"}
                             >
-                              <Heart
+                              <Star
                                 className={`w-3.5 h-3.5 ${
-                                  track.isLiked ? "fill-rose-500 text-rose-500" : ""
+                                  track.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""
                                 }`}
                               />
                               <span>{track.likeCount || 0}</span>
@@ -1232,13 +1232,13 @@ export function MusicHubClient({
                             onClick={(e) => handleLikeAlbum(e, album)}
                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
                               album.isLiked
-                                ? "bg-rose-500/15 border-rose-500/50 text-rose-400"
-                                : "bg-[#05051f] border-[#20205a] text-[#9a9fc4] hover:text-rose-400 hover:border-rose-500/40"
+                                ? "bg-[#ffd166]/15 border-[#ffd166]/50 text-[#ffd166]"
+                                : "bg-[#05051f] border-[#20205a] text-[#9a9fc4] hover:text-[#ffd166] hover:border-[#ffd166]/40"
                             }`}
-                            title="Like album (automatically likes all songs in it!)"
+                            title="Star album (automatically stars all songs in it!)"
                           >
-                            <Heart className={`w-3.5 h-3.5 ${album.isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
-                            <span>{album.likeCount || 0} Likes</span>
+                            <Star className={`w-3.5 h-3.5 ${album.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""}`} />
+                            <span>{album.likeCount || 0} Stars</span>
                           </button>
 
                           <Button
