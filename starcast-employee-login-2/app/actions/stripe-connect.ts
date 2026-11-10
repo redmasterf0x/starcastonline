@@ -100,6 +100,9 @@ export async function startPayoutOnboarding(): Promise<{ url: string }> {
     refresh_url: returnUrl,
     return_url: returnUrl,
     type: "account_onboarding",
+    collection_options: {
+      fields: "currently_due",
+    },
   })
 
   return { url: link.url }
@@ -121,12 +124,15 @@ export async function openPayoutDashboard(): Promise<{ url: string }> {
     const link = await stripe.accounts.createLoginLink(stripeAccountId)
     return { url: link.url }
   } catch (err: any) {
-    // If onboarding wasn't finished, resume onboarding instead of throwing an error
+    // If onboarding wasn't finished, resume onboarding directly into the missing step
     const link = await stripe.accountLinks.create({
       account: stripeAccountId,
       refresh_url: returnUrl,
       return_url: returnUrl,
       type: "account_onboarding",
+      collection_options: {
+        fields: "currently_due",
+      },
     })
     return { url: link.url }
   }
