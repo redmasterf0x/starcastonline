@@ -258,6 +258,117 @@ export async function getCrewAccountingDetails(): Promise<CrewAccountingData> {
   }
 }
 
+/**
+ * Securely links or updates a crew member's bank account on-site using server-side tokenization.
+ * Bank routing and account numbers are tokenized immediately and attached to their Stripe connected account.
+ * No bank credentials or account numbers are ever stored in the Starcast database.
+ */
+export async function linkCrewBankAccountOnSite(input: {
+  routingNumber: string
+  accountNumber: string
+  accountHolderName: string
+}): Promise<{ success: boolean; bankName?: string; last4?: string; error?: string }> {
+  try {
+    const viewer = await requireCrewProfile()
+
+    const cleanRouting = input.routingNumber?.replace(/\D/g, "")
+    const cleanAccount = input.accountNumber?.replace(/\D/g, "")
+    const cleanHolder = input.accountHolderName?.trim()
+
+    if (!cleanRouting || cleanRouting.length !== 9) {
+      return { success: false, error: "Please enter a valid 9-digit US bank routing number." }
+    }
+    if (!cleanAccount || cleanAccount.length < 4 || cleanAccount.length > 17) {
+      return { success: false, error: "Please enter a valid bank account number." }
+    }
+    if (!cleanHolder) {
+      return { success: false, error: "Account holder name is required." }
+    }
+
+    const rows = await db
+      .select({
+        stripeAccountId: profiles.stripeAccountId,
+        email: user.email,
+        firstName: profiles.firstName,
+        lastName: profiles.lastName,
+      })
+      .from(profiles)
+      .innerJoin(user, eq(user.id, profiles.userId))
+      .where(eq(profiles.id, viewer.profileId!))
+      .limit(1)
+
+    let stripeAccountId = rows[0]?.stripeAccountId
+
+    // Create connected individual account if it doesn't exist yet
+    if (!stripeAccountId) {
+      const contactEmail = rows[0]?.email || undefined
+      const account = await stripe.accounts.create({
+        type: "express",
+        country: "US",
+        email: contactEmail,
+        business_type: "individual",
+        individual: {
+          first_name: rows[0]?.firstName || undefined,
+          last_name: rows[0]?.lastName || undefined,
+          email: contactEmail,
+        },
+        capabilities: {
+          transfers: { requested: true },
+        },
+        business_profile: {
+          product_description: "Starcast Media production crew member payouts",
+          mcc: "7922",
+        },
+        metadata: {
+          profile_id: viewer.profileId!,
+          user_id: viewer.userId,
+        },
+      })
+      stripeAccountId = account.id
+      await db
+        .update(profiles)
+        .set({ stripeAccountId, stripeAccountStatus: "onboarding" })
+        .where(eq(profiles.id, viewer.profileId!))
+    }
+
+    // 1. Create a secure token with Stripe in-memory (never logged or saved to DB)
+    const token = await stripe.tokens.create({
+      bank_account: {
+        country: "US",
+        currency: "usd",
+        routing_number: cleanRouting,
+        account_number: cleanAccount,
+        account_holder_name: cleanHolder,
+        account_holder_type: "individual",
+      },
+    })
+
+    // 2. Attach bank account token to the crew member's Stripe connected account as the default payout destination
+    const externalAccount = await stripe.accounts.createExternalAccount(stripeAccountId, {
+      external_account: token.id,
+      default_for_currency: true,
+    })
+
+    // 3. Update status in database
+    await db
+      .update(profiles)
+      .set({ stripeAccountStatus: "active" })
+      .where(eq(profiles.id, viewer.profileId!))
+
+    return {
+      success: true,
+      bankName: (externalAccount as any).bank_name || "Bank Account",
+      last4: (externalAccount as any).last4,
+    }
+  } catch (err: any) {
+    console.error("linkCrewBankAccountOnSite error:", err)
+    return {
+      success: false,
+      error: err?.message || "Failed to link bank account. Please check your routing and account numbers.",
+    }
+  }
+}
+
 /** Returns a one-time login link to the crew member's Stripe Express dashboard. */
 export async function openPayoutDashboard(): Promise<{ url: string }> {
   const viewer = await requireCrewProfile()
