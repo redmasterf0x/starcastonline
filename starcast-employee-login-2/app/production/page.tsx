@@ -834,14 +834,15 @@ export default function ProductionPage() {
               </Button>
             )}
             {isCrew && (
-              <Button
-                onClick={openPayoutsDialog}
-                variant="outline"
-                className="border-[#22b573]/45 bg-[#0c0c3f]/55 text-[#7fe0ae] hover:border-[#22b573]/70 hover:bg-[#22b573]/10 hover:text-[#f5f7ff]"
-              >
-                <DollarSign className="w-4 h-4 mr-2" />
-                Payout Account
-              </Button>
+              <Link href="/production/accounting">
+                <Button
+                  variant="outline"
+                  className="border-[#22b573]/45 bg-[#0c0c3f]/55 text-[#7fe0ae] hover:border-[#22b573]/70 hover:bg-[#22b573]/10 hover:text-[#f5f7ff]"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Payouts &amp; Accounting
+                </Button>
+              </Link>
             )}
             {isAdmin && (
               <Link href="/admin">
