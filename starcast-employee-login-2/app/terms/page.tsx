@@ -17,6 +17,8 @@ import {
   Lock,
   Calendar,
   AlertTriangle,
+  Wallet,
+  Star,
 } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -32,13 +34,19 @@ export default function TermsPage() {
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
         {/* Navigation Breadcrumb */}
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#ffd166]">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#ffd166] hover:text-[#ea6f2a] transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-[#ea6f2a] transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to StarCast Home
+            <ArrowLeft className="w-3.5 h-3.5" /> StarCast Home
           </Link>
+          <span className="text-[#20205a]">/</span>
+          <Link href="/legal" className="hover:text-[#ea6f2a] transition-colors">
+            Legal Hub
+          </Link>
+          <span className="text-[#20205a]">/</span>
+          <span className="text-[#ffd166]">Terms &amp; Conditions</span>
         </div>
 
         {/* Header Hero */}
@@ -51,7 +59,7 @@ export default function TermsPage() {
             StarCast Media <span className="text-[#ffd166]">Terms &amp; Conditions</span>
           </h1>
           <p className="text-sm text-[#9a9fc4]">
-            Effective Date: January 1, 2026 &middot; Last Revised: October 26, 2026 &middot; StarCast Live Media LLC
+            Effective Date: January 1, 2026 &middot; Last Revised: November 10, 2026 &middot; StarCast Live Media LLC
           </p>
         </header>
 
@@ -234,21 +242,51 @@ export default function TermsPage() {
                 <strong>The Deck 24h Public Wall:</strong> Members can broadcast one post every 24 hours to The Deck. Content must be respectful and free from automated spam or advertising bots.
               </li>
               <li>
+                <strong>Star Ratings &amp; Cosmic Reactions:</strong> Community posts and comments utilize StarCast Stars (⭐) and cosmic reactions. Attempting to artificially game reaction metrics through coordinated bot rings or script manipulation is strictly forbidden.
+              </li>
+              <li>
                 <strong>StarVote Polls &amp; Discussions:</strong> Polls and discussions must not promote violence, hate speech, illegal activities, or deliberate disinformation.
               </li>
               <li>
                 <strong>Direct Messaging &amp; Friendships:</strong> Direct messages (DMs) and friend requests must not be used to harass, intimidate, stalk, or send unsolicited commercial advertisements.
               </li>
               <li>
-                <strong>Social Bans &amp; Content Moderation:</strong> Users who violate community guidelines may have their social privileges revoked (blocking posts, comments, likes, friend requests, and DMs) or face permanent account termination.
+                <strong>Social Bans &amp; Content Moderation:</strong> Users who violate community guidelines may have their social privileges revoked (blocking posts, comments, stars/likes, friend requests, and DMs) or face permanent account termination.
               </li>
             </ul>
           </section>
 
           {/* Section 8 */}
+          <section id="crew-payouts" className="space-y-3">
+            <h2 className="text-xl font-bold text-[#f5f7ff] flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-[#ffd166]" /> 8. Production Crew, Independent Contractor Terms &amp; Stripe Connect Payouts
+            </h2>
+            <p>
+              StarCast Media operates physical production studios, broadcast sets, multi-camera live streams, and field recordings with support from independent crew members, camera operators, audio engineers, technicians, and production staff:
+            </p>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>
+                <strong>Independent Contractor Classification:</strong> Production crew members, technicians, and staff contributors engage with StarCast Live Media LLC as independent contractors (IRS Form 1099) and not as traditional W-2 employees, unless explicitly designated otherwise under a separate written executive employment agreement. Crew members maintain independent control over their tradecraft and are responsible for all applicable self-employment, state, and federal taxes.
+              </li>
+              <li>
+                <strong>Stripe Connect Payout Linking:</strong> Crew members connect their designated personal or business payout account (checking account, debit card, or approved financial institutions such as Chime / Stride Bank) through <strong>Stripe Connect</strong>. StarCast does not store sensitive banking numbers or tax identifiers on local servers; all banking tokens and Know Your Customer (KYC) identity validations are encrypted and vaulted directly by Stripe.
+              </li>
+              <li>
+                <strong>Production Accounting Ledger &amp; Tax Exports:</strong> Authorized crew members can monitor pending disbursements, historical transfers, and year-to-date compensation directly through the on-site StarCast Production Accounting portal (<code>/production/accounting</code>). Crew members can export structured, timestamped CSV records at any time for tax preparation and accounting reconciliation.
+              </li>
+              <li>
+                <strong>Timesheets, Shift Scheduling &amp; Callouts:</strong> Production crew shifts are scheduled and managed through the production console. Automated SMS notifications and email reminders provide callout details. Crew members are responsible for logging accurate work hours and shift completions.
+              </li>
+              <li>
+                <strong>Studio Safety &amp; Production Confidentiality:</strong> Crew members agree to adhere to all studio safety protocols, treat production gear and artist instruments with utmost care, and maintain strict confidentiality regarding unreleased broadcasts, guest interviews, and musical masters prior to official public airing.
+              </li>
+            </ul>
+          </section>
+
+          {/* Section 9 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#f5f7ff] flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-[#20efe0]" /> 8. Merchandise Storefront &amp; Shopify Orders
+              <ShoppingBag className="w-5 h-5 text-[#20efe0]" /> 9. Merchandise Storefront &amp; Shopify Orders
             </h2>
             <ul className="list-disc pl-5 space-y-2">
               <li>
@@ -261,15 +299,18 @@ export default function TermsPage() {
                 <strong>Shipping &amp; Fulfillment:</strong> Orders are fulfilled and shipped through authorized manufacturing and fulfillment partners. Shipping timelines and tracking links are provided upon dispatch.
               </li>
               <li>
-                <strong>Returns &amp; Exchanges:</strong> Damaged, misprinted, or defective merchandise must be reported within 14 days of delivery for a free replacement or full refund.
+                <strong>Returns &amp; Exchanges:</strong> Damaged, misprinted, or defective merchandise must be reported within 14 days of delivery for a free replacement or full refund under our{" "}
+                <Link href="/return-policy" className="text-[#20efe0] underline">
+                  Return &amp; Refund Policy
+                </Link>.
               </li>
             </ul>
           </section>
 
-          {/* Section 9 */}
+          {/* Section 10 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#f5f7ff] flex items-center gap-2">
-              <Video className="w-5 h-5 text-[#ea6f2a]" /> 9. Broadcast Content, Shows &amp; Interactive Trivia
+              <Video className="w-5 h-5 text-[#ea6f2a]" /> 10. Broadcast Content, Shows &amp; Interactive Trivia
             </h2>
             <ul className="list-disc pl-5 space-y-2">
               <li>
@@ -284,10 +325,10 @@ export default function TermsPage() {
             </ul>
           </section>
 
-          {/* Section 10 */}
+          {/* Section 11 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#f5f7ff] flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#ffd166]" /> 10. Studio Rehearsal Bookings &amp; Studio Passes
+              <Calendar className="w-5 h-5 text-[#ffd166]" /> 11. Studio Rehearsal Bookings &amp; Studio Passes
             </h2>
             <p>
               Rehearsal studio slots, equipment rentals, studio tracking sessions, and monthly passes at StarCast Studio in Topeka, Kansas, are subject to booking confirmation and venue house rules:
@@ -305,10 +346,10 @@ export default function TermsPage() {
             </ul>
           </section>
 
-          {/* Section 11 */}
+          {/* Section 12 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-[#f5f7ff] flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-400" /> 11. Disclaimers &amp; Limitation of Liability
+              <AlertTriangle className="w-5 h-5 text-amber-400" /> 12. Disclaimers &amp; Limitation of Liability
             </h2>
             <p>
               The Service, including all streaming video, audio playback, ticketing engines, community streams, and tools, is provided &quot;AS IS&quot; and &quot;AS AVAILABLE&quot; without warranties of any kind, either express or implied.
@@ -318,9 +359,9 @@ export default function TermsPage() {
             </p>
           </section>
 
-          {/* Section 12 */}
+          {/* Section 13 */}
           <section className="space-y-3">
-            <h2 className="text-xl font-bold text-[#f5f7ff]">12. DMCA Takedown Notices &amp; Copyright Agent</h2>
+            <h2 className="text-xl font-bold text-[#f5f7ff]">13. DMCA Takedown Notices &amp; Copyright Agent</h2>
             <p>
               If you are a copyright owner or authorized representative and believe content hosted on StarCast Online infringes your copyright, submit a formal DMCA takedown notification to our Designated Copyright Agent with:
             </p>
@@ -346,6 +387,45 @@ export default function TermsPage() {
                 </Link>
               </p>
               <p className="text-[#7f84ad] text-xs font-mono pt-1">Topeka, KS &middot; United States</p>
+            </div>
+          </section>
+
+          {/* Quick Legal Hub Navigation */}
+          <section className="p-5 rounded-2xl border border-[#20205a] bg-[#0c0c3f]/50 space-y-3">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-[#ffd166]">
+              StarCast Legal &amp; Policy Directory
+            </h3>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Link
+                href="/legal"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#f5f7ff] hover:bg-[#ea6f2a] hover:text-white transition-colors"
+              >
+                Legal Hub Overview &rarr;
+              </Link>
+              <Link
+                href="/privacy"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#ea6f2a] hover:text-white transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="/music/agreement"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#20efe0] hover:text-[#05052d] transition-colors"
+              >
+                Music Rights Agreement
+              </Link>
+              <Link
+                href="/return-policy"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#20efe0] hover:text-[#05052d] transition-colors"
+              >
+                Store Return Policy
+              </Link>
+              <Link
+                href="/delete-account"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-red-300 hover:bg-red-600 hover:text-white transition-colors"
+              >
+                Account Deletion Portal
+              </Link>
             </div>
           </section>
         </div>

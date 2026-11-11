@@ -37,6 +37,10 @@ export default function ReturnPolicyPage() {
             <ArrowLeft className="w-3.5 h-3.5" /> StarCast Home
           </Link>
           <span className="text-[#20205a]">/</span>
+          <Link href="/legal" className="hover:text-[#ea6f2a] transition-colors">
+            Legal Hub
+          </Link>
+          <span className="text-[#20205a]">/</span>
           <Link href="/merch" className="hover:text-[#ea6f2a] transition-colors inline-flex items-center gap-1.5">
             <ShoppingBag className="w-3.5 h-3.5" /> Merch Store
           </Link>
@@ -54,7 +58,7 @@ export default function ReturnPolicyPage() {
             Store <span className="text-[#ffd166]">Return &amp; Refund</span> Policy
           </h1>
           <p className="text-sm text-[#9a9fc4]">
-            Last updated: September 29, 2026 &middot; StarCast Live Media LLC &middot; Topeka, Kansas
+            Last updated: November 10, 2026 &middot; StarCast Live Media LLC &middot; Topeka, Kansas
           </p>
         </header>
 
@@ -273,6 +277,45 @@ export default function ReturnPolicyPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#20205a] hover:border-white/40 text-[#c4c7da] hover:text-white text-sm transition-colors"
               >
                 <ShoppingBag className="w-4 h-4" /> Back to Store
+              </Link>
+            </div>
+          </section>
+
+          {/* Quick Legal Hub Navigation */}
+          <section className="p-5 rounded-2xl border border-[#20205a] bg-[#0c0c3f]/50 space-y-3">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-[#ffd166]">
+              StarCast Legal &amp; Policy Directory
+            </h3>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Link
+                href="/legal"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#f5f7ff] hover:bg-[#ea6f2a] hover:text-white transition-colors"
+              >
+                Legal Hub Overview &rarr;
+              </Link>
+              <Link
+                href="/terms"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#ffd166] hover:text-[#05052d] transition-colors"
+              >
+                Terms and Conditions
+              </Link>
+              <Link
+                href="/privacy"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#ea6f2a] hover:text-white transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="/music/agreement"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#20efe0] hover:text-[#05052d] transition-colors"
+              >
+                Music Rights Agreement
+              </Link>
+              <Link
+                href="/delete-account"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-red-300 hover:bg-red-600 hover:text-white transition-colors"
+              >
+                Account Deletion Portal
               </Link>
             </div>
           </section>

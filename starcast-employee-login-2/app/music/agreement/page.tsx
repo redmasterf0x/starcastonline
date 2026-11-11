@@ -27,20 +27,28 @@ export default function MusicAgreementPage() {
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Navigation Breadcrumb (Hidden in print) */}
-        <div className="mb-6 print:hidden flex items-center justify-between">
-          <Link
-            href="/music"
-            className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#ffd166] hover:text-[#ea6f2a] transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Music Hub
-          </Link>
+        <div className="mb-6 print:hidden flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#ffd166]">
+            <Link
+              href="/music"
+              className="inline-flex items-center gap-1.5 hover:text-[#ea6f2a] transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Music Hub
+            </Link>
+            <span className="text-[#20205a]">/</span>
+            <Link href="/legal" className="hover:text-[#ea6f2a] transition-colors">
+              Legal Hub
+            </Link>
+          </div>
 
-          <Link
-            href="/terms"
-            className="text-xs text-[#9a9fc4] hover:text-white transition-colors"
-          >
-            General Terms of Service &rarr;
-          </Link>
+          <div className="flex items-center gap-3 text-xs">
+            <Link
+              href="/terms"
+              className="text-[#9a9fc4] hover:text-[#ffd166] transition-colors"
+            >
+              Terms of Service &rarr;
+            </Link>
+          </div>
         </div>
 
         <MusicAgreementClient />

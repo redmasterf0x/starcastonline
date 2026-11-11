@@ -30,13 +30,19 @@ export default function PrivacyPolicyPage() {
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
         {/* Navigation Breadcrumb */}
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#ffd166]">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#ffd166] hover:text-[#ea6f2a] transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-[#ea6f2a] transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to StarCast Home
+            <ArrowLeft className="w-3.5 h-3.5" /> StarCast Home
           </Link>
+          <span className="text-[#20205a]">/</span>
+          <Link href="/legal" className="hover:text-[#ea6f2a] transition-colors">
+            Legal Hub
+          </Link>
+          <span className="text-[#20205a]">/</span>
+          <span className="text-[#20efe0]">Privacy Policy</span>
         </div>
 
         {/* Header Hero */}
@@ -49,7 +55,7 @@ export default function PrivacyPolicyPage() {
             StarCast Media <span className="text-[#ea6f2a]">Privacy Policy</span>
           </h1>
           <p className="text-sm text-[#9a9fc4]">
-            Effective Date: January 1, 2026 &middot; Last Revised: October 26, 2026 &middot; StarCast Live Media LLC
+            Effective Date: January 1, 2026 &middot; Last Revised: November 10, 2026 &middot; StarCast Live Media LLC
           </p>
         </header>
 
@@ -102,7 +108,7 @@ export default function PrivacyPolicyPage() {
                 <strong>Artist &amp; Music Data:</strong> Band titles, artist names, album art, audio master files, lyrics, producer credits, and <strong>Acoustic Fingerprints</strong> (SHA-256 master hashes and spectral perceptual fingerprints generated for copyright prior-art protection).
               </li>
               <li>
-                <strong>Event Ticketing &amp; Financial Information:</strong> When you purchase tickets or sponsor packages, payments are processed directly through <strong>Stripe</strong>. StarCast does not store complete credit card or payment credential numbers on our servers. When bands or crew receive payouts, financial routing is managed via secure <strong>Stripe Connect</strong>.
+                <strong>Event Ticketing, Payouts &amp; Financial Information:</strong> When you purchase tickets, merch, or sponsor packages, payments are processed directly through <strong>Stripe</strong>. StarCast does not store complete credit card numbers, bank account numbers, routing numbers, or Social Security numbers on our servers. When bands or production crew members connect payout accounts (such as checking accounts or Chime / Stride Bank) to receive earnings, all financial tokenization, KYC verification, and banking operations are managed securely via <strong>Stripe Connect</strong>. StarCast stores only payout transaction reference IDs, transfer timestamps, and dollar amounts to render transparent member accounting ledgers and support 1099 tax reporting compliance.
               </li>
               <li>
                 <strong>Merchandise Orders:</strong> Online merch transactions at <code>/merch</code> are executed via the <strong>Shopify Storefront API</strong>. Shopify securely handles payment processing, billing, and fulfillment addresses.
@@ -128,6 +134,7 @@ export default function PrivacyPolicyPage() {
               <li>To stream artist audio tracks, render band pages, and display official Certificates of Ownership.</li>
               <li>To analyze uploaded audio against our internal catalog and AcoustID registries to prevent copyright infringement and duplicate theft.</li>
               <li>To issue cryptographically signed QR tickets and disburse escrowed event payouts to bands via Stripe Connect.</li>
+              <li>To disburse production crew earnings via Stripe Connect and generate transparent accounting ledgers and on-demand tax CSV reports for independent contractors.</li>
               <li>To facilitate social networking, fan comments, discussion threads, and direct messaging between members.</li>
               <li>To fulfill merchandise orders and deliver sponsor confirmations.</li>
               <li>To protect users against spam, bot abuse, unauthorized intrusions, and security breaches.</li>
@@ -265,6 +272,45 @@ export default function PrivacyPolicyPage() {
                 </Link>
               </p>
               <p className="text-[#7f84ad] text-xs font-mono pt-1">Topeka, KS &middot; United States</p>
+            </div>
+          </section>
+
+          {/* Quick Legal Hub Navigation */}
+          <section className="p-5 rounded-2xl border border-[#20205a] bg-[#0c0c3f]/50 space-y-3">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-[#ffd166]">
+              StarCast Legal &amp; Policy Directory
+            </h3>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Link
+                href="/legal"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#f5f7ff] hover:bg-[#ea6f2a] hover:text-white transition-colors"
+              >
+                Legal Hub Overview &rarr;
+              </Link>
+              <Link
+                href="/terms"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#ffd166] hover:text-[#05052d] transition-colors"
+              >
+                Terms and Conditions
+              </Link>
+              <Link
+                href="/music/agreement"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#20efe0] hover:text-[#05052d] transition-colors"
+              >
+                Music Rights Agreement
+              </Link>
+              <Link
+                href="/return-policy"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-[#dbe0fb] hover:bg-[#20efe0] hover:text-[#05052d] transition-colors"
+              >
+                Store Return Policy
+              </Link>
+              <Link
+                href="/delete-account"
+                className="px-3 py-1.5 rounded-lg bg-[#20205a]/60 text-red-300 hover:bg-red-600 hover:text-white transition-colors"
+              >
+                Account Deletion Portal
+              </Link>
             </div>
           </section>
         </div>

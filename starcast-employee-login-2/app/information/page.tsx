@@ -30,6 +30,9 @@ import {
   MapPin,
   HelpCircle,
   FileText,
+  Wallet,
+  Lock,
+  Scale,
 } from "lucide-react"
 import { brandAssets } from "@/lib/brand-assets"
 
@@ -231,7 +234,7 @@ export default function InformationPage() {
                   </Link>
                 </div>
                 <p className="text-xs sm:text-sm text-[#9a9fc4] print:text-gray-700">
-                  A modern social hub with persistent navigation: The Deck 24h Public Wall (1 post per day per member), StarVote interactive polls, threaded discussions with rich media embeds (YouTube, Spotify, SoundCloud, StarCast audio), cosmic emoji reactions, friend requests, and private Direct Messaging (DMs).
+                  A modern social hub with persistent navigation: The Deck 24h Public Wall (1 post per day per member), StarVote interactive polls, StarCast Star reactions (⭐ / stars) and cosmic emojis, threaded discussions with rich media embeds (YouTube, Spotify, SoundCloud, StarCast audio), friend requests, and private Direct Messaging (DMs).
                 </p>
               </div>
 
@@ -278,6 +281,22 @@ export default function InformationPage() {
                 </div>
                 <p className="text-xs sm:text-sm text-[#9a9fc4] print:text-gray-700">
                   Physical rehearsal facilities and production studios offering multi-camera 4K switching, live streaming, promo edits, tracking sessions, and monthly band studio passes. Staff console features automated SMS crew callout reminders via cron.
+                </p>
+              </div>
+
+              {/* Feature 9: Crew Operations, Stripe Connect Payouts & Accounting */}
+              <div className="p-4 rounded-xl bg-[#05052d]/90 border border-[#20205a]/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-[#f5f7ff] print:text-black">
+                    <Wallet className="w-4 h-4 text-[#20efe0]" />
+                    <h3>9. Production Crew Operations &amp; Transparent Stripe Connect Accounting</h3>
+                  </div>
+                  <Link href="/production/accounting" className="text-xs text-[#20efe0] hover:underline font-mono print:hidden">
+                    Crew Portal &rarr;
+                  </Link>
+                </div>
+                <p className="text-xs sm:text-sm text-[#9a9fc4] print:text-gray-700">
+                  Streamlined independent contractor operations with shift scheduling, automated SMS reminders, and direct bank routing via Stripe Connect (including checking accounts and Chime / Stride Bank). Dedicated production accounting console (<code>/production/accounting</code>) provides live balance tracking, shift history, and one-click IRS 1099 tax CSV exports.
                 </p>
               </div>
             </CardContent>
@@ -334,6 +353,80 @@ export default function InformationPage() {
                   <Mail className="w-4 h-4" />
                   Email: <a href="mailto:starcastlivemedia@gmail.com" className="underline hover:text-[#ea6f2a]">starcastlivemedia@gmail.com</a>
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 5. Official Legal & Policy Registry */}
+          <Card className="public-panel rounded-2xl border-[#20205a]/80 bg-[#0c0c3f]/80 print:border-0 print:bg-transparent print:shadow-none shadow-xl">
+            <CardHeader className="print:px-0 print:pb-2">
+              <CardTitle className="text-xl font-bold text-[#f5f7ff] print:text-black flex items-center gap-2">
+                <Scale className="w-5 h-5 text-[#20efe0]" /> Legal, Privacy &amp; Compliance Hub
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-[#9a9fc4] space-y-4 print:text-gray-800 print:px-0 print:text-sm print:leading-relaxed text-sm">
+              <p>
+                StarCast Media operates under strict consumer privacy, 100% artist master ownership, wireless carrier compliance, and transparent accounting. Explore our governing policies:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 print:hidden">
+                <Link
+                  href="/terms"
+                  className="p-3.5 rounded-xl bg-[#05052d] border border-[#20205a] hover:border-[#ffd166]/50 hover:bg-[#121248] transition-all flex items-start gap-3 group"
+                >
+                  <FileText className="w-5 h-5 text-[#ffd166] shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <p className="font-bold text-[#f5f7ff] text-xs sm:text-sm group-hover:text-[#ffd166] transition-colors">Terms &amp; Conditions</p>
+                    <p className="text-[11px] text-[#9a9fc4] mt-0.5">Platform terms, community code of conduct, ticketing &amp; crew contractor terms.</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/privacy"
+                  className="p-3.5 rounded-xl bg-[#05052d] border border-[#20205a] hover:border-[#ea6f2a]/50 hover:bg-[#121248] transition-all flex items-start gap-3 group"
+                >
+                  <Lock className="w-5 h-5 text-[#ea6f2a] shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <p className="font-bold text-[#f5f7ff] text-xs sm:text-sm group-hover:text-[#ea6f2a] transition-colors">Privacy Policy</p>
+                    <p className="text-[11px] text-[#9a9fc4] mt-0.5">Zero data harvesting, mobile SMS non-disclosure &amp; encrypted financial vaults.</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/music/agreement"
+                  className="p-3.5 rounded-xl bg-[#05052d] border border-[#20205a] hover:border-[#20efe0]/50 hover:bg-[#121248] transition-all flex items-start gap-3 group"
+                >
+                  <Music className="w-5 h-5 text-[#20efe0] shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <p className="font-bold text-[#f5f7ff] text-xs sm:text-sm group-hover:text-[#20efe0] transition-colors">Music Rights Agreement</p>
+                    <p className="text-[11px] text-[#9a9fc4] mt-0.5">100% artist ownership retention, zero cuts, and printable prior-art certificates.</p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/return-policy"
+                  className="p-3.5 rounded-xl bg-[#05052d] border border-[#20205a] hover:border-[#20efe0]/50 hover:bg-[#121248] transition-all flex items-start gap-3 group"
+                >
+                  <ShoppingBag className="w-5 h-5 text-[#20efe0] shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <p className="font-bold text-[#f5f7ff] text-xs sm:text-sm group-hover:text-[#20efe0] transition-colors">Store Return &amp; Refund Policy</p>
+                    <p className="text-[11px] text-[#9a9fc4] mt-0.5">30-day customer guarantee, free return labels &amp; direct refunds on merch.</p>
+                  </div>
+                </Link>
+              </div>
+
+              <div className="pt-2 flex flex-wrap gap-2 text-xs">
+                <Link
+                  href="/legal"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ea6f2a]/20 border border-[#ea6f2a]/50 text-[#f5f7ff] hover:bg-[#ea6f2a] transition-colors font-semibold"
+                >
+                  Open Complete Legal Hub &rarr;
+                </Link>
+                <Link
+                  href="/delete-account"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/40 text-red-300 hover:bg-red-600 hover:text-white transition-colors"
+                >
+                  Google Play Account Deletion Portal
+                </Link>
               </div>
             </CardContent>
           </Card>

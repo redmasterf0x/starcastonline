@@ -22,6 +22,7 @@ const siteLinks = [
   { label: "About", href: "/information" },
   { label: "Merch", href: "/merch" },
   { label: "Sponsor", href: "/sponsors" },
+  { label: "Legal", href: "/legal" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
   { label: "Return Policy", href: "/return-policy" },
@@ -89,6 +90,10 @@ export function Footer({ isTopLevel = false }: FooterProps = {}) {
           <div className="flex flex-wrap items-center gap-4">
             <p>&copy; 2026 Starcast Media. All rights reserved.</p>
             <span className="hidden sm:inline text-white/20">&middot;</span>
+            <Link href="/legal" className="text-[#aeb2ce] hover:text-[#ffd166] transition-colors underline-offset-2 hover:underline">
+              Legal Hub
+            </Link>
+            <span className="text-white/20">&middot;</span>
             <Link href="/privacy" className="text-[#aeb2ce] hover:text-[#ea6f2a] transition-colors underline-offset-2 hover:underline">
               Privacy Policy
             </Link>

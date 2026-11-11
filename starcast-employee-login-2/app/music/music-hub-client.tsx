@@ -165,7 +165,7 @@ export function MusicHubClient({
     if (currentTrack?.id === track.id) {
       togglePlay()
     } else {
-      incrementTrackPlay(track.id).catch(() => {})
+      incrementTrackPlay(track.id).catch(() => { })
       const gTrack: GlobalTrack = {
         id: track.id,
         title: track.title,
@@ -316,10 +316,10 @@ export function MusicHubClient({
       prev.map((b) =>
         b.id === band.id
           ? {
-              ...b,
-              is_following: next,
-              follower_count: Math.max(0, b.follower_count + (next ? 1 : -1)),
-            }
+            ...b,
+            is_following: next,
+            follower_count: Math.max(0, b.follower_count + (next ? 1 : -1)),
+          }
           : b
       )
     )
@@ -339,10 +339,10 @@ export function MusicHubClient({
         prev.map((b) =>
           b.id === band.id
             ? {
-                ...b,
-                is_following: !next,
-                follower_count: Math.max(0, b.follower_count + (!next ? 1 : -1)),
-              }
+              ...b,
+              is_following: !next,
+              follower_count: Math.max(0, b.follower_count + (!next ? 1 : -1)),
+            }
             : b
         )
       )
@@ -613,9 +613,8 @@ export function MusicHubClient({
                     title={trendingTracks[0].isLiked ? "Unlike song" : "Star song"}
                   >
                     <Star
-                      className={`w-4 h-4 ${
-                        trendingTracks[0].isLiked ? "text-[#ffd166] fill-[#ffd166]" : ""
-                      }`}
+                      className={`w-4 h-4 ${trendingTracks[0].isLiked ? "text-[#ffd166] fill-[#ffd166]" : ""
+                        }`}
                     />
                   </button>
                 </div>
@@ -657,11 +656,10 @@ export function MusicHubClient({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                    isActive
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${isActive
                       ? "bg-gradient-to-r from-[#ea6f2a] to-[#bc3f00] text-white shadow-lg shadow-[#ea6f2a]/20"
                       : "bg-[#0c0c3f] text-[#9a9fc4] border border-[#20205a] hover:text-[#f5f7ff] hover:border-[#20efe0]/40"
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
@@ -696,11 +694,10 @@ export function MusicHubClient({
             <button
               key={g}
               onClick={() => setSelectedGenre(g)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all cursor-pointer ${
-                selectedGenre === g
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all cursor-pointer ${selectedGenre === g
                   ? "bg-[#20efe0] text-[#05051f] border-[#20efe0] shadow-md shadow-[#20efe0]/20"
                   : "bg-[#0c0c3f] text-[#9a9fc4] border-[#20205a] hover:border-[#ea6f2a]/50 hover:text-[#f5f7ff]"
-              }`}
+                }`}
             >
               {g}
             </button>
@@ -764,11 +761,10 @@ export function MusicHubClient({
 
                   <button
                     onClick={() => handleToggleFollowBand(act)}
-                    className={`mt-2.5 w-full py-1 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                      act.is_following
+                    className={`mt-2.5 w-full py-1 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${act.is_following
                         ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
                         : "bg-[#ea6f2a]/15 text-[#ea6f2a] border border-[#ea6f2a]/30 hover:bg-[#ea6f2a] hover:text-white"
-                    }`}
+                      }`}
                   >
                     {act.is_following ? "Following" : "+ Follow"}
                   </button>
@@ -808,9 +804,8 @@ export function MusicHubClient({
                   return (
                     <div
                       key={track.id}
-                      className={`rounded-2xl border bg-[#0c0c3f]/70 overflow-hidden flex flex-col justify-between transition-all group hover:border-[#20efe0]/50 hover:shadow-[0_0_25px_rgba(32,239,224,0.12)] ${
-                        isThisPlaying ? "border-[#20efe0] ring-1 ring-[#20efe0]" : "border-[#20205a]"
-                      }`}
+                      className={`rounded-2xl border bg-[#0c0c3f]/70 overflow-hidden flex flex-col justify-between transition-all group hover:border-[#20efe0]/50 hover:shadow-[0_0_25px_rgba(32,239,224,0.12)] ${isThisPlaying ? "border-[#20efe0] ring-1 ring-[#20efe0]" : "border-[#20205a]"
+                        }`}
                     >
                       {/* Artwork Container & Play Overlay */}
                       <div className="relative aspect-square w-full bg-[#05052d] overflow-hidden">
@@ -905,15 +900,13 @@ export function MusicHubClient({
                           <div className="flex items-center gap-3">
                             <button
                               onClick={(e) => handleLikeTrack(e, track)}
-                              className={`flex items-center gap-1 text-xs transition-colors hover:text-[#ffd166] cursor-pointer ${
-                                track.isLiked ? "text-[#ffd166] font-bold" : "text-[#9a9fc4]"
-                              }`}
+                              className={`flex items-center gap-1 text-xs transition-colors hover:text-[#ffd166] cursor-pointer ${track.isLiked ? "text-[#ffd166] font-bold" : "text-[#9a9fc4]"
+                                }`}
                               title={track.isLiked ? "Unlike song" : "Star song"}
                             >
                               <Star
-                                className={`w-3.5 h-3.5 ${
-                                  track.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""
-                                }`}
+                                className={`w-3.5 h-3.5 ${track.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""
+                                  }`}
                               />
                               <span>{track.likeCount || 0}</span>
                             </button>
@@ -958,11 +951,10 @@ export function MusicHubClient({
                   <button
                     key={opt.value}
                     onClick={() => setActTypeFilter(opt.value)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      actTypeFilter === opt.value
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${actTypeFilter === opt.value
                         ? "bg-[#ffd166] text-[#05051f] shadow-md shadow-[#ffd166]/20"
                         : "bg-[#0c0c3f] text-[#9a9fc4] border border-[#20205a] hover:text-white"
-                    }`}
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -1102,11 +1094,10 @@ export function MusicHubClient({
                         <Button
                           size="sm"
                           onClick={() => handleToggleFollowBand(band)}
-                          className={`rounded-xl text-xs font-semibold h-9 px-3.5 transition-all cursor-pointer ${
-                            band.is_following
+                          className={`rounded-xl text-xs font-semibold h-9 px-3.5 transition-all cursor-pointer ${band.is_following
                               ? "bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/50"
                               : "bg-[#ea6f2a] hover:bg-[#bc3f00] text-white shadow-[0_0_15px_rgba(234,111,42,0.25)]"
-                          }`}
+                            }`}
                         >
                           {band.is_following ? (
                             <>
@@ -1230,11 +1221,10 @@ export function MusicHubClient({
                         <div className="pt-3 border-t border-[#20205a]/60 flex items-center justify-between">
                           <button
                             onClick={(e) => handleLikeAlbum(e, album)}
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
-                              album.isLiked
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${album.isLiked
                                 ? "bg-[#ffd166]/15 border-[#ffd166]/50 text-[#ffd166]"
                                 : "bg-[#05051f] border-[#20205a] text-[#9a9fc4] hover:text-[#ffd166] hover:border-[#ffd166]/40"
-                            }`}
+                              }`}
                             title="Star album (automatically stars all songs in it!)"
                           >
                             <Star className={`w-3.5 h-3.5 ${album.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""}`} />
@@ -1307,15 +1297,15 @@ export function MusicHubClient({
             prev.map((b) =>
               b.id === updated.id
                 ? {
-                    ...b,
-                    name: updated.name ?? b.name,
-                    slug: updated.slug ?? b.slug,
-                    type: updated.type ?? b.type,
-                    genre: updated.genre ?? b.genre,
-                    bio: updated.bio ?? b.bio,
-                    logo_url: updated.logo_url ?? b.logo_url,
-                    banner_url: updated.banner_url ?? b.banner_url,
-                  }
+                  ...b,
+                  name: updated.name ?? b.name,
+                  slug: updated.slug ?? b.slug,
+                  type: updated.type ?? b.type,
+                  genre: updated.genre ?? b.genre,
+                  bio: updated.bio ?? b.bio,
+                  logo_url: updated.logo_url ?? b.logo_url,
+                  banner_url: updated.banner_url ?? b.banner_url,
+                }
                 : b
             )
           )
@@ -1375,11 +1365,10 @@ export function MusicHubClient({
                     key={t.id}
                     type="button"
                     onClick={() => setNewPageType(t.id as any)}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      newPageType === t.id
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${newPageType === t.id
                         ? "bg-[#ea6f2a] text-white border-[#ea6f2a] shadow-md"
                         : "bg-[#05052d] text-[#9a9fc4] border-[#20205a] hover:text-white"
-                    }`}
+                      }`}
                   >
                     {t.label}
                   </button>
