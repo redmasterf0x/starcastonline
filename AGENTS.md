@@ -48,9 +48,10 @@ app/
   actions/        Server actions ("use server") — THE main backend layer. One file per domain.
   api/            Route handlers (webhooks, uploads, cron, OG images, RSS, auth)
   <route>/        Pages. Public: /, /articles, /shows, /watch, /music, /bands/[slug], /merch,
-                  /sponsors, /community, /u/[username], /tickets/[token]
+                  /sponsors, /community, /u/[username], /tickets/[token], /legal, /terms,
+                  /privacy, /return-policy, /information, /delete-account
                   Authed: /dashboard, /portal (band studio portal), /onboarding, /profile
-                  Staff: /staff, /production   Admin: /admin, /admin/support
+                  Staff: /staff, /production, /production/accounting   Admin: /admin, /admin/support
 components/       Feature folders: bands, community, dashboard, music, onboarding, portal,
                   profile, studio, spaceflight; ui/ = shadcn primitives
 lib/
@@ -98,9 +99,9 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 | Social | `friendships` (status pending/accepted), `messages` (DMs), `notifications` | notifications keyed by **profile ids** |
 | Bands / artists | `bands`, `band_links`, `band_posts`, `band_post_comments`, `band_follows` | `bands.slug` → `/bands/[slug]`; `type` band/artist; owner = `owner_user_id` |
 | Studio | `bookings`, `payments` | booking status requested→confirmed→checked_in→completed/cancelled; rate snapshot on booking |
-| Music | `band_tracks`, `track_comments`, `track_likes`, `album_likes` | `band_tracks.slug` → `/music/[slug]`; `bands.music_catalog_enabled` toggle; legal agreement `/music/agreement` (100% artist master ownership retention, ad-free non-exclusive streaming, anti-theft/sampling protections, timestamped Proof of Ownership certificates printable in portal); StarCast Audio Shield (acoustic fingerprinting via `lib/audio-fingerprint.ts`, SHA-256 master hashing, AcoustID/MusicBrainz commercial copyright verification, catalog collision resolution); song and album likes (liking an album automatically likes all songs in the album); owner/admin editing for songs, albums, and acts |
+| Music | `band_tracks`, `track_comments`, `track_likes`, `album_likes` | `band_tracks.slug` → `/music/[slug]`; `bands.music_catalog_enabled` toggle; legal agreement `/music/agreement` (100% artist master ownership retention, ad-free non-exclusive streaming, anti-theft/sampling protections, timestamped Proof of Ownership certificates printable in portal); StarCast Audio Shield (acoustic fingerprinting via `lib/audio-fingerprint.ts`, SHA-256 master hashing, AcoustID/MusicBrainz commercial copyright verification, catalog collision resolution); song and album stars (starring an album automatically stars all songs in the album; uses StarCast golden ⭐ symbols across all likes/stars); owner/admin editing for songs, albums, and acts |
 | Ticketing | `band_events`, `band_ticket_orders`, `band_ticket_instances` | bands apply (`ticketing_status`), Stripe Connect payout, escrow held until 24h after event; QR via `qr_token` → `/tickets/[token]` |
-| Staff ops | `productions`, `production_crew`, `production_requests`, `timesheets`, `payouts` | crew reminders via cron + SMS; staff mailbox in `/production` |
+| Staff ops | `productions`, `production_crew`, `production_requests`, `timesheets`, `payouts` | crew reminders via cron + SMS; staff mailbox in `/production`; production accounting ledger at `/production/accounting` with Stripe Connect bank linking and 1-click tax CSV export |
 | Business | `sponsors`, `inbox_messages` | sponsor checkout via Stripe; `inbox_messages` = official staff mailbox messages (`staff_profile_id`, `to_email`) |
 | Files | `uploaded_blobs` | base64 file storage (see §7) |
 | (unused?) | `inbound_emails` | Postgres copy exists, but the support inbox actually uses **Firestore** |
