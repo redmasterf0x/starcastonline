@@ -563,16 +563,18 @@ export async function createBandPost(
   if (!band) throw new Error("Band not found")
   // A private page is visible only to its owner, so only the owner can post there.
   if (!band.isPublic && band.ownerUserId !== userId) throw new Error("Forbidden")
-  if (!content.trim() && images.length === 0 && audioTracks.length === 0) throw new Error("Post cannot be empty")
+  const safeImages = (Array.isArray(images) ? images : []).slice(0, 4)
+  const safeContent = (content || "").trim().slice(0, 2500)
+  if (!safeContent && safeImages.length === 0 && audioTracks.length === 0) throw new Error("Post cannot be empty")
 
   const [newPost] = await db
     .insert(bandPosts)
     .values({
       bandId,
       authorUserId: userId,
-      content: content.trim(),
+      content: safeContent,
       postType: postType || "text",
-      images,
+      images: safeImages,
       audioTracks: audioTracks as any,
     })
     .returning()

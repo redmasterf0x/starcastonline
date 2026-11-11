@@ -14,7 +14,8 @@ import Link from "next/link"
 import { 
   MapPin, Globe, Calendar, UserPlus, UserCheck, Clock, 
   MessageSquare, ArrowBigUp, Star, Users, Settings, 
-  ChevronRight, Sparkles
+  ChevronRight, Sparkles, Image as ImageIcon, Maximize2, X,
+  Layers,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { ResponsiveHeader } from "@/components/responsive-header"
@@ -43,6 +44,7 @@ interface CommunityPost {
   category: string
   created_at: string
   star_count: number
+  images?: { url: string; credit?: string }[]
 }
 
 interface Friend {
@@ -71,12 +73,20 @@ export function ProfileView({ userId }: { userId: string }) {
   const [totalStars, setTotalStars] = useState(0)
   const [friendshipStatus, setFriendshipStatus] = useState<"none" | "pending_sent" | "pending_received" | "accepted" | "self">("self")
   const [friendshipId, setFriendshipId] = useState<string | null>(null)
-  const [activeProfileTab, setActiveProfileTab] = useState<"posts" | "friends">("posts")
+  const [activeProfileTab, setActiveProfileTab] = useState<"all" | "photos" | "friends">("all")
+  const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<{
+    url: string
+    postTitle?: string
+    date?: string
+  } | null>(null)
   const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const router = useRouter()
 
   const isLoggedIn = !!currentUserId
   const isOwnProfile = friendshipStatus === "self"
+
+  const photoPosts = posts.filter((p) => p.images && p.images.length > 0)
+  const totalPhotosCount = photoPosts.reduce((acc, p) => acc + (p.images?.length || 0), 0)
 
   const handleSignOut = async () => {
     await authClient.signOut()
@@ -361,24 +371,46 @@ export function ProfileView({ userId }: { userId: string }) {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        {/* Own-profile inline composer - space right at the top to write or upload photos */}
+        {isOwnProfile && (
+          <div className="mb-6">
+            <ProfilePostComposer
+              authorInitials={`${profile.first_name == null ? "" : profile.first_name[0]}${profile.last_name == null ? "" : profile.last_name[0]}`}
+              authorPic={profile.profile_pic || null}
+              onPosted={() => fetchPageData()}
+            />
+          </div>
+        )}
+
+        {/* Content Navigation Tabs: All (default), Photos, Friends */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-none">
           <button
-            onClick={() => setActiveProfileTab("posts")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
-              activeProfileTab === "posts"
+            onClick={() => setActiveProfileTab("all")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
+              activeProfileTab === "all"
                 ? "bg-[#ea6f2a] text-white shadow-lg shadow-[#ea6f2a]/20"
                 : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/50"
             }`}
           >
-            <ArrowBigUp className="w-4 h-4" />
-            Posts ({posts.length})
+            <Layers className="w-4 h-4" />
+            All ({posts.length})
+          </button>
+          <button
+            onClick={() => setActiveProfileTab("photos")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
+              activeProfileTab === "photos"
+                ? "bg-[#20efe0] text-[#05052d] shadow-lg shadow-[#20efe0]/20 font-bold"
+                : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/50"
+            }`}
+          >
+            <ImageIcon className="w-4 h-4" />
+            Photos ({totalPhotosCount})
           </button>
           <button
             onClick={() => setActiveProfileTab("friends")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
               activeProfileTab === "friends"
-                ? "bg-[#ea6f2a] text-white shadow-lg shadow-[#ea6f2a]/20"
+                ? "bg-[#ffd166] text-[#05052d] shadow-lg shadow-[#ffd166]/20 font-bold"
                 : "bg-[#0c0c3f]/60 text-[#9a9fc4] hover:bg-[#20205a]/60 hover:text-[#f5f7ff] border border-[#20205a]/50"
             }`}
           >
@@ -387,48 +419,130 @@ export function ProfileView({ userId }: { userId: string }) {
           </button>
         </div>
 
-        {/* Posts Tab */}
-        {activeProfileTab === "posts" && (
+        {/* Tab 1: All Posts (Default) */}
+        {activeProfileTab === "all" && (
           <div className="space-y-4">
-          {/* Own-profile inline composer - only when viewing yourself */}
-          {isOwnProfile && (
-            <ProfilePostComposer
-              authorInitials={`${profile.first_name == null ? "" : profile.first_name[0]}${profile.last_name == null ? "" : profile.last_name[0]}`}
-              authorPic={profile.profile_pic || null}
-              onPosted={() => fetchPageData()}
-            />
-          )}
             {posts.length === 0 ? (
               <div className="bg-[#0c0c3f]/50 border border-[#20205a]/50 rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 rounded-full bg-[#20205a]/50 flex items-center justify-center mx-auto mb-4">
                   <ArrowBigUp className="w-8 h-8 text-[#9a9fc4]" />
                 </div>
-                <p className="text-[#9a9fc4] text-lg">No posts yet</p>
-                <p className="text-[#9a9fc4]/60 text-sm mt-1">
-                  {isOwnProfile ? "Share your thoughts with the community!" : `${profile.first_name} hasn't posted anything yet.`}
+                <p className="text-[#f5f7ff] text-lg font-bold">No posts yet</p>
+                <p className="text-[#9a9fc4] text-sm mt-1">
+                  {isOwnProfile ? "Write an update or upload photos above to start your feed!" : `${profile.first_name} hasn't posted anything yet.`}
                 </p>
               </div>
             ) : (
               posts.map((post) => (
-                <div key={post.id} className="bg-[#0c0c3f]/50 border border-[#20205a]/50 rounded-2xl p-5 hover:border-[#ea6f2a]/30 transition-colors group">
+                <div key={post.id} className="bg-[#0c0c3f]/60 border border-[#20205a]/70 rounded-2xl p-5 hover:border-[#ea6f2a]/40 transition-colors group shadow-lg">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs text-[#ea6f2a] bg-[#ea6f2a]/10 px-2 py-0.5 rounded-full">{post.category}</span>
-                        <span className="text-xs text-[#9a9fc4]/60">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        {post.category && (
+                          <span className="text-[11px] font-semibold text-[#ea6f2a] bg-[#ea6f2a]/15 px-2.5 py-0.5 rounded-full border border-[#ea6f2a]/30">
+                            {post.category}
+                          </span>
+                        )}
+                        <span className="text-xs text-[#9a9fc4]">
                           {new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         </span>
                       </div>
-                      <h3 className="text-lg font-semibold text-[#f5f7ff] mb-2 group-hover:text-[#ea6f2a] transition-colors">{post.title}</h3>
-                      <p className="text-[#9a9fc4] line-clamp-2 leading-relaxed">{post.content}</p>
+
+                      {post.title && (
+                        <h3 className="text-base sm:text-lg font-bold text-[#f5f7ff] mb-2 group-hover:text-[#ea6f2a] transition-colors">
+                          {post.title}
+                        </h3>
+                      )}
+
+                      {post.content && (
+                        <p className="text-sm sm:text-base text-[#dbe0fb] leading-relaxed whitespace-pre-wrap">
+                          {post.content}
+                        </p>
+                      )}
+
+                      {/* Attached Photos Gallery */}
+                      {post.images && post.images.length > 0 && (
+                        <div
+                          className={`mt-4 grid gap-2.5 rounded-2xl overflow-hidden ${
+                            post.images.length === 1
+                              ? "grid-cols-1 max-w-lg"
+                              : post.images.length === 2
+                              ? "grid-cols-2"
+                              : "grid-cols-2 sm:grid-cols-3"
+                          }`}
+                        >
+                          {post.images.map((img, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => setSelectedPhotoPreview({ url: img.url, postTitle: post.title, date: post.created_at })}
+                              className="relative group/photo cursor-pointer overflow-hidden rounded-xl bg-[#05052d] aspect-square sm:aspect-video border border-[#20205a]"
+                            >
+                              <img
+                                src={img.url}
+                                alt={img.credit || post.title || "Post photo"}
+                                className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-300"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center">
+                                <Maximize2 className="w-5 h-5 text-white" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5 text-[#ea6f2a] bg-[#ea6f2a]/10 px-3 py-1.5 rounded-full flex-shrink-0">
-                      <Star className="w-4 h-4 fill-[#ea6f2a]" />
-                      <span className="text-sm font-semibold">{post.star_count}</span>
+
+                    <div className="flex items-center gap-1.5 text-[#ffd166] bg-[#ffd166]/15 border border-[#ffd166]/30 px-3 py-1 rounded-full flex-shrink-0">
+                      <Star className="w-3.5 h-3.5 fill-[#ffd166]" />
+                      <span className="text-xs font-bold">{post.star_count}</span>
                     </div>
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Photos Media Gallery */}
+        {activeProfileTab === "photos" && (
+          <div>
+            {photoPosts.length === 0 ? (
+              <div className="bg-[#0c0c3f]/50 border border-[#20205a]/50 rounded-2xl p-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-[#20205a]/50 flex items-center justify-center mx-auto mb-4">
+                  <ImageIcon className="w-8 h-8 text-[#9a9fc4]" />
+                </div>
+                <p className="text-[#f5f7ff] text-lg font-bold">No photos uploaded yet</p>
+                <p className="text-[#9a9fc4] text-sm mt-1">
+                  {isOwnProfile
+                    ? "Upload photos using the composer at the top to build your gallery!"
+                    : `${profile.first_name} hasn't uploaded any photos yet.`}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                {photoPosts.flatMap((post) =>
+                  (post.images || []).map((img, idx) => (
+                    <div
+                      key={`${post.id}-${idx}`}
+                      onClick={() => setSelectedPhotoPreview({ url: img.url, postTitle: post.title, date: post.created_at })}
+                      className="relative group cursor-pointer rounded-2xl overflow-hidden border border-[#20205a] bg-[#0c0c3f] aspect-square shadow-lg hover:border-[#20efe0] transition-all"
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.credit || post.title || "Gallery photo"}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                        <p className="text-white text-xs font-bold truncate">{post.title || "Photo"}</p>
+                        <p className="text-[10px] text-[#20efe0] font-mono mt-0.5">
+                          {new Date(post.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
         )}
@@ -512,6 +626,35 @@ export function ProfileView({ userId }: { userId: string }) {
             >
               Sign In
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Photo Zoom Dialog */}
+      <Dialog
+        open={!!selectedPhotoPreview}
+        onOpenChange={(open) => !open && setSelectedPhotoPreview(null)}
+      >
+        <DialogContent className="bg-[#05052d]/95 border-[#20205a] max-w-3xl p-4 sm:p-6 backdrop-blur-xl">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-sm sm:text-base font-bold text-[#f5f7ff]">
+              {selectedPhotoPreview?.postTitle || "Photo Preview"}
+            </DialogTitle>
+            {selectedPhotoPreview?.date && (
+              <DialogDescription className="text-xs text-[#9a9fc4]">
+                Uploaded {new Date(selectedPhotoPreview.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          <div className="relative rounded-2xl overflow-hidden bg-black/60 max-h-[75vh] flex items-center justify-center">
+            {selectedPhotoPreview && (
+              <img
+                src={selectedPhotoPreview.url}
+                alt={selectedPhotoPreview.postTitle || "Photo"}
+                className="w-full h-auto max-h-[70vh] object-contain rounded-xl"
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>

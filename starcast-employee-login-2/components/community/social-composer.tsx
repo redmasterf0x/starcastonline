@@ -178,14 +178,35 @@ export function SocialComposer({
   }
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDiscussionError(null)
     if (e.target.files) {
       const files = Array.from(e.target.files)
-      const newItems = files.map((file) => ({
-        file,
-        preview: URL.createObjectURL(file),
-        credit: "",
-      }))
-      setSelectedImages((prev) => [...prev, ...newItems].slice(0, 4))
+      const remainingSlots = 4 - selectedImages.length
+      if (remainingSlots <= 0) {
+        setDiscussionError("Maximum 4 photos allowed per post.")
+        return
+      }
+      const filesToAdd = files.slice(0, remainingSlots)
+      const validItems: { file: File; preview: string; credit: string }[] = []
+
+      for (const file of filesToAdd) {
+        if (!file.type.startsWith("image/")) {
+          setDiscussionError(`"${file.name}" is not a valid image format.`)
+          continue
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          setDiscussionError(`"${file.name}" exceeds 10MB limit.`)
+          continue
+        }
+        validItems.push({
+          file,
+          preview: URL.createObjectURL(file),
+          credit: "",
+        })
+      }
+
+      setSelectedImages((prev) => [...prev, ...validItems].slice(0, 4))
+      if (fileInputRef.current) fileInputRef.current.value = ""
     }
   }
 

@@ -385,7 +385,17 @@ export default function CommunityPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
+      if (images.length >= 4) {
+        setPostError("Maximum 4 photos allowed per post.")
+        e.target.value = ""
+        return
+      }
       const file = files[0]
+      if (file.size > 10 * 1024 * 1024) {
+        setPostError("Photo exceeds maximum 10MB limit.")
+        e.target.value = ""
+        return
+      }
       const preview = URL.createObjectURL(file)
       setImages([...images, { file, credit: newImageCredit || "Uncredited", preview }])
       setNewImageCredit("")

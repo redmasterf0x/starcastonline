@@ -187,6 +187,7 @@ export async function getProfilePageData(id: string) {
       category: p.category ?? "",
       created_at: p.createdAt.toISOString(),
       star_count: starCount,
+      images: Array.isArray(p.images) ? (p.images as { url: string; credit?: string }[]) : [],
     }
   })
 
@@ -600,6 +601,23 @@ export async function createCommunityPost(input: {
   poll?: { question: string; options: string[] } | null
 }) {
   const viewer = await requireSocialViewer()
+
+  const cleanTitle = (input.title || "").trim().slice(0, 140)
+  const cleanContent = (input.content || "").trim().slice(0, 2500)
+
+  // Hard anti-spam limit: maximum 4 images per post, sanitized
+  const safeImages = (Array.isArray(input.images) ? input.images : [])
+    .filter((img) => img && typeof img.url === "string" && img.url.trim().length > 0)
+    .slice(0, 4)
+    .map((img) => ({
+      url: img.url.trim(),
+      credit: (img.credit || "").trim().slice(0, 100),
+    }))
+
+  if (!cleanContent && safeImages.length === 0) {
+    throw new Error("Post must have text or at least one photo.")
+  }
+
   let pollData = null
   if (
     input.poll &&
@@ -608,12 +626,13 @@ export async function createCommunityPost(input: {
     input.poll.options.filter((o) => o.trim().length > 0).length >= 2
   ) {
     pollData = {
-      question: input.poll.question.trim(),
+      question: input.poll.question.trim().slice(0, 200),
       options: input.poll.options
         .filter((o) => o.trim().length > 0)
+        .slice(0, 6)
         .map((opt, idx) => ({
           id: `opt_${idx + 1}`,
-          text: opt.trim(),
+          text: opt.trim().slice(0, 100),
         })),
     }
   }
@@ -623,10 +642,10 @@ export async function createCommunityPost(input: {
     .values({
       userId: viewer.userId,
       authorId: viewer.id,
-      title: input.title.trim(),
-      content: input.content.trim(),
-      category: input.category,
-      images: input.images,
+      title: cleanTitle || (safeImages.length > 0 ? "Photo Update" : "Community Post"),
+      content: cleanContent,
+      category: input.category || "general",
+      images: safeImages,
       pollData,
     })
     .returning()

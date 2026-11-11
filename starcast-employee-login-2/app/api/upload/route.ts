@@ -39,6 +39,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (folder === "community" && !isImage) {
+      return NextResponse.json(
+        { error: "Only image files (JPG, PNG, WEBP, GIF) can be attached to posts." },
+        { status: 400 }
+      )
+    }
+
     // Enforce file size limit
     if (isImage && file.size > MAX_IMAGE_SIZE_BYTES) {
       return NextResponse.json(
