@@ -177,6 +177,7 @@ export function resolvePlanet(pathname: string): PlanetInfo {
 type SpaceflightContextType = {
   currentPlanet: PlanetInfo
   targetPlanet: PlanetInfo | null
+  transitPath: string | null
   isWarping: boolean
   transitPhase: TransitPhase
   audioEnabled: boolean
@@ -187,6 +188,7 @@ type SpaceflightContextType = {
 const SpaceflightContext = createContext<SpaceflightContextType>({
   currentPlanet: PLANETS["/"],
   targetPlanet: null,
+  transitPath: null,
   isWarping: false,
   transitPhase: "idle",
   audioEnabled: false,
@@ -263,6 +265,7 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
 
   const [currentPlanet, setCurrentPlanet] = useState<PlanetInfo>(() => resolvePlanet(pathname))
   const [targetPlanet, setTargetPlanet] = useState<PlanetInfo | null>(null)
+  const [transitPath, setTransitPath] = useState<string | null>(null)
   const [transitPhase, setTransitPhase] = useState<TransitPhase>("idle")
   const [warpProgress, setWarpProgress] = useState(0)
   const [audioEnabled, setAudioEnabled] = useState(false)
@@ -298,6 +301,7 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
   useEffect(() => {
     const planet = resolvePlanet(pathname)
     setCurrentPlanet(planet)
+    setTransitPath(null)
   }, [pathname])
 
   // Spaceship transit: quick push-away of modules, airlock doors seal & open, no text
@@ -317,6 +321,7 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
 
       isNavigatingRef.current = true
       setTargetPlanet(target)
+      setTransitPath(targetPath)
       setTransitPhase("fading-out")
       setWarpProgress(0)
 
@@ -352,6 +357,7 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
       setTimeout(() => {
         setTransitPhase("idle")
         setTargetPlanet(null)
+        setTransitPath(null)
         isNavigatingRef.current = false
       }, 660)
     },
@@ -531,11 +537,18 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
 
   const destination = targetPlanet || currentPlanet
 
+  const isAuthPage =
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/signup") ||
+    pathname?.startsWith("/reset-password") ||
+    pathname?.startsWith("/check-email")
+
   return (
     <SpaceflightContext.Provider
       value={{
         currentPlanet,
         targetPlanet,
+        transitPath,
         isWarping,
         transitPhase,
         audioEnabled,
@@ -551,137 +564,136 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         aria-hidden="true"
       />
 
-      {/* Atmospheric Entry Shockwave Burst (behind doors) */}
-      {transitPhase !== "idle" && (
+      {/* Stinger Airlock Transition (Behind Header and Left Bar - Covers only the content section being switched out) */}
+      <div
+        className={`fixed bottom-0 right-0 z-[35] pointer-events-none overflow-hidden ${
+          isAuthPage
+            ? "top-0 left-0"
+            : "top-16 sm:top-20 left-0 lg:left-56 xl:left-60"
+        }`}
+        aria-hidden="true"
+      >
+        {/* Atmospheric Entry Shockwave Burst (behind doors) */}
+        {transitPhase !== "idle" && (
+          <div
+            className={`absolute inset-0 pointer-events-none flex items-center justify-center transition-opacity duration-300 ${
+              transitPhase === "fading-in" ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            <div
+              className="rounded-full pointer-events-none transition-transform duration-500"
+              style={{
+                width: "160vmax",
+                height: "160vmax",
+                background: `radial-gradient(circle, ${destination.glowColor} 0%, transparent 65%)`,
+                opacity: warpProgress > 0.4 ? (1 - warpProgress) * 1.5 : warpProgress * 2,
+                transform: `scale(${0.3 + warpProgress * 1.4})`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* Left Spaceship Bulkhead Airlock Door */}
         <div
-          className={`fixed inset-0 z-[9985] pointer-events-none flex items-center justify-center transition-opacity duration-300 ${
-            transitPhase === "fading-in" ? "opacity-0" : "opacity-100"
+          className={`absolute top-0 bottom-0 left-0 w-[calc(50%+1px)] pointer-events-none transition-transform ease-out ${
+            transitPhase === "fading-out" || transitPhase === "warping"
+              ? "translate-x-0 duration-180"
+              : "-translate-x-full duration-260"
           }`}
-          aria-hidden="true"
+          style={{
+            background: "linear-gradient(135deg, #050518 0%, #080825 50%, #0d0d38 100%)",
+            borderRight: "2px solid #20205a",
+            boxShadow: "inset -12px 0 30px rgba(0,0,0,0.8), 10px 0 40px rgba(0,0,0,0.7)",
+          }}
         >
+          {/* Hull carbon grid texture */}
+          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px]" />
+
+          {/* Vertical power reactor strip */}
           <div
-            className="rounded-full pointer-events-none transition-transform duration-500"
-            style={{
-              width: "160vmax",
-              height: "160vmax",
-              background: `radial-gradient(circle, ${destination.glowColor} 0%, transparent 65%)`,
-              opacity: warpProgress > 0.4 ? (1 - warpProgress) * 1.5 : warpProgress * 2,
-              transform: `scale(${0.3 + warpProgress * 1.4})`,
-            }}
-          />
-        </div>
-      )}
-
-      {/* Left Spaceship Bulkhead Airlock Door */}
-      <div
-        className={`fixed top-0 bottom-0 left-0 w-[calc(50%+1px)] z-[9990] pointer-events-none transition-transform ease-out ${
-          transitPhase === "fading-out" || transitPhase === "warping"
-            ? "translate-x-0 duration-180"
-            : "-translate-x-full duration-260"
-        }`}
-        style={{
-          background: "linear-gradient(135deg, #050518 0%, #080825 50%, #0d0d38 100%)",
-          borderRight: "2px solid #20205a",
-          boxShadow: "inset -12px 0 30px rgba(0,0,0,0.8), 10px 0 40px rgba(0,0,0,0.7)",
-        }}
-        aria-hidden="true"
-      >
-        {/* Hull carbon grid texture */}
-        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px]" />
-
-        {/* Vertical power reactor strip */}
-        <div
-          className="absolute top-0 bottom-0 right-4 w-1"
-          style={{
-            backgroundColor: destination.color,
-            boxShadow: `0 0 16px ${destination.color}`,
-          }}
-        />
-
-        {/* Hazard warning stripe on seam */}
-        <div
-          className="absolute top-0 bottom-0 right-0 w-2.5 opacity-60"
-          style={{
-            backgroundImage: `repeating-linear-gradient(45deg, ${destination.color} 0, ${destination.color} 6px, #050518 6px, #050518 12px)`,
-          }}
-        />
-
-        {/* Airlock mechanical bolts */}
-        <div className="absolute right-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
-        <div className="absolute right-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
-
-        {/* Left half of center airlock clamp */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-24 sm:w-14 sm:h-28 rounded-l-full border-2 border-r-0 border-[#20205a] bg-[#070722] flex items-center justify-end pr-1 shadow-[-4px_0_15px_rgba(0,0,0,0.8)]">
-          <div
-            className="w-4 h-8 sm:w-5 sm:h-10 rounded-l-full border border-r-0 border-white/80 shadow-md animate-pulse"
+            className="absolute top-0 bottom-0 right-4 w-1"
             style={{
               backgroundColor: destination.color,
-              boxShadow: `0 0 14px ${destination.color}`,
+              boxShadow: `0 0 16px ${destination.color}`,
             }}
           />
+
+          {/* Hazard warning stripe on seam */}
+          <div
+            className="absolute top-0 bottom-0 right-0 w-2.5 opacity-60"
+            style={{
+              backgroundImage: `repeating-linear-gradient(45deg, ${destination.color} 0, ${destination.color} 6px, #050518 6px, #050518 12px)`,
+            }}
+          />
+
+          {/* Airlock mechanical bolts */}
+          <div className="absolute right-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+          <div className="absolute right-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+
+          {/* Left half of center airlock clamp */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-24 sm:w-14 sm:h-28 rounded-l-full border-2 border-r-0 border-[#20205a] bg-[#070722] flex items-center justify-end pr-1 shadow-[-4px_0_15px_rgba(0,0,0,0.8)]">
+            <div
+              className="w-4 h-8 sm:w-5 sm:h-10 rounded-l-full border border-r-0 border-white/80 shadow-md animate-pulse"
+              style={{
+                backgroundColor: destination.color,
+                boxShadow: `0 0 14px ${destination.color}`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Right Spaceship Bulkhead Airlock Door */}
+        <div
+          className={`absolute top-0 bottom-0 right-0 w-[calc(50%+1px)] pointer-events-none transition-transform ease-out ${
+            transitPhase === "fading-out" || transitPhase === "warping"
+              ? "translate-x-0 duration-180"
+              : "translate-x-full duration-260"
+          }`}
+          style={{
+            background: "linear-gradient(225deg, #050518 0%, #080825 50%, #0d0d38 100%)",
+            borderLeft: "2px solid #20205a",
+            boxShadow: "inset 12px 0 30px rgba(0,0,0,0.8), -10px 0 40px rgba(0,0,0,0.7)",
+          }}
+        >
+          {/* Hull carbon grid texture */}
+          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px]" />
+
+          {/* Vertical power reactor strip */}
+          <div
+            className="absolute top-0 bottom-0 left-4 w-1"
+            style={{
+              backgroundColor: destination.color,
+              boxShadow: `0 0 16px ${destination.color}`,
+            }}
+          />
+
+          {/* Hazard warning stripe on seam */}
+          <div
+            className="absolute top-0 bottom-0 left-0 w-2.5 opacity-60"
+            style={{
+              backgroundImage: `repeating-linear-gradient(-45deg, ${destination.color} 0, ${destination.color} 6px, #050518 6px, #050518 12px)`,
+            }}
+          />
+
+          {/* Airlock mechanical bolts */}
+          <div className="absolute left-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+          <div className="absolute left-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
+
+          {/* Right half of center airlock clamp */}
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-24 sm:w-14 sm:h-28 rounded-r-full border-2 border-l-0 border-[#20205a] bg-[#070722] flex items-center justify-start pl-1 shadow-[4px_0_15px_rgba(0,0,0,0.8)]">
+            <div
+              className="w-4 h-8 sm:w-5 sm:h-10 rounded-r-full border border-l-0 border-white/80 shadow-md animate-pulse"
+              style={{
+                backgroundColor: destination.color,
+                boxShadow: `0 0 14px ${destination.color}`,
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Right Spaceship Bulkhead Airlock Door */}
-      <div
-        className={`fixed top-0 bottom-0 right-0 w-[calc(50%+1px)] z-[9990] pointer-events-none transition-transform ease-out ${
-          transitPhase === "fading-out" || transitPhase === "warping"
-            ? "translate-x-0 duration-180"
-            : "translate-x-full duration-260"
-        }`}
-        style={{
-          background: "linear-gradient(225deg, #050518 0%, #080825 50%, #0d0d38 100%)",
-          borderLeft: "2px solid #20205a",
-          boxShadow: "inset 12px 0 30px rgba(0,0,0,0.8), -10px 0 40px rgba(0,0,0,0.7)",
-        }}
-        aria-hidden="true"
-      >
-        {/* Hull carbon grid texture */}
-        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#20efe0_1px,transparent_1px)] [background-size:24px_24px]" />
-
-        {/* Vertical power reactor strip */}
-        <div
-          className="absolute top-0 bottom-0 left-4 w-1"
-          style={{
-            backgroundColor: destination.color,
-            boxShadow: `0 0 16px ${destination.color}`,
-          }}
-        />
-
-        {/* Hazard warning stripe on seam */}
-        <div
-          className="absolute top-0 bottom-0 left-0 w-2.5 opacity-60"
-          style={{
-            backgroundImage: `repeating-linear-gradient(-45deg, ${destination.color} 0, ${destination.color} 6px, #050518 6px, #050518 12px)`,
-          }}
-        />
-
-        {/* Airlock mechanical bolts */}
-        <div className="absolute left-2 top-1/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
-        <div className="absolute left-2 top-3/4 w-3 h-3 rounded-full bg-[#20205a] border border-[#f5f7ff]/30 shadow-md" />
-
-        {/* Right half of center airlock clamp */}
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-24 sm:w-14 sm:h-28 rounded-r-full border-2 border-l-0 border-[#20205a] bg-[#070722] flex items-center justify-start pl-1 shadow-[4px_0_15px_rgba(0,0,0,0.8)]">
-          <div
-            className="w-4 h-8 sm:w-5 sm:h-10 rounded-r-full border border-l-0 border-white/80 shadow-md animate-pulse"
-            style={{
-              backgroundColor: destination.color,
-              boxShadow: `0 0 14px ${destination.color}`,
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Content wrapper: modules quickly push away & fade out on exit, then cleanly push in on enter */}
-      <div
-        className={`relative z-10 ${
-          transitPhase === "fading-out" || transitPhase === "warping"
-            ? "opacity-0 scale-[0.88] blur-[3px] pointer-events-none duration-180 ease-in transition-all"
-            : transitPhase === "fading-in"
-            ? "opacity-100 scale-100 blur-0 pointer-events-auto duration-300 ease-out transition-all"
-            : "opacity-100 pointer-events-auto"
-        }`}
-      >
+      {/* Content wrapper */}
+      <div className="relative z-10">
         {children}
       </div>
     </SpaceflightContext.Provider>

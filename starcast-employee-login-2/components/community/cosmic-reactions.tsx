@@ -123,12 +123,16 @@ export function CosmicReactions({
     const alreadyReacted = userReactions.has(key)
 
     const nextCounts = { ...counts }
-    const nextUserReactions = new Set(userReactions)
+    const nextUserReactions = new Set<string>()
 
     if (alreadyReacted) {
+      // Toggle off current reaction (unlike)
       nextCounts[key] = Math.max(0, (nextCounts[key] || 1) - 1)
-      nextUserReactions.delete(key)
     } else {
+      // User can only like once: deduct any previous reaction(s) and switch to new one
+      for (const prevKey of Array.from(userReactions)) {
+        nextCounts[prevKey] = Math.max(0, (nextCounts[prevKey] || 1) - 1)
+      }
       nextCounts[key] = (nextCounts[key] || 0) + 1
       nextUserReactions.add(key)
     }

@@ -9,6 +9,7 @@ import {
   uuid,
   serial,
   varchar,
+  uniqueIndex,
 } from "drizzle-orm/pg-core"
 
 // --- Better Auth required tables -------------------------------------------
@@ -137,14 +138,18 @@ export const articleLikes = pgTable("article_likes", {
   articleId: uuid("article_id").notNull(),
   userId: text("userId").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex("idx_article_likes_unique").on(table.articleId, table.userId),
+])
 
 export const savedArticles = pgTable("saved_articles", {
   id: uuid("id").primaryKey().defaultRandom(),
   articleId: uuid("article_id").notNull(),
   userId: text("userId").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex("idx_saved_articles_unique").on(table.articleId, table.userId),
+])
 
 export const communityCategories = pgTable("community_categories", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -180,7 +185,9 @@ export const postStars = pgTable("post_stars", {
   userId: text("userId").notNull(),
   reactionType: text("reaction_type").notNull().default("love"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex("idx_post_stars_unique").on(table.postId, table.userId),
+])
 
 export const postComments = pgTable("post_comments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -197,7 +204,9 @@ export const commentStars = pgTable("comment_stars", {
   userId: text("userId").notNull(),
   reactionType: text("reaction_type").notNull().default("love"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex("idx_comment_stars_unique").on(table.commentId, table.userId),
+])
 
 export const communityPollVotes = pgTable("community_poll_votes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -407,7 +416,9 @@ export const bandFollows = pgTable("band_follows", {
   bandId: uuid("band_id").notNull(),
   userId: text("user_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex("idx_band_follows_unique").on(table.bandId, table.userId),
+])
 
 export const bandPostComments = pgTable("band_post_comments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -616,7 +627,9 @@ export const trackLikes = pgTable("track_likes", {
     .notNull(),
   userId: text("user_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex("idx_track_likes_unique").on(table.trackId, table.userId),
+])
 
 export const albumLikes = pgTable("album_likes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -626,7 +639,9 @@ export const albumLikes = pgTable("album_likes", {
   albumName: text("album_name").notNull(),
   userId: text("user_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex("idx_album_likes_unique").on(table.bandId, table.albumName, table.userId),
+])
 
 export const inboundEmails = pgTable("inbound_emails", {
   id: uuid("id").primaryKey().defaultRandom(),

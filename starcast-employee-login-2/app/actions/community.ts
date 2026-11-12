@@ -661,27 +661,35 @@ export async function createCommunityPost(input: {
 export async function togglePostReaction(postId: string, reactionType: string = "love") {
   const viewer = await requireSocialViewer()
   const existing = await db
-    .select({ id: postStars.id })
+    .select({ id: postStars.id, reactionType: postStars.reactionType })
     .from(postStars)
     .where(
       and(
         eq(postStars.postId, postId),
-        eq(postStars.userId, viewer.id),
-        eq(postStars.reactionType, reactionType)
+        eq(postStars.userId, viewer.id)
       )
     )
-    .limit(1)
 
-  if (existing.length > 0) {
-    await db.delete(postStars).where(eq(postStars.id, existing[0].id))
+  // If user already reacted with this exact reaction type, toggle it off (unlike)
+  const exactMatch = existing.find((r) => r.reactionType === reactionType)
+  if (exactMatch && existing.length === 1) {
+    await db.delete(postStars).where(and(eq(postStars.postId, postId), eq(postStars.userId, viewer.id)))
     return { reacted: false, reactionType }
+  }
+
+  // If user had existing reaction(s), clean them all up so they only have 1 reaction at any time
+  if (existing.length > 0) {
+    await db.delete(postStars).where(and(eq(postStars.postId, postId), eq(postStars.userId, viewer.id)))
+    if (exactMatch) {
+      return { reacted: false, reactionType }
+    }
   }
 
   await db.insert(postStars).values({
     postId,
     userId: viewer.id,
     reactionType,
-  })
+  }).onConflictDoNothing()
 
   // Trigger notification to post author
   try {
@@ -836,27 +844,35 @@ export async function addPostComment(postId: string, comment: string, parentComm
 export async function toggleCommentReaction(commentId: string, reactionType: string = "love") {
   const viewer = await requireSocialViewer()
   const existing = await db
-    .select({ id: commentStars.id })
+    .select({ id: commentStars.id, reactionType: commentStars.reactionType })
     .from(commentStars)
     .where(
       and(
         eq(commentStars.commentId, commentId),
-        eq(commentStars.userId, viewer.id),
-        eq(commentStars.reactionType, reactionType)
+        eq(commentStars.userId, viewer.id)
       )
     )
-    .limit(1)
 
-  if (existing.length > 0) {
-    await db.delete(commentStars).where(eq(commentStars.id, existing[0].id))
+  // If user already reacted with this exact reaction type, toggle it off (unlike)
+  const exactMatch = existing.find((r) => r.reactionType === reactionType)
+  if (exactMatch && existing.length === 1) {
+    await db.delete(commentStars).where(and(eq(commentStars.commentId, commentId), eq(commentStars.userId, viewer.id)))
     return { reacted: false, reactionType }
+  }
+
+  // If user had existing reaction(s), clean them all up so they only have 1 reaction at any time
+  if (existing.length > 0) {
+    await db.delete(commentStars).where(and(eq(commentStars.commentId, commentId), eq(commentStars.userId, viewer.id)))
+    if (exactMatch) {
+      return { reacted: false, reactionType }
+    }
   }
 
   await db.insert(commentStars).values({
     commentId,
     userId: viewer.id,
     reactionType,
-  })
+  }).onConflictDoNothing()
 
   try {
     const [c] = await db

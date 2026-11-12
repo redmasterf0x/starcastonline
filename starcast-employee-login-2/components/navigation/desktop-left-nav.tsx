@@ -178,7 +178,7 @@ export function DesktopLeftNav({ currentPage = "/", className = "" }: DesktopLef
 
   return (
     <aside
-      className={`hidden lg:flex lg:w-56 xl:w-60 flex-col shrink-0 sticky top-16 sm:top-20 h-[calc(100vh-4rem)] sm:h-[calc(100vh-5rem)] border-r border-[#38bdf8]/25 bg-gradient-to-b from-[#162058] via-[#111845] to-[#0c1136] shadow-[4px_0_24px_rgba(2,132,199,0.18)] z-30 select-none relative overflow-hidden ${className}`}
+      className={`hidden lg:flex lg:w-56 xl:w-60 flex-col shrink-0 sticky top-16 sm:top-20 h-[calc(100vh-4rem)] sm:h-[calc(100vh-5rem)] border-r border-[#38bdf8]/25 bg-gradient-to-b from-[#162058] via-[#111845] to-[#0c1136] shadow-[4px_0_24px_rgba(2,132,199,0.18)] z-40 select-none relative overflow-hidden ${className}`}
       aria-label="Member Navigation"
     >
       {/* Bright Top Sky-Blue Ambient Glow */}

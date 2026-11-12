@@ -295,10 +295,10 @@ export async function toggleArticleLike(articleId: string) {
     .limit(1)
 
   if (existing.length > 0) {
-    await db.delete(articleLikes).where(eq(articleLikes.id, existing[0].id))
+    await db.delete(articleLikes).where(and(eq(articleLikes.articleId, articleId), eq(articleLikes.userId, userId)))
     return { liked: false }
   }
-  await db.insert(articleLikes).values({ articleId, userId })
+  await db.insert(articleLikes).values({ articleId, userId }).onConflictDoNothing()
   return { liked: true }
 }
 
@@ -347,9 +347,9 @@ export async function toggleArticleSave(articleId: string) {
     .limit(1)
 
   if (existing.length > 0) {
-    await db.delete(savedArticles).where(eq(savedArticles.id, existing[0].id))
+    await db.delete(savedArticles).where(and(eq(savedArticles.articleId, articleId), eq(savedArticles.userId, userId)))
     return { saved: false }
   }
-  await db.insert(savedArticles).values({ articleId, userId })
+  await db.insert(savedArticles).values({ articleId, userId }).onConflictDoNothing()
   return { saved: true }
 }
