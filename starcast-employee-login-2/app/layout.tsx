@@ -363,6 +363,18 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark bg-background ${_montserrat.variable} ${_geistMono.variable}`}>
       <head>
+        {/* Google Tag Manager & Google Ads */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtm.js?id=GTM-5NXCH7RK"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());`,
+          }}
+        />
         <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://i.ytimg.com" />
         <script
@@ -379,6 +391,15 @@ export default function RootLayout({
         />
       </head>
       <body className={`font-sans antialiased`}>
+        {/* Google Tag Manager (noscript fallback) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-5NXCH7RK"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
         <GlobalAudioProvider>
           <SpaceflightTransitionProvider>
             <AppShell>
