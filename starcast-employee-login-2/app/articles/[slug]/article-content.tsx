@@ -16,7 +16,7 @@ import {
 } from "@/app/actions/articles"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Edit, Trash2, Share2, LinkIcon, Twitter, Facebook, Bookmark, Check, Sparkles } from "lucide-react"
+import { ArrowLeft, Star, Edit, Trash2, Share2, LinkIcon, Twitter, Facebook, Bookmark, Check, Sparkles } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -454,10 +454,14 @@ export default function ArticleContent() {
           <Button
             onClick={() => requireAuth(handleToggleLike)}
             variant="outline"
-            className={`border-[#20205a] hover:bg-[#20205a]/40 bg-transparent gap-2 ${userLiked ? "text-red-400 border-red-400/50" : "text-[#9a9fc4]"}`}
+            className={`transition-all gap-2 ${
+              userLiked
+                ? "bg-[#ffd166]/15 border-[#ffd166]/60 text-[#ffd166] shadow-[0_0_12px_rgba(255,209,102,0.2)] font-bold"
+                : "border-[#20205a] hover:bg-[#20205a]/40 bg-transparent text-[#9a9fc4] hover:text-[#ffd166]"
+            }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill={userLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            {userLiked ? "Liked" : "Like"}{likeCount > 0 ? ` (${likeCount})` : ""}
+            <Star className={`w-4 h-4 ${userLiked ? "fill-[#ffd166] text-[#ffd166]" : ""}`} />
+            {userLiked ? "Starred" : "Star"}{likeCount > 0 ? ` (${likeCount})` : ""}
           </Button>
           <Button
             onClick={() => requireAuth(handleToggleSave)}
