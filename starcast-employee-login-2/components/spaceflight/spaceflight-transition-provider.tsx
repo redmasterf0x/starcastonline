@@ -11,6 +11,7 @@ import React, {
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Compass, Volume2, VolumeX, Radio, Sparkles } from "lucide-react"
+import { authClient } from "@/lib/auth-client"
 
 export type TransitPhase = "idle" | "fading-out" | "warping" | "fading-in"
 
@@ -262,6 +263,8 @@ function playSpaceshipTransitionAudio(enabled: boolean) {
 export function SpaceflightTransitionProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { data: session } = authClient.useSession()
+  const hasLeftNav = Boolean(session?.user)
 
   const [currentPlanet, setCurrentPlanet] = useState<PlanetInfo>(() => resolvePlanet(pathname))
   const [targetPlanet, setTargetPlanet] = useState<PlanetInfo | null>(null)
@@ -569,7 +572,9 @@ export function SpaceflightTransitionProvider({ children }: { children: ReactNod
         className={`fixed bottom-0 right-0 z-[35] pointer-events-none overflow-hidden ${
           isAuthPage
             ? "top-0 left-0"
-            : "top-16 sm:top-20 left-0 lg:left-56 xl:left-60"
+            : hasLeftNav
+            ? "top-16 sm:top-20 left-0 lg:left-56 xl:left-60"
+            : "top-16 sm:top-20 left-0"
         }`}
         aria-hidden="true"
       >

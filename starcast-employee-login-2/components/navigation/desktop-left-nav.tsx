@@ -77,7 +77,7 @@ export function DesktopLeftNav({ currentPage = "/", className = "" }: DesktopLef
   }, [session])
 
   // Only show the left nav bar when signed in
-  if (!loggedIn) {
+  if (!session?.user || !loggedIn) {
     return null
   }
 
