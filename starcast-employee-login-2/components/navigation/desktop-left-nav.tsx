@@ -48,8 +48,10 @@ export function DesktopLeftNav({ currentPage = "/", className = "" }: DesktopLef
           const p = profile
           const isStaff =
             p.role === "staff" ||
+            p.role === "production" ||
             p.role === "admin" ||
             Boolean(p.isEmployee) ||
+            Boolean(p.canManageCalendar) ||
             Boolean(p.isAdmin)
           const isAdm = p.role === "admin" || Boolean(p.isAdmin)
           setIsAdmin(isAdm)

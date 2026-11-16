@@ -36,7 +36,9 @@ async function requireCrew() {
     .limit(1)
   const p = rows[0]
   const isAdmin = Boolean(p?.isAdmin || p?.role === "admin")
-  const isCrew = Boolean(isAdmin || p?.isEmployee || p?.role === "staff")
+  const isCrew = Boolean(
+    isAdmin || p?.isEmployee || p?.canManageCalendar || p?.role === "staff" || p?.role === "production"
+  )
   if (!p || !isCrew) throw new Error("Forbidden")
   return { userId, isAdmin, isCrew, canManageCalendar: Boolean(isAdmin || isCrew || p.canManageCalendar) }
 }
@@ -71,7 +73,13 @@ export async function getProductionViewer() {
     .limit(1)
   const p = rows[0]
   const isAdmin = Boolean((p?.isAdmin ?? false) || p?.role === "admin")
-  const isCrew = Boolean(isAdmin || (p?.isEmployee ?? false) || p?.role === "staff")
+  const isCrew = Boolean(
+    isAdmin ||
+      (p?.isEmployee ?? false) ||
+      (p?.canManageCalendar ?? false) ||
+      p?.role === "staff" ||
+      p?.role === "production"
+  )
   return {
     userId: session.user.id,
     is_admin: isAdmin,
@@ -231,7 +239,7 @@ function validateProductionInput(input: ProductionInput) {
   if (!recurrenceFrequencies.includes(input.recurrence_frequency as RecurrenceFrequency)) {
     throw new Error("Select a valid repeat frequency")
   }
-  if (!input.recurrence_end_date) throw new Error("A repeat end date is required")
+  if (!input.recurrence_end_date) return
 
   const recurrenceEnd = parseRecurrenceEndDate(input.recurrence_end_date)
   if (!recurrenceEnd || recurrenceEnd < start) {

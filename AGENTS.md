@@ -79,8 +79,8 @@ scripts/          migrate-*.js (migration scripts via pg Pool + Drizzle)
 - `middleware.ts` only checks the session cookie for `/dashboard`, `/admin`, `/production`, `/staff`. **Role checks happen in server code**, not middleware.
 
 ### Roles & permissions (`lib/permissions.ts`)
-- Stored on `profiles`: `role` (`user`|`staff`|`admin`), plus legacy booleans `isAdmin`, `isEmployee`, and granular `canWriteArticles`, `canManageCalendar`.
-- `getViewerPermissions()` reconciles them: admin = `isAdmin || role==='admin'`; staff = admin || `isEmployee` || `role==='staff'`. Admin implies all permissions.
+- Stored on `profiles`: `role` (`user`|`staff`|`production`|`admin`), plus legacy booleans `isAdmin`, `isEmployee`, and granular `canWriteArticles`, `canManageCalendar`.
+- `getViewerPermissions()` reconciles them: admin = `isAdmin || role==='admin'`; staff = admin || `isEmployee` || `role==='staff'` || `role==='production'` || `canManageCalendar`. Admin implies all permissions, and production users have full access to `/production` and the Staff Mailbox (compose & send).
 - Guards: `requireViewer`, `requireStaff`, `requireAdmin`, `requireArticleWriter`, `requireCalendarManager`, `requireSocialPrivileges` (blocks `socialBanned` users from posting/commenting/liking/DMs/friend requests; admins can't be banned).
 - API routes: `requireAdminRoute()` returns `{ok, status}`.
 
@@ -101,7 +101,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 | Studio | `bookings`, `payments` | booking status requested→confirmed→checked_in→completed/cancelled; rate snapshot on booking |
 | Music | `band_tracks`, `track_comments`, `track_likes`, `album_likes` | `band_tracks.slug` → `/music/[slug]`; `bands.music_catalog_enabled` toggle; legal agreement `/music/agreement` (100% artist master ownership retention, ad-free non-exclusive streaming, anti-theft/sampling protections, timestamped Proof of Ownership certificates printable in portal); StarCast Audio Shield (acoustic fingerprinting via `lib/audio-fingerprint.ts`, SHA-256 master hashing, AcoustID/MusicBrainz commercial copyright verification, catalog collision resolution); song and album stars (starring an album automatically stars all songs in the album; uses StarCast golden ⭐ symbols across all likes/stars); owner/admin editing for songs, albums, and acts |
 | Ticketing | `band_events`, `band_ticket_orders`, `band_ticket_instances` | bands apply (`ticketing_status`), Stripe Connect payout, escrow held until 24h after event; QR via `qr_token` → `/tickets/[token]` |
-| Staff ops | `productions`, `production_crew`, `production_requests`, `timesheets`, `payouts` | crew reminders via cron + SMS; staff mailbox in `/production`; production accounting ledger at `/production/accounting` with Stripe Connect bank linking and 1-click tax CSV export |
+| Staff ops | `productions`, `production_crew`, `production_requests`, `timesheets`, `payouts` | crew reminders via cron + SMS; staff mailbox in `/production` with Teams-style rich text Word editor (`TeamsRichEditor`), compose/send/reply/sent view, and AI "Make me sound smart" rewording; production accounting ledger at `/production/accounting` with Stripe Connect bank linking and 1-click tax CSV export |
 | Business | `sponsors`, `inbox_messages` | sponsor checkout via Stripe; `inbox_messages` = official staff mailbox messages (`staff_profile_id`, `to_email`) |
 | Files | `uploaded_blobs` | base64 file storage (see §7) |
 | (unused?) | `inbound_emails` | Postgres copy exists, but the support inbox actually uses **Firestore** |
@@ -147,7 +147,7 @@ URLs: `NEXT_PUBLIC_BASE_URL`, `NEXT_PUBLIC_APP_URL`.
 Stripe: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
 Resend: `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`.
 Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `TWILIO_VERIFY_SERVICE_SID`.
-Other: `CRON_SECRET`, `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_STOREFRONT_ACCESS_TOKEN` (+ optional `NEXT_PUBLIC_SHOPIFY_STORE_URL`), `FIREBASE_SERVICE_ACCOUNT_KEY` (local only).
+Other: `CRON_SECRET`, `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_STOREFRONT_ACCESS_TOKEN` (+ optional `NEXT_PUBLIC_SHOPIFY_STORE_URL`), `FIREBASE_SERVICE_ACCOUNT_KEY` (local only), `GEMINI_API_KEY` (optional, for AI email rewording in Staff Mailbox).
 Local values live in `starcast-employee-login-2/.env.local` (never commit/print secrets). Template: `.env.example`.
 Production values: `apphosting.yaml` (+ Google Secret Manager).
 

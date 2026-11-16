@@ -63,7 +63,13 @@ export function ResponsiveHeader({
             setUserProfile(profile)
             if (isAdminProp === undefined && isCrewProp === undefined) {
               const isAdminUser = Boolean(profile.isAdmin || profile.role === "admin")
-              const isCrewUser = Boolean(isAdminUser || profile.isEmployee || profile.role === "staff")
+              const isCrewUser = Boolean(
+                isAdminUser ||
+                  profile.isEmployee ||
+                  profile.canManageCalendar ||
+                  profile.role === "staff" ||
+                  profile.role === "production"
+              )
               setIsAdmin(isAdminUser)
               setIsCrew(isCrewUser)
             }

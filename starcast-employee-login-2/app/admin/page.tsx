@@ -255,7 +255,7 @@ export default function AdminPage() {
       alert(err?.message || "Failed to update permission")
     }
   }
-  const handleSetRole = async (profileId: string, role: "admin" | "staff" | "user") => {
+  const handleSetRole = async (profileId: string, role: "admin" | "staff" | "production" | "user") => {
     try {
       await adminSetRole(profileId, role)
       await fetchUsers()
@@ -668,14 +668,15 @@ export default function AdminPage() {
                               <p className="text-[10px] uppercase tracking-wider text-[#9a9fc4]/60 mb-1.5">Role</p>
                               <Select
                                 value={user.is_admin ? "admin" : (user.role || (user.is_employee ? "staff" : "user"))}
-                                onValueChange={(v) => handleSetRole(user.id, v as "admin" | "staff" | "user")}
+                                onValueChange={(v) => handleSetRole(user.id, v as "admin" | "staff" | "production" | "user")}
                               >
-                                <SelectTrigger className="h-8 w-32 bg-[#05052d] border-[#20205a] text-[#f5f7ff] text-xs">
+                                <SelectTrigger className="h-8 w-36 bg-[#05052d] border-[#20205a] text-[#f5f7ff] text-xs">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                                   <SelectItem value="user">User</SelectItem>
                                   <SelectItem value="staff">Staff</SelectItem>
+                                  <SelectItem value="production">Production</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -790,14 +791,15 @@ export default function AdminPage() {
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <Select
                             value={user.is_admin ? "admin" : (user.role || (user.is_employee ? "staff" : "user"))}
-                            onValueChange={(v) => handleSetRole(user.id, v as "admin" | "staff" | "user")}
+                            onValueChange={(v) => handleSetRole(user.id, v as "admin" | "staff" | "production" | "user")}
                           >
-                            <SelectTrigger className="h-8 w-24 bg-[#05052d] border-[#20205a] text-[#f5f7ff] text-xs">
+                            <SelectTrigger className="h-8 w-28 bg-[#05052d] border-[#20205a] text-[#f5f7ff] text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]">
                               <SelectItem value="user">User</SelectItem>
                               <SelectItem value="staff">Staff</SelectItem>
+                              <SelectItem value="production">Production</SelectItem>
                               <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
                           </Select>

@@ -13,7 +13,7 @@ import { headers } from "next/headers"
  * `canWriteArticles` and `canManageCalendar` are OR-ed with `isAdmin` here so
  * callers never have to remember to also check for admin.
  */
-export type AppRole = "admin" | "staff" | "user"
+export type AppRole = "admin" | "staff" | "production" | "user"
 
 export type ViewerPermissions = {
   userId: string
@@ -60,8 +60,15 @@ export async function getViewerPermissions(): Promise<ViewerPermissions | null> 
   // The boolean flags and the role column are reconciled here so legacy data
   // (flags set before the role column existed) still resolves correctly.
   const isAdmin = (p?.isAdmin ?? false) || p?.role === "admin"
-  const isStaff = isAdmin || (p?.isEmployee ?? false) || p?.role === "staff"
-  const role: AppRole = isAdmin ? "admin" : isStaff ? "staff" : "user"
+  const isProduction = p?.role === "production" || (p?.canManageCalendar ?? false)
+  const isStaff = isAdmin || (p?.isEmployee ?? false) || p?.role === "staff" || isProduction
+  const role: AppRole = isAdmin
+    ? "admin"
+    : p?.role === "production"
+    ? "production"
+    : isStaff
+    ? "staff"
+    : "user"
 
   return {
     userId: session.user.id,

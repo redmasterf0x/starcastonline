@@ -195,16 +195,27 @@ function nextOccurrence(date: Date, frequency: string, anchorDay: number) {
   return result
 }
 
-function expandProductionOccurrences(production: Production) {
-  if (!production.is_recurring || !production.recurrence_frequency || !production.recurrence_end_date) {
+function expandProductionOccurrences(production: Production, horizonEnd?: Date) {
+  if (!production.is_recurring || !production.recurrence_frequency) {
     return [production]
   }
 
-  const rawEndDate = formatDateLocal(production.recurrence_end_date)
-  if (!rawEndDate) return [production]
-
-  const [endYear, endMonth, endDay] = rawEndDate.split("-").map(Number)
-  const recurrenceEnd = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
+  let recurrenceEnd: Date
+  if (production.recurrence_end_date) {
+    const rawEndDate = formatDateLocal(production.recurrence_end_date)
+    if (!rawEndDate) return [production]
+    const [endYear, endMonth, endDay] = rawEndDate.split("-").map(Number)
+    recurrenceEnd = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999)
+  } else {
+    // Repeat infinitely: expand through the visible calendar horizon (default 2 years ahead)
+    if (horizonEnd) {
+      recurrenceEnd = horizonEnd
+    } else {
+      const fallback = new Date()
+      fallback.setFullYear(fallback.getFullYear() + 2)
+      recurrenceEnd = fallback
+    }
+  }
 
   const occurrences: Production[] = []
   const originalStart = new Date(production.start_date)
@@ -213,7 +224,8 @@ function expandProductionOccurrences(production: Production) {
   const duration = production.end_date ? new Date(production.end_date).getTime() - originalStart.getTime() : null
   let occurrenceStart = new Date(originalStart)
 
-  for (let index = 0; index < 500 && occurrenceStart.getTime() <= recurrenceEnd.getTime(); index += 1) {
+  const maxIterations = production.recurrence_end_date ? 500 : 5000
+  for (let index = 0; index < maxIterations && occurrenceStart.getTime() <= recurrenceEnd.getTime(); index += 1) {
     occurrences.push({
       ...production,
       id: index === 0 ? production.id : `${production.id}--occurrence-${index}`,
@@ -378,11 +390,11 @@ export default function ProductionPage() {
       toast({ title: "Missing information", description: "Add a title and start date.", variant: "destructive" })
       return false
     }
-    if (formData.is_recurring && (!formData.recurrence_frequency || !formData.recurrence_end_date)) {
-      toast({ title: "Repeat details required", description: "Choose a frequency and repeat end date.", variant: "destructive" })
+    if (formData.is_recurring && !formData.recurrence_frequency) {
+      toast({ title: "Repeat details required", description: "Choose a repeat frequency.", variant: "destructive" })
       return false
     }
-    if (formData.is_recurring) {
+    if (formData.is_recurring && formData.recurrence_end_date) {
       const rawEnd = formData.recurrence_end_date.slice(0, 10)
       const recurrenceEnd = new Date(`${rawEnd}T23:59:59`)
       const start = new Date(formData.start_date)
@@ -744,7 +756,8 @@ export default function ProductionPage() {
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 
-  const calendarProductions = productions.flatMap(expandProductionOccurrences)
+  const calendarHorizonEnd = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 2, 0, 23, 59, 59, 999)
+  const calendarProductions = productions.flatMap((p) => expandProductionOccurrences(p, calendarHorizonEnd))
 
   const productionsForDay = (day: Date) =>
     calendarProductions.filter((production) => isSameDay(new Date(production.start_date), day))
@@ -1041,11 +1054,13 @@ export default function ProductionPage() {
                                   <span>{prod.location}</span>
                                 </div>
                               )}
-                              {prod.is_recurring && prod.recurrence_frequency && prod.recurrence_end_date && (
+                              {prod.is_recurring && prod.recurrence_frequency && (
                                 <div className="flex items-center gap-1 text-[#f08a4a]">
                                   <Calendar className="w-4 h-4 flex-shrink-0" />
                                   <span className="capitalize">
-                                    Repeats {prod.recurrence_frequency} through {formatDate(prod.recurrence_end_date)}
+                                    {prod.recurrence_end_date
+                                      ? `Repeats ${prod.recurrence_frequency} through ${formatDate(prod.recurrence_end_date)}`
+                                      : `Repeats ${prod.recurrence_frequency} (forever)`}
                                   </span>
                                 </div>
                               )}
@@ -1362,7 +1377,7 @@ export default function ProductionPage() {
                 </div>
                 <div>
                   <Label htmlFor="add-recurrence-end" className="text-[#f5f7ff]">
-                    Repeat End Date
+                    Repeat End Date <span className="text-xs font-normal text-[#9a9fc4]">(optional)</span>
                   </Label>
                   <Input
                     id="add-recurrence-end"
@@ -1372,6 +1387,7 @@ export default function ProductionPage() {
                     onChange={(e) => setFormData({ ...formData, recurrence_end_date: e.target.value })}
                     className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
                   />
+                  <p className="text-[11px] text-[#9a9fc4] mt-1">Leave blank to repeat infinitely</p>
                 </div>
               </div>
             )}
@@ -1512,8 +1528,9 @@ export default function ProductionPage() {
                 <div className="flex items-center gap-2 text-xs font-semibold text-[#20efe0]">
                   <Calendar className="w-4 h-4 text-[#20efe0] flex-shrink-0" />
                   <span>
-                    Repeating {selectedProduction.recurrence_frequency} show (through{" "}
-                    {formatDate(selectedProduction.recurrence_end_date || "")})
+                    {selectedProduction.recurrence_end_date
+                      ? `Repeating ${selectedProduction.recurrence_frequency} show (through ${formatDate(selectedProduction.recurrence_end_date)})`
+                      : `Repeating ${selectedProduction.recurrence_frequency} show (repeats forever)`}
                   </span>
                 </div>
                 {selectedOccurrence ? (
@@ -1634,7 +1651,7 @@ export default function ProductionPage() {
                 </div>
                 <div>
                   <Label htmlFor="edit-recurrence-end" className="text-[#f5f7ff]">
-                    Repeat End Date
+                    Repeat End Date <span className="text-xs font-normal text-[#9a9fc4]">(optional)</span>
                   </Label>
                   <Input
                     id="edit-recurrence-end"
@@ -1644,6 +1661,7 @@ export default function ProductionPage() {
                     onChange={(event) => setFormData({ ...formData, recurrence_end_date: event.target.value })}
                     className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
                   />
+                  <p className="text-[11px] text-[#9a9fc4] mt-1">Leave blank to repeat infinitely</p>
                 </div>
               </div>
             )}
@@ -1909,7 +1927,7 @@ export default function ProductionPage() {
                 </div>
                 <div>
                   <Label htmlFor="req-recurrence-end" className="text-[#f5f7ff]">
-                    Repeat End Date
+                    Repeat End Date <span className="text-xs font-normal text-[#9a9fc4]">(optional)</span>
                   </Label>
                   <Input
                     id="req-recurrence-end"
@@ -1919,6 +1937,7 @@ export default function ProductionPage() {
                     onChange={(e) => setFormData({ ...formData, recurrence_end_date: e.target.value })}
                     className="bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
                   />
+                  <p className="text-[11px] text-[#9a9fc4] mt-1">Leave blank to repeat infinitely</p>
                 </div>
               </div>
             )}

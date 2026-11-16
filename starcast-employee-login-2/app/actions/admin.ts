@@ -45,7 +45,7 @@ export async function adminListUsers() {
     profile_pic: p.profilePic ?? undefined,
     location: p.location ?? undefined,
     website: p.website ?? undefined,
-    role: (p.isAdmin ? "admin" : p.isEmployee || p.role === "staff" ? "staff" : (p.role || "user")) as "admin" | "staff" | "user",
+    role: (p.isAdmin ? "admin" : p.role === "production" ? "production" : p.isEmployee || p.role === "staff" ? "staff" : (p.role || "user")) as "admin" | "staff" | "production" | "user",
     is_employee: p.isEmployee,
     is_admin: p.isAdmin,
     can_write_articles: p.canWriteArticles,
@@ -138,9 +138,9 @@ async function ensureStaffEmail(profileId: string) {
   return staffEmail
 }
 
-export async function adminSetRole(profileId: string, role: "admin" | "staff" | "user") {
+export async function adminSetRole(profileId: string, role: "admin" | "staff" | "production" | "user") {
   const admin = await requireAdmin()
-  if (!["admin", "staff", "user"].includes(role)) throw new Error("Invalid role")
+  if (!["admin", "staff", "production", "user"].includes(role)) throw new Error("Invalid role")
 
   // Prevent an admin from demoting themselves (avoid lockout).
   if (role !== "admin") {
@@ -162,6 +162,12 @@ export async function adminSetRole(profileId: string, role: "admin" | "staff" | 
     await db
       .update(profiles)
       .set({ role: "staff", isAdmin: false, isEmployee: true })
+      .where(eq(profiles.id, profileId))
+    await ensureStaffEmail(profileId)
+  } else if (role === "production") {
+    await db
+      .update(profiles)
+      .set({ role: "production", isAdmin: false, isEmployee: true, canManageCalendar: true })
       .where(eq(profiles.id, profileId))
     await ensureStaffEmail(profileId)
   } else {
@@ -261,6 +267,9 @@ export async function adminSetPermission(
   }
 
   await db.update(profiles).set(patch).where(eq(profiles.id, profileId))
+  if (patch.isEmployee) {
+    await ensureStaffEmail(profileId)
+  }
   return { success: true }
 }
 

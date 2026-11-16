@@ -18,13 +18,23 @@ export default async function ProductionLayout({
   }
 
   const rows = await db
-    .select({ isAdmin: profiles.isAdmin, isEmployee: profiles.isEmployee, role: profiles.role })
+    .select({
+      isAdmin: profiles.isAdmin,
+      isEmployee: profiles.isEmployee,
+      role: profiles.role,
+      canManageCalendar: profiles.canManageCalendar,
+    })
     .from(profiles)
     .where(eq(profiles.userId, session.user.id))
     .limit(1)
 
   const isStaff = Boolean(
-    rows[0]?.isEmployee || rows[0]?.isAdmin || rows[0]?.role === "staff" || rows[0]?.role === "admin"
+    rows[0]?.isEmployee ||
+      rows[0]?.isAdmin ||
+      rows[0]?.canManageCalendar ||
+      rows[0]?.role === "staff" ||
+      rows[0]?.role === "production" ||
+      rows[0]?.role === "admin"
   )
 
   if (!isStaff) {
