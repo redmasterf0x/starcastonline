@@ -2,7 +2,7 @@
 
 import { stripe } from "@/lib/stripe"
 import { db } from "@/lib/db"
-import { bands, bandEvents, bandTicketOrders, bandTicketInstances, bandEventScanners, user } from "@/lib/db/schema"
+import { bands, bandEvents, bandTicketOrders, bandTicketInstances, bandEventScanners, user, profiles } from "@/lib/db/schema"
 import { eq, and, desc, gte, sql, asc, ilike, inArray, or } from "drizzle-orm"
 import { requireViewer, requireStaff } from "@/lib/permissions"
 import { revalidatePath } from "next/cache"
@@ -423,6 +423,50 @@ export async function cancelBandEvent(eventId: string, reason?: string) {
   } catch (err: any) {
     console.error("cancelBandEvent error:", err)
     return { success: false, error: err?.message || "Failed to cancel event" }
+  }
+}
+
+/** Permanently delete an event (creator if 0 tickets sold, or admin anytime) */
+export async function deleteBandEvent(eventId: string) {
+  try {
+    const viewer = await requireViewer()
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+
+    const isCreator = isEventOwner(event, band, viewer.userId)
+    if (!isCreator && !viewer.isAdmin) {
+      return { success: false, error: "Unauthorized to delete this event." }
+    }
+
+    if (!viewer.isAdmin) {
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(bandTicketInstances)
+        .where(eq(bandTicketInstances.eventId, eventId))
+      if ((count || 0) > 0) {
+        return {
+          success: false,
+          error: "Events with issued tickets cannot be deleted. Cancel the event instead.",
+        }
+      }
+    }
+
+    await db.delete(bandEvents).where(eq(bandEvents.id, eventId))
+
+    revalidatePath("/portal")
+    revalidatePath("/tickets")
+    revalidatePath("/tickets/seller-central")
+    revalidatePath("/admin")
+    if (band?.slug) revalidatePath(`/bands/${band.slug}`)
+
+    return { success: true }
+  } catch (err: any) {
+    console.error("deleteBandEvent error:", err)
+    return { success: false, error: err?.message || "Failed to delete event" }
   }
 }
 
@@ -1165,7 +1209,27 @@ export async function releaseEscrowPayout(eventId: string) {
       }
     }
 
-    if (!band?.stripeAccountId) {
+    // Resolve destination Stripe Connect account (band's Stripe account, or creator's profile/band Stripe account for standalone events)
+    let destinationStripeAccountId = band?.stripeAccountId || null
+    if (!destinationStripeAccountId && event.ownerUserId) {
+      const [ownerProfile] = await db
+        .select({ stripeAccountId: profiles.stripeAccountId })
+        .from(profiles)
+        .where(eq(profiles.userId, event.ownerUserId))
+        .limit(1)
+      destinationStripeAccountId = ownerProfile?.stripeAccountId || null
+
+      if (!destinationStripeAccountId) {
+        const [ownerBand] = await db
+          .select({ stripeAccountId: bands.stripeAccountId })
+          .from(bands)
+          .where(and(eq(bands.ownerUserId, event.ownerUserId), sql`${bands.stripeAccountId} IS NOT NULL`))
+          .limit(1)
+        destinationStripeAccountId = ownerBand?.stripeAccountId || null
+      }
+    }
+
+    if (!destinationStripeAccountId) {
       return {
         success: false,
         error: `"${band?.name || event.organizerName || "This organizer"}" has not connected a Stripe payout account yet.`,
@@ -1208,11 +1272,11 @@ export async function releaseEscrowPayout(eventId: string) {
     const transfer = await stripe.transfers.create({
       amount: sellerNetCents,
       currency: "usd",
-      destination: band.stripeAccountId,
+      destination: destinationStripeAccountId,
       description: `Ticket proceeds (90% net of 10% platform fee): ${event.title} (${onlineOrders.length} online orders)`,
       metadata: {
         event_id: event.id,
-        band_id: band.id,
+        band_id: band?.id || "",
         event_title: event.title,
         online_gross_cents: String(onlineGrossCents),
         platform_fee_cents: String(platformFeeCents),
@@ -1239,7 +1303,7 @@ export async function releaseEscrowPayout(eventId: string) {
       transferId: transfer.id,
       amountTransferredCents: sellerNetCents,
       platformFeeCents,
-      message: `Transferred $${(sellerNetCents / 100).toFixed(2)} (90% net) to ${band.name}. $${(platformFeeCents / 100).toFixed(2)} (10% fee) moved to StarCast platform escrow hold.`,
+      message: `Transferred $${(sellerNetCents / 100).toFixed(2)} (90% net) to ${band?.name || event.organizerName || "the organizer"}. $${(platformFeeCents / 100).toFixed(2)} (10% fee) moved to StarCast platform escrow hold.`,
     }
   } catch (err: any) {
     console.error("releaseEscrowPayout error:", err)

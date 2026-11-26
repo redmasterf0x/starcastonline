@@ -215,7 +215,11 @@ export function EventScannerClient({
     setSavingEdit(true)
     setEditError(null)
     try {
-      const res = await updateBandEvent(event.id, editForm)
+      const payload = {
+        ...editForm,
+        eventDate: editForm.eventDate ? new Date(editForm.eventDate).toISOString() : "",
+      }
+      const res = await updateBandEvent(event.id, payload)
       if (res.success && res.event) {
         setEvent(res.event)
         setEditOpen(false)
@@ -560,6 +564,7 @@ export function EventScannerClient({
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-[#ffd166]" />
                   {new Date(event.eventDate).toLocaleDateString("en-US", {
+                    timeZone: "America/Chicago",
                     weekday: "short",
                     month: "short",
                     day: "numeric",
@@ -810,7 +815,7 @@ export function EventScannerClient({
                       ${(ord.totalCents / 100).toFixed(2)}
                     </span>
                     <span className="font-mono text-[#9a9fc4]">
-                      {new Date(ord.createdAt).toLocaleTimeString()}
+                      {new Date(ord.createdAt).toLocaleTimeString("en-US", { timeZone: "America/Chicago" })}
                     </span>
                   </div>
                 </div>
@@ -991,7 +996,7 @@ export function EventScannerClient({
                     <div className="flex items-center gap-2 shrink-0">
                       {isUsed && inst.checkedInAt ? (
                         <span className="text-[11px] font-mono text-emerald-400">
-                          Scanned {new Date(inst.checkedInAt).toLocaleTimeString()}
+                          Scanned {new Date(inst.checkedInAt).toLocaleTimeString("en-US", { timeZone: "America/Chicago" })}
                         </span>
                       ) : (
                         <Button

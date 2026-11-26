@@ -206,6 +206,7 @@ export default async function TicketsPage() {
                           <Calendar className="w-3.5 h-3.5 text-[#ffd166] shrink-0" />
                           <span>
                             {new Date(event.eventDate).toLocaleDateString("en-US", {
+                              timeZone: "America/Chicago",
                               weekday: "short",
                               month: "short",
                               day: "numeric",
@@ -325,6 +326,7 @@ export default async function TicketsPage() {
                             <Calendar className="w-4 h-4 text-[#ffd166] shrink-0" />
                             <span>
                               {new Date(event.eventDate).toLocaleDateString("en-US", {
+                                timeZone: "America/Chicago",
                                 weekday: "short",
                                 month: "short",
                                 day: "numeric",

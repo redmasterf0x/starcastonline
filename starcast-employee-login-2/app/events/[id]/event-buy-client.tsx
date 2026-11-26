@@ -170,7 +170,11 @@ export function EventBuyClient({
     setSavingEdit(true)
     setEditError("")
     try {
-      const res = await updateBandEvent(event.id, editForm)
+      const payload = {
+        ...editForm,
+        eventDate: editForm.eventDate ? new Date(editForm.eventDate).toISOString() : "",
+      }
+      const res = await updateBandEvent(event.id, payload)
       if (res.success && res.event) {
         setEvent(res.event)
         setEditOpen(false)
@@ -228,6 +232,7 @@ export function EventBuyClient({
   }
 
   const formattedDate = new Date(event.eventDate).toLocaleDateString("en-US", {
+    timeZone: "America/Chicago",
     weekday: "long",
     month: "long",
     day: "numeric",

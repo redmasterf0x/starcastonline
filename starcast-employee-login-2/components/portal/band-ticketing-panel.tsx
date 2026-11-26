@@ -236,7 +236,11 @@ export function BandTicketingPanel({
     setBusy(true)
     setError("")
     try {
-      const res = await createBandEvent(band.id, eventForm)
+      const payload = {
+        ...eventForm,
+        eventDate: eventForm.eventDate ? new Date(eventForm.eventDate).toISOString() : "",
+      }
+      const res = await createBandEvent(band.id, payload)
       if (res.success) {
         setCreateEventOpen(false)
         setSuccessMessage(`Show "${eventForm.title}" posted with ${eventForm.totalInventory} tickets!`)
@@ -298,7 +302,11 @@ export function BandTicketingPanel({
     setBusy(true)
     setError("")
     try {
-      const res = await updateBandEvent(editingEvent.id, editForm)
+      const payload = {
+        ...editForm,
+        eventDate: editForm.eventDate ? new Date(editForm.eventDate).toISOString() : "",
+      }
+      const res = await updateBandEvent(editingEvent.id, payload)
       if (res.success) {
         setEditingEvent(null)
         setSuccessMessage(`Updated "${editForm.title}" successfully!`)

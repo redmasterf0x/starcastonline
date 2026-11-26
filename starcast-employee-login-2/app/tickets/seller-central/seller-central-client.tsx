@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { createBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
+import { createBandEvent, deleteBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -37,10 +37,12 @@ import {
   Repeat,
   Link2,
   X,
+  Trash2,
 } from "lucide-react"
 
 interface SellerCentralProps {
   isApprovedSeller: boolean
+  isAdmin?: boolean
   myBands: Array<{
     id: string
     name: string
@@ -98,6 +100,7 @@ function csvEscape(val: string | number | null | undefined): string {
 
 export function SellerCentralClient({
   isApprovedSeller,
+  isAdmin = false,
   myBands,
   approvedBands,
   events,
@@ -108,6 +111,7 @@ export function SellerCentralClient({
   const [selectedYear, setSelectedYear] = useState<string>("all")
   const [paymentFilter, setPaymentFilter] = useState<"all" | "stripe" | "cash">("all")
   const [search, setSearch] = useState("")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Standalone / Band Event Creation modal
   const [createOpen, setCreateOpen] = useState(false)
@@ -168,7 +172,7 @@ export function SellerCentralClient({
         description: form.description,
         venueName: form.venueName,
         venueAddress: form.venueAddress,
-        eventDate: form.eventDate,
+        eventDate: form.eventDate ? new Date(form.eventDate).toISOString() : "",
         doorsOpenTime: form.doorsOpenTime,
         startTime: form.startTime,
         priceCents: form.priceCents,
@@ -208,6 +212,24 @@ export function SellerCentralClient({
       setCreateError(err?.message || "Failed to create event.")
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleDeleteEvent(ev: { id: string; title: string }) {
+    if (deletingId) return
+    if (!window.confirm(`Permanently delete "${ev.title}"? This cannot be undone.`)) return
+    setDeletingId(ev.id)
+    try {
+      const res = await deleteBandEvent(ev.id)
+      if (!res.success) {
+        window.alert(res.error || "Failed to delete event.")
+      } else {
+        router.refresh()
+      }
+    } catch (err: any) {
+      window.alert(err?.message || "Failed to delete event.")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -451,7 +473,7 @@ export function SellerCentralClient({
                       <div className="flex flex-wrap items-center gap-3 text-xs text-[#9a9fc4]">
                         <span className="inline-flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5 text-[#ffd166]" />
-                          {new Date(ev.eventDate).toLocaleDateString()}
+                          {new Date(ev.eventDate).toLocaleDateString("en-US", { timeZone: "America/Chicago" })}
                         </span>
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-[#20efe0]" />
@@ -485,6 +507,23 @@ export function SellerCentralClient({
                           Ticket Page
                         </Link>
                       </Button>
+                      {(sold === 0 || isAdmin) && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={deletingId === ev.id}
+                          onClick={() => handleDeleteEvent(ev)}
+                          className="border-red-500/40 bg-red-950/30 text-red-300 hover:bg-red-950/60 hover:text-red-200 rounded-xl h-8 px-2.5 text-xs"
+                          title={sold > 0 ? "Admin delete event" : "Delete event"}
+                        >
+                          {deletingId === ev.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )
@@ -583,7 +622,7 @@ export function SellerCentralClient({
                   {filteredOrders.map((o) => (
                     <tr key={o.id} className="hover:bg-[#0c0c3f]/50">
                       <td className="py-3 px-4 font-mono text-[#cbd0f2] whitespace-nowrap">
-                        {new Date(o.createdAt).toLocaleDateString()}
+                        {new Date(o.createdAt).toLocaleDateString("en-US", { timeZone: "America/Chicago" })}
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-bold text-white">{o.eventTitle}</p>

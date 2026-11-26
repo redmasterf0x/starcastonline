@@ -148,15 +148,14 @@ export default function PortalPage() {
   const [bookingForm, setBookingForm] = useState({ title: "", startsAt: "", endsAt: "", notes: "" })
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
-  const [portalTab, setPortalTab] = useState<"posts" | "music" | "ticketing" | "links" | "studio" | "payments">(() => {
-    if (typeof window !== "undefined") {
-      const tab = new URLSearchParams(window.location.search).get("tab")
-      if (tab === "ticketing" || tab === "music" || tab === "links" || tab === "studio" || tab === "payments" || tab === "posts") {
-        return tab
-      }
+  const [portalTab, setPortalTab] = useState<"posts" | "music" | "ticketing" | "links" | "studio" | "payments">("posts")
+
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab")
+    if (tab === "ticketing" || tab === "music" || tab === "links" || tab === "studio" || tab === "payments" || tab === "posts") {
+      setPortalTab(tab)
     }
-    return "posts"
-  })
+  }, [])
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [savingBand, setSavingBand] = useState(false)

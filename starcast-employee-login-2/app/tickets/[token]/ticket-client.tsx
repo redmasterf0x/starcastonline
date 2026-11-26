@@ -81,6 +81,7 @@ export function TicketClient({
 
   const eventDate = new Date(event.eventDate)
   const formattedDate = eventDate.toLocaleDateString("en-US", {
+    timeZone: "America/Chicago",
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -135,7 +136,7 @@ export function TicketClient({
         {/* Action Toolbar (Screen only) */}
         <div className="w-full max-w-2xl mb-6 flex items-center justify-between print:hidden">
           <Link
-            href={band.slug ? `/bands/${band.slug}` : "/bands"}
+            href={band.slug ? `/bands/${band.slug}` : `/events/${event.id}`}
             className="text-xs sm:text-sm text-[#9a9fc4] hover:text-[#f5f7ff] flex items-center gap-1.5 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Back to {band.name}

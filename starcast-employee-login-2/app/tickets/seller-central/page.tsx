@@ -24,6 +24,7 @@ export default async function TicketSellerCentralPage() {
   return (
     <SellerCentralClient
       isApprovedSeller={Boolean(data.isApprovedSeller)}
+      isAdmin={Boolean(data.isAdmin)}
       myBands={data.myBands || []}
       approvedBands={data.approvedBands || []}
       events={data.events || []}
