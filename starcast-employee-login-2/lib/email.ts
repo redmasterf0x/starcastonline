@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import QRCode from "qrcode"
 
 export const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_build_placeholder")
 
@@ -156,6 +157,124 @@ export async function sendPasswordResetEmail(to: string, url: string): Promise<v
     }
   } catch (err) {
     console.error("[EMAIL] Unexpected error in sendPasswordResetEmail:", err)
+  }
+}
+
+export interface TicketEmailPayload {
+  to: string
+  buyerName: string
+  bandName: string
+  eventTitle: string
+  venueName: string
+  venueAddress?: string | null
+  eventDate: Date
+  doorsOpenTime?: string | null
+  startTime?: string | null
+  totalCents: number
+  tickets: Array<{
+    ticketNumber: number
+    qrToken: string
+  }>
+}
+
+/** Email purchased/reserved QR ticket passes to the buyer. */
+export async function sendTicketConfirmationEmail(payload: TicketEmailPayload): Promise<void> {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://starcast.online"
+  const formattedDate = new Date(payload.eventDate).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey || apiKey.startsWith("re_dummy")) {
+    console.warn(`[EMAIL] RESEND_API_KEY not configured. Skipping ticket email to ${payload.to}.`)
+    return
+  }
+
+  const attachments: Array<{
+    filename: string
+    content: Buffer
+    contentId: string
+  }> = []
+
+  const ticketCardsHtml = (
+    await Promise.all(
+      payload.tickets.map(async (t, idx) => {
+        const ticketUrl = `${baseUrl}/tickets/${t.qrToken}`
+        const cid = `ticket-qr-${idx}`
+        try {
+          const pngBuffer = await QRCode.toBuffer(ticketUrl, {
+            width: 220,
+            margin: 2,
+            color: { dark: "#05051f", light: "#ffffff" },
+          })
+          attachments.push({
+            filename: `starcast-ticket-${t.ticketNumber}.png`,
+            content: pngBuffer,
+            contentId: cid,
+          })
+        } catch (qrErr) {
+          console.warn("[EMAIL] QR buffer generation warning:", qrErr)
+        }
+
+        return `
+          <div style="margin:16px 0;padding:18px;border:1px solid rgba(212,114,43,0.35);border-radius:10px;background:#081421;text-align:center;">
+            <p style="margin:0 0 6px 0;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:${BRAND_ORANGE};font-weight:bold;">
+              Ticket #${t.ticketNumber} &bull; ${payload.buyerName}
+            </p>
+            <img src="cid:${cid}" alt="Ticket #${t.ticketNumber} QR Code" width="180" height="180" style="display:block;margin:12px auto;border-radius:8px;background:#ffffff;padding:6px;" />
+            <p style="margin:8px 0 12px 0;font-size:11px;font-family:monospace;color:#8ea0b5;">Token: ${t.qrToken.slice(0, 12)}...</p>
+            ${button(ticketUrl, `Open Ticket #${t.ticketNumber} Pass`)}
+          </div>
+        `
+      })
+    )
+  ).join("")
+
+  const priceDisplay =
+    payload.totalCents > 0 ? `$${(payload.totalCents / 100).toFixed(2)}` : "Free Pass"
+
+  const body = `
+    <p style="margin:0 0 14px 0;">Hi <strong>${payload.buyerName}</strong>,</p>
+    <p style="margin:0 0 16px 0;">Your ${payload.tickets.length === 1 ? "ticket is" : `${payload.tickets.length} tickets are`} confirmed for <strong>${payload.bandName} — ${payload.eventTitle}</strong>!</p>
+    <div style="padding:14px 16px;border-radius:8px;background:#081421;border:1px solid rgba(255,255,255,0.08);margin-bottom:18px;">
+      <p style="margin:0 0 6px 0;color:${BRAND_CREAM};font-weight:bold;">${payload.eventTitle}</p>
+      <p style="margin:0 0 4px 0;font-size:13px;"><strong>Date:</strong> ${formattedDate}</p>
+      <p style="margin:0 0 4px 0;font-size:13px;"><strong>Time:</strong> Doors ${payload.doorsOpenTime || "7:00 PM"} &bull; Show ${payload.startTime || "8:00 PM"}</p>
+      <p style="margin:0 0 4px 0;font-size:13px;"><strong>Venue:</strong> ${payload.venueName}${payload.venueAddress ? ` (${payload.venueAddress})` : ""}</p>
+      <p style="margin:0;font-size:13px;"><strong>Total Paid:</strong> ${priceDisplay}</p>
+    </div>
+    <p style="margin:0 0 8px 0;font-size:13px;color:${BRAND_CREAM};">Present your QR code at the door for instant check-in:</p>
+    ${ticketCardsHtml}
+  `
+
+  const subject = `Your Ticket${payload.tickets.length > 1 ? "s" : ""}: ${payload.bandName} — ${payload.eventTitle}`
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM,
+      to: payload.to,
+      subject,
+      html: shell("Your Event Tickets", body),
+      attachments,
+    })
+
+    if (error) {
+      console.error("[EMAIL] Ticket confirmation error:", error)
+      await resend.emails.send({
+        from: "StarCast Media <onboarding@resend.dev>",
+        to: payload.to,
+        subject,
+        html: shell("Your Event Tickets", body),
+        attachments,
+      })
+    } else {
+      console.log("[EMAIL] Ticket confirmation sent ID:", data?.id)
+    }
+  } catch (err) {
+    console.error("[EMAIL] Unexpected error sending ticket confirmation:", err)
   }
 }
 

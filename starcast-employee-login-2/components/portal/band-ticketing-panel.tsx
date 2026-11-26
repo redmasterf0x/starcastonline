@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import {
   applyForBandTicketing,
   createBandEvent,
@@ -570,13 +571,22 @@ export function BandTicketingPanel({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold text-xs flex-1"
+                      >
+                        <Link href={`/portal/events/${ev.id}`}>
+                          <QrCode className="w-3.5 h-3.5 mr-1.5" /> Event Page &amp; Door Scanner
+                        </Link>
+                      </Button>
                       <Button
                         onClick={() => handleOpenScanner(ev)}
                         size="sm"
-                        className="bg-[#20efe0]/20 hover:bg-[#20efe0]/30 text-[#20efe0] border border-[#20efe0]/40 font-semibold text-xs flex-1"
+                        className="bg-[#20efe0]/20 hover:bg-[#20efe0]/30 text-[#20efe0] border border-[#20efe0]/40 font-semibold text-xs"
                       >
-                        <QrCode className="w-3.5 h-3.5 mr-1.5" /> Door Scanner &amp; Guestlist
+                        Quick Modal
                       </Button>
                     </div>
                   </div>

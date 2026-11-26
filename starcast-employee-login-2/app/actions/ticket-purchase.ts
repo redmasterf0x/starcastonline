@@ -6,6 +6,7 @@ import { bandEvents, bands, bandTicketOrders, bandTicketInstances } from "@/lib/
 import { eq, and, sql } from "drizzle-orm"
 import crypto from "crypto"
 import { revalidatePath } from "next/cache"
+import { sendTicketConfirmationEmail } from "@/lib/email"
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://starcast.online"
 
@@ -112,6 +113,24 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
       }
 
       const createdInstances = await db.insert(bandTicketInstances).values(instancesToInsert).returning()
+
+      // Email ticket pass(es) to the buyer
+      await sendTicketConfirmationEmail({
+        to: input.buyerEmail.trim().toLowerCase(),
+        buyerName: input.buyerName.trim(),
+        bandName: band.name,
+        eventTitle: event.title,
+        venueName: event.venueName,
+        venueAddress: event.venueAddress,
+        eventDate: event.eventDate,
+        doorsOpenTime: event.doorsOpenTime,
+        startTime: event.startTime,
+        totalCents: 0,
+        tickets: createdInstances.map((t) => ({
+          ticketNumber: t.ticketNumber,
+          qrToken: t.qrToken,
+        })),
+      })
 
       revalidatePath(`/bands/${band.slug}`)
       revalidatePath("/portal")
@@ -274,6 +293,27 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
     }
 
     const createdInstances = await db.insert(bandTicketInstances).values(instancesToInsert).returning()
+
+    // Fetch band info and email ticket pass(es) to the buyer
+    if (event) {
+      const [band] = await db.select().from(bands).where(eq(bands.id, order.bandId)).limit(1)
+      await sendTicketConfirmationEmail({
+        to: order.buyerEmail,
+        buyerName: order.buyerName,
+        bandName: band?.name || "StarCast Artist",
+        eventTitle: event.title,
+        venueName: event.venueName,
+        venueAddress: event.venueAddress,
+        eventDate: event.eventDate,
+        doorsOpenTime: event.doorsOpenTime,
+        startTime: event.startTime,
+        totalCents: order.totalCents,
+        tickets: createdInstances.map((t) => ({
+          ticketNumber: t.ticketNumber,
+          qrToken: t.qrToken,
+        })),
+      })
+    }
 
     revalidatePath("/portal")
     return {

@@ -457,10 +457,49 @@ export async function getEventTicketGuestlist(eventId: string) {
   }
 }
 
-/** Door Check-In: check in a fan via QR code token or ticket ID */
+/** Seller Event Page & Scanner data: returns event, band, and all issued ticket instances */
+export async function getEventScannerData(eventId: string) {
+  try {
+    const viewer = await requireViewer()
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
+    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isStaff)) {
+      return { success: false, error: "Unauthorized to manage this event" }
+    }
+
+    const instances = await db
+      .select()
+      .from(bandTicketInstances)
+      .where(eq(bandTicketInstances.eventId, eventId))
+      .orderBy(asc(bandTicketInstances.ticketNumber))
+
+    return {
+      success: true,
+      event,
+      band,
+      instances,
+    }
+  } catch (err: any) {
+    console.error("getEventScannerData error:", err)
+    return { success: false, error: err?.message || "Failed to load event scanner data" }
+  }
+}
+
+/** Door Check-In: check in a fan via QR code token, full ticket URL, ticket ID, or ticket # */
 export async function checkInTicket(tokenOrId: string, eventId?: string) {
   try {
     const viewer = await requireViewer()
+
+    let cleanToken = tokenOrId.trim()
+    if (cleanToken.includes("/tickets/")) {
+      const parts = cleanToken.split("/tickets/")
+      cleanToken = (parts[1] || "").split(/[?#]/)[0].trim()
+    }
+
+    const numericMatch = cleanToken.match(/^#?(\d+)$/)
+    const ticketNum = numericMatch ? parseInt(numericMatch[1], 10) : null
 
     const [ticket] = await db
       .select({
@@ -472,7 +511,12 @@ export async function checkInTicket(tokenOrId: string, eventId?: string) {
       .innerJoin(bandEvents, eq(bandEvents.id, bandTicketInstances.eventId))
       .innerJoin(bands, eq(bands.id, bandTicketInstances.bandId))
       .where(
-        sql`${bandTicketInstances.qrToken} = ${tokenOrId} OR ${bandTicketInstances.id}::text = ${tokenOrId}`
+        ticketNum !== null && eventId
+          ? and(
+              eq(bandTicketInstances.eventId, eventId),
+              eq(bandTicketInstances.ticketNumber, ticketNum)
+            )
+          : sql`${bandTicketInstances.qrToken} = ${cleanToken} OR ${bandTicketInstances.id}::text = ${cleanToken}`
       )
       .limit(1)
 
