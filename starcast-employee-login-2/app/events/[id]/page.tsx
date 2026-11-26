@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { db } from "@/lib/db"
 import { bandEvents, bands } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
+import { getViewerPermissions } from "@/lib/permissions"
 import { EventBuyClient } from "./event-buy-client"
 
 export const dynamic = "force-dynamic"
@@ -49,6 +50,7 @@ export default async function PublicEventPage({
         name: bands.name,
         slug: bands.slug,
         logoUrl: bands.logoUrl,
+        ownerUserId: bands.ownerUserId,
       },
     })
     .from(bandEvents)
@@ -60,5 +62,22 @@ export default async function PublicEventPage({
     notFound()
   }
 
-  return <EventBuyClient event={row.event} band={row.band} />
+  const viewer = await getViewerPermissions().catch(() => null)
+  const isCreator = Boolean(viewer && row.band.ownerUserId === viewer.userId)
+  const canScan = Boolean(isCreator || viewer?.isStaff)
+  const canEdit = Boolean(isCreator || viewer?.isAdmin)
+
+  return (
+    <EventBuyClient
+      event={row.event}
+      band={{
+        id: row.band.id,
+        name: row.band.name,
+        slug: row.band.slug,
+        logoUrl: row.band.logoUrl,
+      }}
+      canScan={canScan}
+      canEdit={canEdit}
+    />
+  )
 }

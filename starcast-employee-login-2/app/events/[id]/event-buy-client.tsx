@@ -5,14 +5,23 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { createTicketCheckoutSession } from "@/app/actions/ticket-purchase"
+import { updateBandEvent } from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Ticket,
   Calendar,
-  Clock,
   MapPin,
   Users,
   ShieldCheck,
@@ -22,6 +31,12 @@ import {
   Loader2,
   Repeat,
   Music,
+  QrCode,
+  Pencil,
+  Lock,
+  Upload,
+  ImageIcon,
+  X,
 } from "lucide-react"
 
 interface EventBuyClientProps {
@@ -32,18 +47,54 @@ interface EventBuyClientProps {
     slug: string | null
     logoUrl: string | null
   }
+  canScan?: boolean
+  canEdit?: boolean
 }
 
-export function EventBuyClient({ event, band }: EventBuyClientProps) {
+export function EventBuyClient({
+  event: initialEvent,
+  band,
+  canScan = false,
+  canEdit = false,
+}: EventBuyClientProps) {
   const router = useRouter()
   const { data: session } = authClient.useSession()
 
+  const [event, setEvent] = useState(initialEvent)
   const [quantity, setQuantity] = useState(1)
   const [buyerName, setBuyerName] = useState("")
   const [buyerEmail, setBuyerEmail] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
+
+  // Edit modal state (for creator / admin right on the ticket page)
+  const [editOpen, setEditOpen] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editError, setEditError] = useState("")
+  const [uploadingFlyer, setUploadingFlyer] = useState(false)
+  const [editForm, setEditForm] = useState({
+    title: initialEvent.title || "",
+    description: initialEvent.description || "",
+    venueName: initialEvent.venueName || "",
+    venueAddress: initialEvent.venueAddress || "",
+    eventDate: "",
+    doorsOpenTime: initialEvent.doorsOpenTime || "7:00 PM",
+    startTime: initialEvent.startTime || "8:00 PM",
+    priceCents: initialEvent.priceCents ?? 0,
+    totalInventory: initialEvent.totalInventory ?? 20,
+    ageRestriction: initialEvent.ageRestriction || "All Ages",
+    flyerUrl: initialEvent.flyerUrl || "",
+    recurrenceFrequency: (initialEvent.recurrenceFrequency || "one_time") as
+      | "one_time"
+      | "weekly"
+      | "monthly"
+      | "yearly",
+  })
+
+  useEffect(() => {
+    setEvent(initialEvent)
+  }, [initialEvent])
 
   useEffect(() => {
     if (session?.user) {
@@ -52,11 +103,82 @@ export function EventBuyClient({ event, band }: EventBuyClientProps) {
     }
   }, [session, buyerName, buyerEmail])
 
+  const soldCount = Math.max(0, (event.totalInventory || 0) - (event.remainingInventory ?? 0))
   const isFree = (event.priceCents || 0) === 0
   const isSoldOut = event.status === "sold_out" || (event.remainingInventory ?? 0) <= 0
   const isInactive = event.status !== "active" && event.status !== "sold_out"
   const maxQty = Math.min(10, Math.max(1, event.remainingInventory || 1))
   const totalCents = (event.priceCents || 0) * quantity
+
+  function openEditModal() {
+    const dt = event.eventDate ? new Date(event.eventDate) : null
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const localDateTime = dt
+      ? `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+      : ""
+    setEditForm({
+      title: event.title || "",
+      description: event.description || "",
+      venueName: event.venueName || "",
+      venueAddress: event.venueAddress || "",
+      eventDate: localDateTime,
+      doorsOpenTime: event.doorsOpenTime || "7:00 PM",
+      startTime: event.startTime || "8:00 PM",
+      priceCents: event.priceCents ?? 0,
+      totalInventory: event.totalInventory ?? 20,
+      ageRestriction: event.ageRestriction || "All Ages",
+      flyerUrl: event.flyerUrl || "",
+      recurrenceFrequency: (event.recurrenceFrequency || "one_time") as
+        | "one_time"
+        | "weekly"
+        | "monthly"
+        | "yearly",
+    })
+    setEditError("")
+    setEditOpen(true)
+  }
+
+  async function handleUploadFlyer(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setEditError("Event image exceeds 10MB limit.")
+      return
+    }
+    setUploadingFlyer(true)
+    setEditError("")
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", "events/flyers")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+      setEditForm((prev) => ({ ...prev, flyerUrl: data.url }))
+    } catch (err: any) {
+      setEditError(err?.message || "Failed to upload event image")
+    } finally {
+      setUploadingFlyer(false)
+    }
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingEdit(true)
+    setEditError("")
+    try {
+      const res = await updateBandEvent(event.id, editForm)
+      if (res.success && res.event) {
+        setEvent(res.event)
+        setEditOpen(false)
+        router.refresh()
+      } else {
+        setEditError(res.error || "Failed to update event")
+      }
+    } catch (err: any) {
+      setEditError(err?.message || "Failed to update event")
+    } finally {
+      setSavingEdit(false)
+    }
+  }
 
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault()
@@ -119,25 +241,52 @@ export function EventBuyClient({ event, band }: EventBuyClientProps) {
             All Tickets
           </Link>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleShare}
-            className="border-[#20205a] bg-[#0c0c3f]/70 text-[#dbe0fb] hover:bg-[#20205a]/50 rounded-xl h-9 text-xs"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
-                Link Copied
-              </>
-            ) : (
-              <>
-                <Share2 className="w-3.5 h-3.5 mr-1.5" />
-                Share Event
-              </>
+          <div className="flex flex-wrap items-center gap-2">
+            {canScan && (
+              <Button
+                asChild
+                size="sm"
+                className="bg-[#20efe0] hover:bg-[#19cbbd] text-[#05051f] font-extrabold rounded-xl h-9 px-3.5 text-xs"
+              >
+                <Link href={`/portal/events/${event.id}`}>
+                  <QrCode className="w-3.5 h-3.5 mr-1.5" />
+                  Scan Tickets
+                </Link>
+              </Button>
             )}
-          </Button>
+
+            {canEdit && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={openEditModal}
+                className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-bold rounded-xl h-9 px-3.5 text-xs"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                Edit Ticket / Event
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              className="border-[#20205a] bg-[#0c0c3f]/70 text-[#dbe0fb] hover:bg-[#20205a]/50 rounded-xl h-9 text-xs"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
+                  Link Copied
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 mr-1.5" />
+                  Share Event
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -334,6 +483,276 @@ export function EventBuyClient({ event, band }: EventBuyClientProps) {
           </div>
         </div>
       </div>
+
+      {/* Edit Ticket / Event Modal (right on the ticket page itself) */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[92vh] overflow-y-auto border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-[#ffd166]" />
+              Edit Ticket &amp; Event
+            </DialogTitle>
+            <DialogDescription className="text-[#9a9fc4]">
+              Edit every detail of this event right here. Ticket price locks once the first ticket is purchased.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveEdit} className="space-y-4 py-2">
+            {editError && (
+              <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200 text-xs">
+                {editError}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="pg-edit-title" className="text-xs text-[#9a9fc4]">
+                Event Title *
+              </Label>
+              <Input
+                id="pg-edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                required
+                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="pg-edit-venue" className="text-xs text-[#9a9fc4]">
+                  Venue Name *
+                </Label>
+                <Input
+                  id="pg-edit-venue"
+                  value={editForm.venueName}
+                  onChange={(e) => setEditForm({ ...editForm, venueName: e.target.value })}
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="pg-edit-addr" className="text-xs text-[#9a9fc4]">
+                  Address / City
+                </Label>
+                <Input
+                  id="pg-edit-addr"
+                  value={editForm.venueAddress}
+                  onChange={(e) => setEditForm({ ...editForm, venueAddress: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="pg-edit-date" className="text-xs text-[#9a9fc4]">
+                  Event Date &amp; Time *
+                </Label>
+                <Input
+                  id="pg-edit-date"
+                  type="datetime-local"
+                  value={editForm.eventDate}
+                  onChange={(e) => setEditForm({ ...editForm, eventDate: e.target.value })}
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="pg-edit-doors" className="text-xs text-[#9a9fc4]">
+                  Doors Open
+                </Label>
+                <Input
+                  id="pg-edit-doors"
+                  value={editForm.doorsOpenTime}
+                  onChange={(e) => setEditForm({ ...editForm, doorsOpenTime: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="pg-edit-start" className="text-xs text-[#9a9fc4]">
+                  Show Start
+                </Label>
+                <Input
+                  id="pg-edit-start"
+                  value={editForm.startTime}
+                  onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="pg-edit-price" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  Price ($ USD)
+                  {soldCount > 0 && <Lock className="w-3 h-3 text-amber-400" />}
+                </Label>
+                <Input
+                  id="pg-edit-price"
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  disabled={soldCount > 0}
+                  value={(editForm.priceCents / 100).toString()}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      priceCents: Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100)),
+                    })
+                  }
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                <p className={`text-[10px] mt-1 ${soldCount > 0 ? "text-amber-400" : "text-[#9a9fc4]"}`}>
+                  {soldCount > 0
+                    ? "Price locked — tickets have already been purchased."
+                    : "Editable until the first ticket is bought ($0 for free)."}
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="pg-edit-inv" className="text-xs text-[#9a9fc4]">
+                  Total Inventory *
+                </Label>
+                <Input
+                  id="pg-edit-inv"
+                  type="number"
+                  min={Math.max(1, soldCount)}
+                  max="10000"
+                  value={String(editForm.totalInventory)}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      totalInventory: parseInt(e.target.value || "20", 10),
+                    })
+                  }
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="pg-edit-age" className="text-xs text-[#9a9fc4]">
+                  Age Policy
+                </Label>
+                <select
+                  id="pg-edit-age"
+                  value={editForm.ageRestriction}
+                  onChange={(e) => setEditForm({ ...editForm, ageRestriction: e.target.value })}
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="All Ages">All Ages</option>
+                  <option value="18+">18+</option>
+                  <option value="21+">21+</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="pg-edit-repeat" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <Repeat className="w-3.5 h-3.5 text-[#20efe0]" /> Repeat Schedule
+                </Label>
+                <select
+                  id="pg-edit-repeat"
+                  value={editForm.recurrenceFrequency}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      recurrenceFrequency: e.target.value as
+                        | "one_time"
+                        | "weekly"
+                        | "monthly"
+                        | "yearly",
+                    })
+                  }
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="one_time">One-time event (Default)</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+
+              <div>
+                <Label className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-[#ffd166]" /> Event Image / Flyer (Optional)
+                </Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-[#20205a] bg-[#05052d] hover:border-[#ea6f2a]/60 text-xs font-semibold text-[#f5f7ff] transition-colors">
+                    {uploadingFlyer ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea6f2a]" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    )}
+                    {editForm.flyerUrl ? "Change Image" : "Upload Image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingFlyer}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleUploadFlyer(file)
+                      }}
+                    />
+                  </label>
+                  {editForm.flyerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, flyerUrl: "" })}
+                      className="text-xs text-red-400 hover:underline flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" /> Remove
+                    </button>
+                  )}
+                </div>
+                {editForm.flyerUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={editForm.flyerUrl}
+                    alt="Event flyer preview"
+                    className="mt-2 h-24 w-full object-cover rounded-lg border border-[#20205a]"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="pg-edit-desc" className="text-xs text-[#9a9fc4]">
+                Event Description
+              </Label>
+              <Textarea
+                id="pg-edit-desc"
+                rows={3}
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+                disabled={savingEdit}
+                className="border-[#20205a] bg-[#05052d] text-[#9a9fc4]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingEdit}
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold"
+              >
+                {savingEdit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
