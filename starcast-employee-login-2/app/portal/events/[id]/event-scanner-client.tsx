@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
+import jsQR from "jsqr"
 import { checkInTicket, getEventScannerData, updateBandEvent } from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -182,15 +183,11 @@ export function EventScannerClient({
   // Camera QR Scanner state
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [supportsBarcodeDetector, setSupportsBarcodeDetector] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const lastScannedRef = useRef<{ token: string; at: number } | null>(null)
-
-  useEffect(() => {
-    setSupportsBarcodeDetector(typeof window !== "undefined" && "BarcodeDetector" in window)
-  }, [])
 
   const refreshData = useCallback(async () => {
     setRefreshing(true)
@@ -265,6 +262,59 @@ export function EventScannerClient({
     }
   }, [stopCamera])
 
+  useEffect(() => {
+    if (!cameraActive || !streamRef.current || !videoRef.current) return
+
+    const video = videoRef.current
+    video.srcObject = streamRef.current
+    video.play().catch(() => {})
+
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas")
+    }
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })
+    let cancelled = false
+
+    const scanLoop = () => {
+      if (cancelled || !streamRef.current || !videoRef.current) return
+      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0 && ctx) {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "attemptBoth",
+        })
+        if (code?.data) {
+          const rawValue = code.data.trim()
+          const now = Date.now()
+          if (
+            rawValue &&
+            (!lastScannedRef.current ||
+              lastScannedRef.current.token !== rawValue ||
+              now - lastScannedRef.current.at > 3000)
+          ) {
+            lastScannedRef.current = { token: rawValue, at: now }
+            handleCheckIn(rawValue)
+          }
+        }
+      }
+      rafRef.current = requestAnimationFrame(scanLoop)
+    }
+
+    rafRef.current = requestAnimationFrame(scanLoop)
+    return () => {
+      cancelled = true
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
+  }, [cameraActive, handleCheckIn])
+
   async function startCamera() {
     setCameraError(null)
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -278,44 +328,6 @@ export function EventScannerClient({
       })
       streamRef.current = stream
       setCameraActive(true)
-
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.play().catch(() => {})
-        }
-      }, 50)
-
-      if ("BarcodeDetector" in window) {
-        const Detector = (window as any).BarcodeDetector
-        const detector = new Detector({ formats: ["qr_code"] })
-
-        const scanLoop = async () => {
-          if (!streamRef.current || !videoRef.current) return
-          if (videoRef.current.readyState >= 2) {
-            try {
-              const barcodes = await detector.detect(videoRef.current)
-              if (barcodes && barcodes.length > 0) {
-                const rawValue = String(barcodes[0].rawValue || "").trim()
-                const now = Date.now()
-                if (
-                  rawValue &&
-                  (!lastScannedRef.current ||
-                    lastScannedRef.current.token !== rawValue ||
-                    now - lastScannedRef.current.at > 3000)
-                ) {
-                  lastScannedRef.current = { token: rawValue, at: now }
-                  handleCheckIn(rawValue)
-                }
-              }
-            } catch {
-              // Ignore per-frame detection errors
-            }
-          }
-          rafRef.current = requestAnimationFrame(scanLoop)
-        }
-        rafRef.current = requestAnimationFrame(scanLoop)
-      }
     } catch (err: any) {
       setCameraError(err?.message || "Unable to access camera. Check browser permissions.")
       stopCamera()
@@ -490,11 +502,9 @@ export function EventScannerClient({
                 />
                 <div className="absolute inset-0 border-2 border-dashed border-[#20efe0]/50 m-6 rounded-xl pointer-events-none" />
               </div>
-              {!supportsBarcodeDetector && (
-                <p className="text-center text-[11px] text-amber-300">
-                  Live browser QR auto-detect requires Chrome/Edge/Android. You can still type or paste the Ticket # or token below.
-                </p>
-              )}
+              <p className="text-center text-[11px] text-[#9a9fc4]">
+                Point your camera at any StarCast ticket QR code to check in automatically.
+              </p>
             </div>
           )}
 
