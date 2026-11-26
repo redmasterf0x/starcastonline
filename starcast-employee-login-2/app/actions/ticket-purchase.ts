@@ -147,7 +147,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
       return {
         success: true,
         free: true,
-        redirectUrl: `/tickets/${createdInstances[0].qrToken}`,
+        redirectUrl: `/tickets/${createdInstances[0].qrToken}?purchased=1`,
         firstToken: createdInstances[0].qrToken,
       }
     }
@@ -181,6 +181,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
             product_data: {
               name: `Ticket: ${organizerLabel} - ${event.title}`,
               description: `${event.venueName} • ${new Date(event.eventDate).toLocaleDateString("en-US", {
+                timeZone: "America/Chicago",
                 weekday: "short",
                 month: "short",
                 day: "numeric",
@@ -326,7 +327,9 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
       })
     }
 
-    revalidatePath("/portal")
+    // Note: verifyAndFulfillTicketOrder is invoked during SSR on /tickets/success,
+    // so do not call revalidatePath() here (Next.js forbids revalidation during render).
+    // /portal, /tickets, /tickets/seller-central, and /events/[id] are all force-dynamic.
     return {
       success: true,
       tickets: createdInstances,

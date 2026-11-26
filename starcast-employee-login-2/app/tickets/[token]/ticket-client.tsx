@@ -113,23 +113,37 @@ export function TicketClient({
       <main className="w-full max-w-4xl mx-auto px-4 py-8 sm:py-12 flex-1 flex flex-col items-center">
         {/* Celebration Banner for new purchase */}
         {isNewPurchase && (
-          <div className="w-full max-w-2xl mb-6 p-4 rounded-xl bg-[#22b573]/15 border border-[#22b573]/40 text-[#22b573] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 print:hidden">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-6 h-6 shrink-0" />
-              <div>
-                <p className="font-bold text-sm sm:text-base">Ticket Confirmed & Reserved!</p>
-                <p className="text-xs text-[#f5f7ff]/80">
-                  Your entry is secured in the inventory. Print this ticket or show the QR code at the door.
+          <div className="w-full max-w-2xl mb-6 p-4 sm:p-5 rounded-xl bg-[#22b573]/15 border border-[#22b573]/40 text-[#22b573] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 print:hidden">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-6 h-6 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-sm sm:text-base">Ticket Confirmed &amp; Reserved!</p>
+                <p className="text-xs sm:text-sm text-[#f5f7ff]/90 leading-relaxed">
+                  We will email you a copy of your ticket, and you can also visit the{" "}
+                  <Link href="/tickets" className="underline font-semibold text-[#ffd166] hover:text-white">
+                    Tickets page
+                  </Link>{" "}
+                  anytime to access your ticket. You will need to show a ticketer your QR ticket at the door for entry.
                 </p>
               </div>
             </div>
-            <Button
-              onClick={handlePrint}
-              size="sm"
-              className="bg-[#22b573] hover:bg-[#1a935c] text-black font-semibold shrink-0"
-            >
-              <Printer className="w-4 h-4 mr-1.5" /> Print
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="border-[#22b573]/50 bg-[#05051f]/60 text-[#f5f7ff] hover:bg-[#22b573]/20 font-semibold"
+              >
+                <Link href="/tickets">My Tickets</Link>
+              </Button>
+              <Button
+                onClick={handlePrint}
+                size="sm"
+                className="bg-[#22b573] hover:bg-[#1a935c] text-black font-semibold shrink-0"
+              >
+                <Printer className="w-4 h-4 mr-1.5" /> Print
+              </Button>
+            </div>
           </div>
         )}
 
