@@ -43,7 +43,7 @@ const LEGAL_DOCUMENTS = [
     highlights: [
       "User account security & Google OAuth / SMS authentication",
       "Community code of conduct & The Deck 24h public wall",
-      "Live ticketing, 10% online platform fee, 24h Stripe escrow, and Ticket Seller Central",
+      "Live ticketing (branded as Top City Tickets on starcast.online), 10% online platform fee, 24h Stripe escrow, and Ticket Seller Central",
       "Venue equipment guidelines & studio rental policies",
     ],
   },
@@ -157,7 +157,7 @@ export default function LegalHubPage() {
             StarCast Live Media LLC operates with absolute transparency, artist-first ownership rights, wireless carrier data safeguards, and strict enterprise security standards. Access all governing legal policies below.
           </p>
           <p className="text-xs text-[#7f84ad] font-mono mt-3">
-            Governing Jurisdiction: State of Kansas, United States &middot; Last Revised: November 10, 2026
+            Governing Jurisdiction: State of Kansas, United States &middot; Last Revised: November 26, 2026
           </p>
         </header>
 

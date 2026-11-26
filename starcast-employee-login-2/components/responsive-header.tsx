@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import {
@@ -36,9 +37,16 @@ export function ResponsiveHeader({
   onLogin,
 }: ResponsiveHeaderProps) {
   const isInsideShell = useInsideAppShell()
+  const pathname = usePathname()
   if (!isTopLevel && isInsideShell) {
     return null
   }
+
+  const activePath = pathname || currentPage || ""
+  const isTopCityTicketsTheme =
+    activePath === "/tickets" ||
+    activePath.startsWith("/events/") ||
+    (activePath.startsWith("/tickets/") && !activePath.startsWith("/tickets/seller-central"))
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [loggedIn, setLoggedIn] = useState(isLoggedInProp ?? false)
@@ -142,7 +150,13 @@ export function ResponsiveHeader({
   ]
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#38bdf8]/40 bg-[#0284c7] shadow-[0_8px_30px_rgba(2,132,199,0.35)] backdrop-blur-xl w-full max-w-full overflow-x-clip">
+    <header
+      className={`sticky top-0 z-50 backdrop-blur-xl w-full max-w-full overflow-x-clip transition-colors duration-300 ${
+        isTopCityTicketsTheme
+          ? "border-b-2 border-[#20efe0]/80 bg-gradient-to-r from-[#5a0f78] via-[#d636c4] to-[#0aa6bd] shadow-[0_8px_32px_rgba(214,54,196,0.4),0_2px_18px_rgba(32,239,224,0.35)]"
+          : "border-b border-[#38bdf8]/40 bg-[#0284c7] shadow-[0_8px_30px_rgba(2,132,199,0.35)]"
+      }`}
+    >
       <div className="mx-auto max-w-7xl px-3 sm:px-6">
         <div className="flex h-16 sm:h-20 items-center justify-between gap-2 sm:gap-4 w-full">
           {/* Left section: StarCast Logo */}
@@ -185,8 +199,10 @@ export function ResponsiveHeader({
                     target={link.external ? "_blank" : undefined}
                     rel={link.external ? "noopener noreferrer" : undefined}
                     className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors inline-flex items-center gap-1.5 ${
-                      currentPage === link.href
-                        ? "bg-[#ea6f2a] text-white shadow-sm font-bold"
+                      currentPage === link.href || activePath === link.href
+                        ? isTopCityTicketsTheme
+                          ? "bg-gradient-to-r from-[#e845d6] to-[#20efe0] text-[#05051f] shadow-md font-extrabold"
+                          : "bg-[#ea6f2a] text-white shadow-sm font-bold"
                         : link.label === "Merch"
                           ? "text-[#ffd166] font-semibold hover:bg-white/15 hover:text-white"
                           : "text-[#e2e8f0] hover:bg-white/15 hover:text-white"

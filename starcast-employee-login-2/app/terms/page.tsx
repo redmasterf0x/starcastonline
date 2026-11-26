@@ -215,6 +215,9 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
+                <strong>Top City Tickets Branding Disclosure:</strong> &quot;Top City Tickets&quot; is merely storefront branding for the live event ticketing platform page and buyer-facing ticket experience hosted on <strong>starcast.online</strong> (<code>/tickets</code>, <code>/events/[id]</code>, and <code>/tickets/[token]</code>). &quot;Top City Tickets&quot; is not a separate company or legal entity; all ticketing operations, Stripe payments, escrow holds, refunds, and terms are owned and operated exclusively by <strong>StarCast Live Media LLC</strong> under these Terms and Conditions.
+              </li>
+              <li>
                 <strong>Ticket Purchases &amp; Delivery:</strong> Event tickets are purchased via Stripe Checkout (or reserved at no cost for free events). Upon verified payment or reservation, buyers receive digital tickets with unique, cryptographically signed QR tokens accessible at <code>/tickets/[token]</code>, saved under <strong>My Tickets</strong> (<code>/tickets</code>), and sent via confirmation email.
               </li>
               <li>
@@ -224,7 +227,7 @@ export default function TermsPage() {
                 <strong>Ticket Seller Central, Price Locks &amp; Door Scanners:</strong> Approved sellers manage their own sales and export tax-ready CSV reports via <strong>Ticket Seller Central</strong> (<code>/tickets/seller-central</code>). Ticket prices may be edited only before the first ticket is purchased or claimed; once a ticket is sold, the price locks permanently for that event. Event creators may assign registered StarCast users as door scanners for a specific event (check-in and door cash logging only).
               </li>
               <li>
-                <strong>Event Cancellations &amp; Refunds:</strong> If an event is cancelled by the band or venue, ticket buyers are entitled to full refunds processed through Stripe. In the case of rescheduled events, tickets remain valid for the new date unless refund requests are submitted.
+                <strong>Event Cancellations, Deletions &amp; Automatic Refunds:</strong> If an event is deleted or cancelled by the organizer or venue, all paid online ticket buyers are automatically refunded their full purchase amount via Stripe and notified by email. In the case of rescheduled events, tickets remain valid for the new date unless refund requests are submitted.
               </li>
               <li>
                 <strong>Scalping &amp; Unauthorized Resale:</strong> Reselling StarCast tickets above face value, counterfeiting QR codes, or exploiting ticketing bots is strictly prohibited and results in immediate ticket voidance without refund.

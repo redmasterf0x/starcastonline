@@ -86,14 +86,14 @@ export default async function TicketsPage() {
     <div className="public-shell min-h-[calc(100vh-5rem)] px-4 py-10 sm:py-14">
       <div className="max-w-5xl mx-auto space-y-10">
         {/* Page Header — Top City Tickets Branded Face */}
-        <div className="relative overflow-hidden rounded-3xl border border-[#20efe0]/30 bg-gradient-to-br from-[#0b0b38] via-[#120d3f] to-[#070828] p-6 sm:p-8 shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl border border-[#20efe0]/45 bg-gradient-to-br from-[#3a0b5c]/90 via-[#1f0a4a]/95 to-[#062940]/95 p-6 sm:p-8 shadow-[0_12px_40px_rgba(232,69,214,0.22),0_4px_24px_rgba(32,239,224,0.18)]">
           <div
-            className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full opacity-20 blur-3xl"
+            className="pointer-events-none absolute -top-24 -left-20 h-72 w-72 rounded-full opacity-35 blur-3xl"
             style={{ background: "radial-gradient(circle, #e845d6 0%, transparent 70%)" }}
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute -bottom-24 -right-20 h-64 w-64 rounded-full opacity-20 blur-3xl"
+            className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 rounded-full opacity-35 blur-3xl"
             style={{ background: "radial-gradient(circle, #20efe0 0%, transparent 70%)" }}
             aria-hidden="true"
           />
