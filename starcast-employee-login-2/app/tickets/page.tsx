@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { headers } from "next/headers"
 import { auth } from "@/lib/auth"
+import { getViewerPermissions } from "@/lib/permissions"
 import { db } from "@/lib/db"
 import { bandEvents, bands, bandTicketInstances, bandTicketOrders } from "@/lib/db/schema"
 import { eq, and, gte, asc, desc, or, ilike } from "drizzle-orm"
@@ -32,7 +33,7 @@ export default async function TicketsPage() {
       },
     })
     .from(bandEvents)
-    .innerJoin(bands, eq(bands.id, bandEvents.bandId))
+    .leftJoin(bands, eq(bands.id, bandEvents.bandId))
     .where(and(eq(bandEvents.status, "active"), gte(bandEvents.eventDate, now)))
     .orderBy(asc(bandEvents.eventDate))
 
@@ -40,17 +41,18 @@ export default async function TicketsPage() {
   let myTickets: Array<{
     instance: typeof bandTicketInstances.$inferSelect
     event: typeof bandEvents.$inferSelect
-    band: { id: string; name: string; slug: string | null }
+    band: { id: string; name: string; slug: string | null } | null
     order: { totalCents: number; unitPriceCents: number }
   }> = []
 
   if (session?.user) {
+    const viewer = await getViewerPermissions().catch(() => null)
     const approvedRows = await db
       .select({ id: bands.id })
       .from(bands)
       .where(and(eq(bands.ownerUserId, session.user.id), eq(bands.ticketingStatus, "approved")))
       .limit(1)
-    isApprovedSeller = approvedRows.length > 0
+    isApprovedSeller = approvedRows.length > 0 || Boolean(viewer?.isAdmin)
 
     const matchConditions = [eq(bandTicketOrders.buyerUserId, session.user.id)]
     if (session.user.email) {
@@ -75,7 +77,7 @@ export default async function TicketsPage() {
       .from(bandTicketInstances)
       .innerJoin(bandTicketOrders, eq(bandTicketOrders.id, bandTicketInstances.orderId))
       .innerJoin(bandEvents, eq(bandEvents.id, bandTicketInstances.eventId))
-      .innerJoin(bands, eq(bands.id, bandTicketInstances.bandId))
+      .leftJoin(bands, eq(bands.id, bandTicketInstances.bandId))
       .where(and(eq(bandTicketOrders.status, "paid"), or(...matchConditions)))
       .orderBy(desc(bandTicketInstances.createdAt))
   }
@@ -171,7 +173,7 @@ export default async function TicketsPage() {
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-[#ffd166] uppercase tracking-wider truncate">
-                          {band.name}
+                          {band?.name || event.organizerName || "StarCast Event"}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Badge
@@ -298,7 +300,7 @@ export default async function TicketsPage() {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-bold text-[#ffd166] uppercase tracking-wider truncate">
-                            {band.name}
+                            {band?.name || event.organizerName || "StarCast Event"}
                           </span>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {event.recurrenceFrequency && event.recurrenceFrequency !== "one_time" && (

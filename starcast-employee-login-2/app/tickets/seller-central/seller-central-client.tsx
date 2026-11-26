@@ -2,9 +2,21 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { createBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   ArrowLeft,
   Download,
@@ -19,6 +31,12 @@ import {
   Search,
   ShieldCheck,
   Plus,
+  Loader2,
+  Upload,
+  ImageIcon,
+  Repeat,
+  Link2,
+  X,
 } from "lucide-react"
 
 interface SellerCentralProps {
@@ -85,10 +103,113 @@ export function SellerCentralClient({
   events,
   orders,
 }: SellerCentralProps) {
+  const router = useRouter()
   const [selectedBandId, setSelectedBandId] = useState<string>("all")
   const [selectedYear, setSelectedYear] = useState<string>("all")
   const [paymentFilter, setPaymentFilter] = useState<"all" | "stripe" | "cash">("all")
   const [search, setSearch] = useState("")
+
+  // Standalone / Band Event Creation modal
+  const [createOpen, setCreateOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState("")
+  const [uploadingFlyer, setUploadingFlyer] = useState(false)
+  const [createdEventId, setCreatedEventId] = useState<string | null>(null)
+  const [eventAssociation, setEventAssociation] = useState<string>("standalone")
+  const [form, setForm] = useState({
+    title: "",
+    organizerName: "",
+    description: "",
+    venueName: "",
+    venueAddress: "",
+    eventDate: "",
+    doorsOpenTime: "7:00 PM",
+    startTime: "8:00 PM",
+    priceCents: 1500,
+    totalInventory: 50,
+    ageRestriction: "All Ages",
+    flyerUrl: "",
+    recurrenceFrequency: "one_time" as "one_time" | "weekly" | "monthly" | "yearly",
+    customLinks: [] as EventCustomLink[],
+  })
+
+  async function handleUploadFlyer(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setCreateError("Event image exceeds 10MB limit.")
+      return
+    }
+    setUploadingFlyer(true)
+    setCreateError("")
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", "events/flyers")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+      setForm((prev) => ({ ...prev, flyerUrl: data.url }))
+    } catch (err: any) {
+      setCreateError(err?.message || "Failed to upload event image")
+    } finally {
+      setUploadingFlyer(false)
+    }
+  }
+
+  async function handleCreateEvent(e: React.FormEvent) {
+    e.preventDefault()
+    if (creating) return
+    setCreating(true)
+    setCreateError("")
+    try {
+      const targetBandId = eventAssociation === "standalone" ? null : eventAssociation
+      const res = await createBandEvent(targetBandId, {
+        title: form.title,
+        organizerName: form.organizerName,
+        description: form.description,
+        venueName: form.venueName,
+        venueAddress: form.venueAddress,
+        eventDate: form.eventDate,
+        doorsOpenTime: form.doorsOpenTime,
+        startTime: form.startTime,
+        priceCents: form.priceCents,
+        totalInventory: form.totalInventory,
+        ageRestriction: form.ageRestriction,
+        flyerUrl: form.flyerUrl,
+        recurrenceFrequency: form.recurrenceFrequency,
+        customLinks: form.customLinks,
+      })
+
+      if (!res.success || !res.event) {
+        setCreateError(res.error || "Failed to create event.")
+        setCreating(false)
+        return
+      }
+
+      setCreatedEventId(res.event.id)
+      setCreateOpen(false)
+      setForm({
+        title: "",
+        organizerName: "",
+        description: "",
+        venueName: "",
+        venueAddress: "",
+        eventDate: "",
+        doorsOpenTime: "7:00 PM",
+        startTime: "8:00 PM",
+        priceCents: 1500,
+        totalInventory: 50,
+        ageRestriction: "All Ages",
+        flyerUrl: "",
+        recurrenceFrequency: "one_time",
+        customLinks: [],
+      })
+      router.refresh()
+    } catch (err: any) {
+      setCreateError(err?.message || "Failed to create event.")
+    } finally {
+      setCreating(false)
+    }
+  }
 
   const availableYears = useMemo(() => {
     const years = new Set<string>()
@@ -255,14 +376,15 @@ export function SellerCentralClient({
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Button
-              asChild
-              variant="outline"
-              className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] hover:bg-[#20205a]/50 rounded-xl h-10 px-4 text-xs font-semibold"
+              type="button"
+              onClick={() => {
+                setCreateError("")
+                setCreateOpen(true)
+              }}
+              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
             >
-              <Link href="/portal?tab=ticketing">
-                <Plus className="w-4 h-4 mr-1.5 text-[#ea6f2a]" />
-                Post / Manage Events
-              </Link>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Create Event / Sell Tickets
             </Button>
 
             <Button
@@ -276,6 +398,20 @@ export function SellerCentralClient({
             </Button>
           </div>
         </div>
+
+        {createdEventId && (
+          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/35 p-4 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-emerald-200">
+            <span>Event created! Your standalone ticket page is live.</span>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" className="bg-[#20efe0] text-[#05051f] font-bold rounded-lg h-8 text-xs">
+                <Link href={`/events/${createdEventId}`}>Open Ticket Page</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="border-emerald-500/40 text-emerald-200 rounded-lg h-8 text-xs">
+                <Link href={`/portal/events/${createdEventId}`}>Open Door Scanner</Link>
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
@@ -484,6 +620,369 @@ export function SellerCentralClient({
           )}
         </section>
       </div>
+
+      {/* Create Event / Sell Tickets Modal (Standalone or Band-linked + Titled Links) */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl sm:max-w-3xl max-h-[92vh] overflow-y-auto border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Ticket className="w-5 h-5 text-[#ea6f2a]" />
+              Create Event &amp; Sell Tickets
+            </DialogTitle>
+            <DialogDescription className="text-[#9a9fc4]">
+              Post a standalone event (creates its own ticket page) or link it to one of your approved acts.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateEvent} className="space-y-4 py-2">
+            {createError && (
+              <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200 text-xs">
+                {createError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="sc-assoc" className="text-xs text-[#9a9fc4]">
+                  Event Type / Association
+                </Label>
+                <select
+                  id="sc-assoc"
+                  value={eventAssociation}
+                  onChange={(e) => setEventAssociation(e.target.value)}
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="standalone">Standalone Event (Not tied to a band)</option>
+                  {approvedBands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      Band / Act: {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {eventAssociation === "standalone" && (
+                <div>
+                  <Label htmlFor="sc-org" className="text-xs text-[#9a9fc4]">
+                    Host / Organizer Name
+                  </Label>
+                  <Input
+                    id="sc-org"
+                    placeholder="e.g. StarCast Live Events"
+                    value={form.organizerName}
+                    onChange={(e) => setForm({ ...form, organizerName: e.target.value })}
+                    className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="sc-title" className="text-xs text-[#9a9fc4]">
+                Event Title *
+              </Label>
+              <Input
+                id="sc-title"
+                required
+                placeholder="e.g. Topeka Winter Showcase"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="sc-venue" className="text-xs text-[#9a9fc4]">
+                  Venue Name *
+                </Label>
+                <Input
+                  id="sc-venue"
+                  required
+                  placeholder="e.g. The Jayhawk Theatre"
+                  value={form.venueName}
+                  onChange={(e) => setForm({ ...form, venueName: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sc-addr" className="text-xs text-[#9a9fc4]">
+                  Address / City
+                </Label>
+                <Input
+                  id="sc-addr"
+                  placeholder="720 SW Jackson St, Topeka KS"
+                  value={form.venueAddress}
+                  onChange={(e) => setForm({ ...form, venueAddress: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="sc-date" className="text-xs text-[#9a9fc4]">
+                  Event Date &amp; Time *
+                </Label>
+                <Input
+                  id="sc-date"
+                  type="datetime-local"
+                  required
+                  value={form.eventDate}
+                  onChange={(e) => setForm({ ...form, eventDate: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sc-doors" className="text-xs text-[#9a9fc4]">
+                  Doors Open
+                </Label>
+                <Input
+                  id="sc-doors"
+                  value={form.doorsOpenTime}
+                  onChange={(e) => setForm({ ...form, doorsOpenTime: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sc-start" className="text-xs text-[#9a9fc4]">
+                  Show Start
+                </Label>
+                <Input
+                  id="sc-start"
+                  value={form.startTime}
+                  onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="sc-price" className="text-xs text-[#9a9fc4]">
+                  Price ($ USD, 0 = Free)
+                </Label>
+                <Input
+                  id="sc-price"
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  value={(form.priceCents / 100).toString()}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      priceCents: Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100)),
+                    })
+                  }
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sc-inv" className="text-xs text-[#9a9fc4]">
+                  Total Inventory *
+                </Label>
+                <Input
+                  id="sc-inv"
+                  type="number"
+                  min="1"
+                  max="10000"
+                  required
+                  value={String(form.totalInventory)}
+                  onChange={(e) =>
+                    setForm({ ...form, totalInventory: parseInt(e.target.value || "20", 10) })
+                  }
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sc-age" className="text-xs text-[#9a9fc4]">
+                  Age Policy
+                </Label>
+                <select
+                  id="sc-age"
+                  value={form.ageRestriction}
+                  onChange={(e) => setForm({ ...form, ageRestriction: e.target.value })}
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="All Ages">All Ages</option>
+                  <option value="18+">18+</option>
+                  <option value="21+">21+</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="sc-repeat" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <Repeat className="w-3.5 h-3.5 text-[#20efe0]" /> Repeat Schedule
+                </Label>
+                <select
+                  id="sc-repeat"
+                  value={form.recurrenceFrequency}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      recurrenceFrequency: e.target.value as "one_time" | "weekly" | "monthly" | "yearly",
+                    })
+                  }
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="one_time">One-time event (Default)</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+
+              <div>
+                <Label className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-[#ffd166]" /> Event Image / Flyer (Optional)
+                </Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-[#20205a] bg-[#05052d] hover:border-[#ea6f2a]/60 text-xs font-semibold text-[#f5f7ff] transition-colors">
+                    {uploadingFlyer ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea6f2a]" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    )}
+                    {form.flyerUrl ? "Change Image" : "Upload Image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingFlyer}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleUploadFlyer(file)
+                      }}
+                    />
+                  </label>
+                  {form.flyerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, flyerUrl: "" })}
+                      className="text-xs text-red-400 hover:underline flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" /> Remove
+                    </button>
+                  )}
+                </div>
+                {form.flyerUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.flyerUrl}
+                    alt="Event flyer preview"
+                    className="mt-2 h-24 w-full object-cover rounded-lg border border-[#20205a]"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Titled Custom Links */}
+            <div className="space-y-2 rounded-2xl border border-[#20205a] bg-[#05052d]/60 p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-xs text-[#f5f7ff] flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-[#20efe0]" /> Event Links (Optional)
+                </Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      customLinks: [...prev.customLinks, { title: "", url: "" }],
+                    }))
+                  }
+                  className="h-7 px-2.5 text-[11px] border-[#20205a] bg-[#0c0c3f] text-[#20efe0] hover:bg-[#20205a]/50"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Link
+                </Button>
+              </div>
+              {form.customLinks.length === 0 ? (
+                <p className="text-[11px] text-[#9a9fc4]">
+                  Add titled links for venue parking, artist pages, merch, or sponsor sites.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {form.customLinks.map((lnk, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                      <Input
+                        placeholder="Link Title (e.g. Parking Info)"
+                        value={lnk.title}
+                        onChange={(e) => {
+                          const next = [...form.customLinks]
+                          next[idx] = { ...next[idx], title: e.target.value }
+                          setForm({ ...form, customLinks: next })
+                        }}
+                        className="sm:col-span-5 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                      />
+                      <Input
+                        placeholder="https://..."
+                        value={lnk.url}
+                        onChange={(e) => {
+                          const next = [...form.customLinks]
+                          next[idx] = { ...next[idx], url: e.target.value }
+                          setForm({ ...form, customLinks: next })
+                        }}
+                        className="sm:col-span-6 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            customLinks: form.customLinks.filter((_, i) => i !== idx),
+                          })
+                        }
+                        className="sm:col-span-1 h-8 w-8 text-red-400 hover:text-red-300"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="sc-desc" className="text-xs text-[#9a9fc4]">
+                Event Description
+              </Label>
+              <Textarea
+                id="sc-desc"
+                rows={3}
+                placeholder="Lineup, details, parking, special notes..."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateOpen(false)}
+                disabled={creating}
+                className="border-[#20205a] bg-[#05052d] text-[#9a9fc4]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={creating}
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold"
+              >
+                {creating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                Post {form.totalInventory} Tickets
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

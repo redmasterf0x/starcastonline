@@ -21,7 +21,7 @@ export async function generateMetadata({
       bandName: bands.name,
     })
     .from(bandEvents)
-    .innerJoin(bands, eq(bands.id, bandEvents.bandId))
+    .leftJoin(bands, eq(bands.id, bandEvents.bandId))
     .where(eq(bandEvents.id, id))
     .limit(1)
 
@@ -29,11 +29,13 @@ export async function generateMetadata({
     return { title: "Event Not Found" }
   }
 
+  const hostName = row.bandName || row.event.organizerName || "StarCast Event"
+
   return {
-    title: `${row.event.title} — ${row.bandName} | Tickets`,
+    title: `${row.event.title} — ${hostName} | Tickets`,
     description:
       row.event.description ||
-      `Get official QR tickets for ${row.bandName} — ${row.event.title} at ${row.event.venueName}.`,
+      `Get official QR tickets for ${hostName} — ${row.event.title} at ${row.event.venueName}.`,
   }
 }
 
@@ -55,7 +57,7 @@ export default async function PublicEventPage({
       },
     })
     .from(bandEvents)
-    .innerJoin(bands, eq(bands.id, bandEvents.bandId))
+    .leftJoin(bands, eq(bands.id, bandEvents.bandId))
     .where(eq(bandEvents.id, id))
     .limit(1)
 
@@ -64,7 +66,11 @@ export default async function PublicEventPage({
   }
 
   const viewer = await getViewerPermissions().catch(() => null)
-  const isCreator = Boolean(viewer && row.band.ownerUserId === viewer.userId)
+  const isCreator = Boolean(
+    viewer &&
+      ((row.event.ownerUserId && row.event.ownerUserId === viewer.userId) ||
+        (row.band?.ownerUserId && row.band.ownerUserId === viewer.userId))
+  )
   const isAssignedScanner = viewer ? await isAssignedEventScanner(row.event.id, viewer.userId) : false
   const canScan = Boolean(isCreator || viewer?.isStaff || isAssignedScanner)
   const canEdit = Boolean(isCreator || viewer?.isAdmin)
@@ -73,10 +79,10 @@ export default async function PublicEventPage({
     <EventBuyClient
       event={row.event}
       band={{
-        id: row.band.id,
-        name: row.band.name,
-        slug: row.band.slug,
-        logoUrl: row.band.logoUrl,
+        id: row.band?.id || "",
+        name: row.band?.name || row.event.organizerName || "StarCast Event",
+        slug: row.band?.slug || null,
+        logoUrl: row.band?.logoUrl || null,
       }}
       canScan={canScan}
       canEdit={canEdit}

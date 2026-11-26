@@ -51,6 +51,7 @@ import {
   ImageIcon,
   Repeat,
   X,
+  Link2,
 } from "lucide-react"
 
 interface Band {
@@ -97,6 +98,7 @@ export function BandTicketingPanel({
     ageRestriction: "All Ages",
     flyerUrl: "",
     recurrenceFrequency: "one_time",
+    customLinks: [],
   })
 
   // Edit Event dialog
@@ -114,6 +116,7 @@ export function BandTicketingPanel({
     ageRestriction: "All Ages",
     flyerUrl: "",
     recurrenceFrequency: "one_time",
+    customLinks: [],
   })
   const [uploadingFlyer, setUploadingFlyer] = useState(false)
 
@@ -284,6 +287,7 @@ export function BandTicketingPanel({
       ageRestriction: ev.ageRestriction || "All Ages",
       flyerUrl: ev.flyerUrl || "",
       recurrenceFrequency: ev.recurrenceFrequency || "one_time",
+      customLinks: Array.isArray(ev.customLinks) ? ev.customLinks : [],
     })
     setError("")
   }
@@ -1014,6 +1018,75 @@ export function BandTicketingPanel({
               </div>
             </div>
 
+            {/* Event Links (Titled) */}
+            <div className="space-y-2 rounded-2xl border border-[#20205a] bg-[#05052d]/60 p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-xs text-[#f5f7ff] flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-[#20efe0]" /> Event Links (Optional)
+                </Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      customLinks: [...(prev.customLinks || []), { title: "", url: "" }],
+                    }))
+                  }
+                  className="h-7 px-2.5 text-[11px] border-[#20205a] bg-[#0c0c3f] text-[#20efe0]"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Link
+                </Button>
+              </div>
+              {(eventForm.customLinks || []).length === 0 ? (
+                <p className="text-[11px] text-[#9a9fc4]">
+                  Add titled links (e.g. Parking Info, Artist Merch, Official Site).
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {(eventForm.customLinks || []).map((lnk, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                      <Input
+                        placeholder="Link Title"
+                        value={lnk.title}
+                        onChange={(e) => {
+                          const next = [...(eventForm.customLinks || [])]
+                          next[idx] = { ...next[idx], title: e.target.value }
+                          setEventForm({ ...eventForm, customLinks: next })
+                        }}
+                        className="sm:col-span-5 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                      />
+                      <Input
+                        placeholder="https://..."
+                        value={lnk.url}
+                        onChange={(e) => {
+                          const next = [...(eventForm.customLinks || [])]
+                          next[idx] = { ...next[idx], url: e.target.value }
+                          setEventForm({ ...eventForm, customLinks: next })
+                        }}
+                        className="sm:col-span-6 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() =>
+                          setEventForm({
+                            ...eventForm,
+                            customLinks: (eventForm.customLinks || []).filter((_, i) => i !== idx),
+                          })
+                        }
+                        className="sm:col-span-1 h-8 w-8 text-red-400"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div>
               <Label htmlFor="event-desc" className="text-xs text-[#9a9fc4]">
                 Show Description &amp; Lineup
@@ -1289,6 +1362,71 @@ export function BandTicketingPanel({
                       />
                     )}
                   </div>
+                </div>
+
+                {/* Event Links (Titled) */}
+                <div className="space-y-2 rounded-2xl border border-[#20205a] bg-[#05052d]/60 p-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs text-[#f5f7ff] flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-[#20efe0]" /> Event Links (Optional)
+                    </Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setEditForm((prev) => ({
+                          ...prev,
+                          customLinks: [...(prev.customLinks || []), { title: "", url: "" }],
+                        }))
+                      }
+                      className="h-7 px-2.5 text-[11px] border-[#20205a] bg-[#0c0c3f] text-[#20efe0]"
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Add Link
+                    </Button>
+                  </div>
+                  {(editForm.customLinks || []).length > 0 && (
+                    <div className="space-y-2">
+                      {(editForm.customLinks || []).map((lnk, idx) => (
+                        <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                          <Input
+                            placeholder="Link Title"
+                            value={lnk.title}
+                            onChange={(e) => {
+                              const next = [...(editForm.customLinks || [])]
+                              next[idx] = { ...next[idx], title: e.target.value }
+                              setEditForm({ ...editForm, customLinks: next })
+                            }}
+                            className="sm:col-span-5 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                          />
+                          <Input
+                            placeholder="https://..."
+                            value={lnk.url}
+                            onChange={(e) => {
+                              const next = [...(editForm.customLinks || [])]
+                              next[idx] = { ...next[idx], url: e.target.value }
+                              setEditForm({ ...editForm, customLinks: next })
+                            }}
+                            className="sm:col-span-6 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() =>
+                              setEditForm({
+                                ...editForm,
+                                customLinks: (editForm.customLinks || []).filter((_, i) => i !== idx),
+                              })
+                            }
+                            className="sm:col-span-1 h-8 w-8 text-red-400"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>

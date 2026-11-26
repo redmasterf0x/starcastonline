@@ -51,8 +51,10 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
       }
     }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band) return { success: false, error: "Band not found" }
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+    const organizerLabel = band?.name || event.organizerName || "StarCast Event"
 
     const authSession = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const resolvedBuyerUserId = input.buyerUserId || authSession?.user?.id || null
@@ -89,7 +91,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         .insert(bandTicketOrders)
         .values({
           eventId: event.id,
-          bandId: band.id,
+          bandId: band?.id || null,
           buyerUserId: resolvedBuyerUserId,
           buyerEmail: input.buyerEmail.trim().toLowerCase(),
           buyerName: input.buyerName.trim(),
@@ -108,7 +110,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         instancesToInsert.push({
           orderId: order.id,
           eventId: event.id,
-          bandId: band.id,
+          bandId: band?.id || null,
           ticketNumber: currentSold + i + 1,
           qrToken: crypto.randomUUID(),
           holderName: input.buyerName.trim(),
@@ -123,7 +125,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
       await sendTicketConfirmationEmail({
         to: input.buyerEmail.trim().toLowerCase(),
         buyerName: input.buyerName.trim(),
-        bandName: band.name,
+        bandName: organizerLabel,
         eventTitle: event.title,
         venueName: event.venueName,
         venueAddress: event.venueAddress,
@@ -137,7 +139,9 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         })),
       })
 
-      revalidatePath(`/bands/${band.slug}`)
+      if (band?.slug) revalidatePath(`/bands/${band.slug}`)
+      revalidatePath(`/events/${event.id}`)
+      revalidatePath("/tickets")
       revalidatePath("/portal")
 
       return {
@@ -153,8 +157,8 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
       .insert(bandTicketOrders)
       .values({
         eventId: event.id,
-        bandId: band.id,
-        buyerUserId: input.buyerUserId || null,
+        bandId: band?.id || null,
+        buyerUserId: resolvedBuyerUserId,
         buyerEmail: input.buyerEmail.trim().toLowerCase(),
         buyerName: input.buyerName.trim(),
         quantity,
@@ -175,7 +179,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
             currency: "usd",
             unit_amount: unitPriceCents,
             product_data: {
-              name: `Ticket: ${band.name} - ${event.title}`,
+              name: `Ticket: ${organizerLabel} - ${event.title}`,
               description: `${event.venueName} • ${new Date(event.eventDate).toLocaleDateString("en-US", {
                 weekday: "short",
                 month: "short",
@@ -191,7 +195,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
       metadata: {
         order_id: pendingOrder.id,
         event_id: event.id,
-        band_id: band.id,
+        band_id: band?.id || "",
         quantity: String(quantity),
         buyer_name: input.buyerName.trim(),
         buyer_email: input.buyerEmail.trim().toLowerCase(),
@@ -200,12 +204,12 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         metadata: {
           order_id: pendingOrder.id,
           event_id: event.id,
-          band_id: band.id,
+          band_id: band?.id || "",
           buyer_name: input.buyerName.trim(),
         },
       },
       success_url: `${baseUrl}/tickets/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/bands/${band.slug || band.id}?ticket_cancelled=1`,
+      cancel_url: `${baseUrl}/events/${event.id}?ticket_cancelled=1`,
     })
 
     await db
@@ -299,13 +303,15 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
 
     const createdInstances = await db.insert(bandTicketInstances).values(instancesToInsert).returning()
 
-    // Fetch band info and email ticket pass(es) to the buyer
+    // Fetch band info (if band-associated) and email ticket pass(es) to the buyer
     if (event) {
-      const [band] = await db.select().from(bands).where(eq(bands.id, order.bandId)).limit(1)
+      const band = order.bandId
+        ? (await db.select().from(bands).where(eq(bands.id, order.bandId)).limit(1))[0] || null
+        : null
       await sendTicketConfirmationEmail({
         to: order.buyerEmail,
         buyerName: order.buyerName,
-        bandName: band?.name || "StarCast Artist",
+        bandName: band?.name || event.organizerName || "StarCast Event",
         eventTitle: event.title,
         venueName: event.venueName,
         venueAddress: event.venueAddress,

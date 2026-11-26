@@ -479,9 +479,9 @@ export const uploadedBlobs = pgTable("uploaded_blobs", {
 
 export const bandEvents = pgTable("band_events", {
   id: uuid("id").primaryKey().defaultRandom(),
-  bandId: uuid("band_id")
-    .references(() => bands.id, { onDelete: "cascade" })
-    .notNull(),
+  bandId: uuid("band_id").references(() => bands.id, { onDelete: "cascade" }),
+  ownerUserId: text("owner_user_id"),
+  organizerName: text("organizer_name"),
   title: text("title").notNull(),
   description: text("description"),
   venueName: text("venue_name").notNull(),
@@ -495,6 +495,7 @@ export const bandEvents = pgTable("band_events", {
   ageRestriction: text("age_restriction").default("All Ages"), // "All Ages" | "18+" | "21+"
   flyerUrl: text("flyer_url"),
   recurrenceFrequency: text("recurrence_frequency"), // null/'one_time' | 'weekly' | 'monthly' | 'yearly'
+  customLinks: jsonb("custom_links").$type<Array<{ title: string; url: string }>>().default([]),
   // draft | active | sold_out | past | cancelled
   status: text("status").notNull().default("active"),
   // Escrow protection: held until 24 hours after the event
@@ -516,9 +517,7 @@ export const bandTicketOrders = pgTable("band_ticket_orders", {
   eventId: uuid("event_id")
     .references(() => bandEvents.id, { onDelete: "cascade" })
     .notNull(),
-  bandId: uuid("band_id")
-    .references(() => bands.id, { onDelete: "cascade" })
-    .notNull(),
+  bandId: uuid("band_id").references(() => bands.id, { onDelete: "cascade" }),
   buyerUserId: text("buyer_user_id"),
   buyerEmail: text("buyer_email").notNull(),
   buyerName: text("buyer_name").notNull(),
@@ -542,9 +541,7 @@ export const bandTicketInstances = pgTable("band_ticket_instances", {
   eventId: uuid("event_id")
     .references(() => bandEvents.id, { onDelete: "cascade" })
     .notNull(),
-  bandId: uuid("band_id")
-    .references(() => bands.id, { onDelete: "cascade" })
-    .notNull(),
+  bandId: uuid("band_id").references(() => bands.id, { onDelete: "cascade" }),
   ticketNumber: integer("ticket_number").notNull(), // e.g. 1 of 20
   qrToken: text("qr_token").notNull().unique(), // Secure UUID token for verification & QR code
   holderName: text("holder_name").notNull(),

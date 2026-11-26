@@ -3,14 +3,20 @@
 import { stripe } from "@/lib/stripe"
 import { db } from "@/lib/db"
 import { bands, bandEvents, bandTicketOrders, bandTicketInstances, bandEventScanners, user } from "@/lib/db/schema"
-import { eq, and, desc, gte, sql, asc, ilike, inArray } from "drizzle-orm"
+import { eq, and, desc, gte, sql, asc, ilike, inArray, or } from "drizzle-orm"
 import { requireViewer, requireStaff } from "@/lib/permissions"
 import { revalidatePath } from "next/cache"
 import crypto from "crypto"
 
+export type EventCustomLink = {
+  title: string
+  url: string
+}
+
 export type CreateEventInput = {
   title: string
   description?: string
+  organizerName?: string
   venueName: string
   venueAddress?: string
   eventDate: string // ISO string
@@ -21,6 +27,32 @@ export type CreateEventInput = {
   ageRestriction?: string // "All Ages" | "18+" | "21+"
   flyerUrl?: string
   recurrenceFrequency?: "one_time" | "weekly" | "monthly" | "yearly"
+  customLinks?: EventCustomLink[]
+}
+
+function sanitizeEventLinks(links?: EventCustomLink[]): EventCustomLink[] {
+  if (!Array.isArray(links)) return []
+  return links
+    .map((l) => {
+      const title = (l?.title || "").trim().slice(0, 80)
+      let url = (l?.url || "").trim().slice(0, 500)
+      if (!url) return null
+      if (!/^https?:\/\//i.test(url)) url = `https://${url}`
+      return { title: title || url, url }
+    })
+    .filter((l): l is EventCustomLink => Boolean(l))
+    .slice(0, 10)
+}
+
+function isEventOwner(
+  event: { ownerUserId?: string | null },
+  band: { ownerUserId?: string | null } | null | undefined,
+  userId: string
+) {
+  return Boolean(
+    (event.ownerUserId && event.ownerUserId === userId) ||
+      (band?.ownerUserId && band.ownerUserId === userId)
+  )
 }
 
 export type UpdateEventInput = Partial<CreateEventInput> & {
@@ -117,18 +149,40 @@ export async function adminListTicketingApplications() {
 // 2. Event Ticket Creation ("POST a ticket") & Management
 // ---------------------------------------------------------------------------
 
-/** Create a new event ticket listing with inventory and 24h post-event escrow */
-export async function createBandEvent(bandId: string, input: CreateEventInput) {
+/** Create a new event ticket listing (band-linked OR standalone when bandId is null) */
+export async function createBandEvent(bandId: string | null, input: CreateEventInput) {
   try {
     const viewer = await requireViewer()
-    const [band] = await db.select().from(bands).where(eq(bands.id, bandId)).limit(1)
-    if (!band) return { success: false, error: "Band not found" }
-    if (band.ownerUserId !== viewer.userId && !viewer.isStaff) {
-      return { success: false, error: "Unauthorized to post tickets for this band" }
-    }
 
-    if (band.ticketingStatus !== "approved") {
-      return { success: false, error: "This band is not approved for ticketing yet. Please submit an application first." }
+    let band: typeof bands.$inferSelect | null = null
+    if (bandId) {
+      const [foundBand] = await db.select().from(bands).where(eq(bands.id, bandId)).limit(1)
+      if (!foundBand) return { success: false, error: "Band not found" }
+      if (foundBand.ownerUserId !== viewer.userId && !viewer.isAdmin) {
+        return { success: false, error: "Unauthorized to post tickets for this band" }
+      }
+      if (foundBand.ticketingStatus !== "approved" && !viewer.isAdmin) {
+        return {
+          success: false,
+          error: "This band is not approved for ticketing yet. Please submit an application first.",
+        }
+      }
+      band = foundBand
+    } else {
+      // Standalone event: caller must be an approved ticket seller OR admin
+      if (!viewer.isAdmin) {
+        const approvedBands = await db
+          .select({ id: bands.id })
+          .from(bands)
+          .where(and(eq(bands.ownerUserId, viewer.userId), eq(bands.ticketingStatus, "approved")))
+          .limit(1)
+        if (approvedBands.length === 0) {
+          return {
+            success: false,
+            error: "Only admin-approved ticket sellers or admins can post standalone events.",
+          }
+        }
+      }
     }
 
     if (!input.title?.trim()) {
@@ -145,6 +199,7 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
 
     const totalInventory = Math.max(1, input.totalInventory || 20)
     const priceCents = Math.max(0, input.priceCents || 0)
+    const organizerLabel = band?.name || input.organizerName?.trim() || "StarCast Event"
 
     // Calculate escrow release date: exactly 24 hours after the event time
     const escrowReleaseDate = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000)
@@ -156,11 +211,11 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
     if (priceCents > 0) {
       try {
         const product = await stripe.products.create({
-          name: `${band.name} - ${input.title.trim()}`,
+          name: `${organizerLabel} - ${input.title.trim()}`,
           description: input.description?.slice(0, 500) || `Ticket for ${input.title} at ${input.venueName}`,
           metadata: {
-            band_id: band.id,
-            band_name: band.name,
+            band_id: band?.id || "",
+            band_name: organizerLabel,
             venue: input.venueName,
           },
         })
@@ -182,10 +237,14 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
         ? input.recurrenceFrequency
         : null
 
+    const cleanLinks = sanitizeEventLinks(input.customLinks)
+
     const [newEvent] = await db
       .insert(bandEvents)
       .values({
-        bandId: band.id,
+        bandId: band?.id || null,
+        ownerUserId: band ? band.ownerUserId : viewer.userId,
+        organizerName: band ? band.name : input.organizerName?.trim() || "StarCast Event",
         title: input.title.trim(),
         description: input.description?.trim() || null,
         venueName: input.venueName.trim(),
@@ -199,6 +258,7 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
         ageRestriction: input.ageRestriction || "All Ages",
         flyerUrl: input.flyerUrl?.trim() || null,
         recurrenceFrequency,
+        customLinks: cleanLinks,
         status: "active",
         escrowStatus: "held",
         escrowReleaseDate,
@@ -209,7 +269,8 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
 
     revalidatePath("/portal")
     revalidatePath("/tickets")
-    if (band.slug) revalidatePath(`/bands/${band.slug}`)
+    revalidatePath("/tickets/seller-central")
+    if (band?.slug) revalidatePath(`/bands/${band.slug}`)
 
     return { success: true, event: newEvent }
   } catch (err: any) {
@@ -218,15 +279,18 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
   }
 }
 
-/** Update an existing event (strictly only the creator/owner can edit; price locks once any ticket is sold) */
+/** Update an existing event (creator or admin; price locks once any ticket is sold) */
 export async function updateBandEvent(eventId: string, input: UpdateEventInput) {
   try {
     const viewer = await requireViewer()
     const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
     if (!event) return { success: false, error: "Event not found" }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isAdmin)) {
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+
+    if (!isEventOwner(event, band, viewer.userId) && !viewer.isAdmin) {
       return { success: false, error: "Only the creator of this ticket or an admin can edit it." }
     }
 
@@ -277,6 +341,10 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
       .set({
         title: input.title !== undefined ? input.title.trim() : event.title,
         description: input.description !== undefined ? (input.description.trim() || null) : event.description,
+        organizerName:
+          input.organizerName !== undefined
+            ? input.organizerName.trim() || event.organizerName
+            : event.organizerName,
         venueName: input.venueName !== undefined ? input.venueName.trim() : event.venueName,
         venueAddress: input.venueAddress !== undefined ? (input.venueAddress.trim() || null) : event.venueAddress,
         eventDate,
@@ -293,6 +361,8 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
               ? input.recurrenceFrequency
               : null
             : event.recurrenceFrequency,
+        customLinks:
+          input.customLinks !== undefined ? sanitizeEventLinks(input.customLinks) : event.customLinks,
         status: input.status || event.status,
         escrowReleaseDate,
         updatedAt: new Date(),
@@ -304,7 +374,8 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
     revalidatePath(`/portal/events/${eventId}`)
     revalidatePath(`/events/${eventId}`)
     revalidatePath("/tickets")
-    if (band.slug) revalidatePath(`/bands/${band.slug}`)
+    revalidatePath("/tickets/seller-central")
+    if (band?.slug) revalidatePath(`/bands/${band.slug}`)
 
     return { success: true, event: updated }
   } catch (err: any) {
@@ -320,8 +391,10 @@ export async function cancelBandEvent(eventId: string, reason?: string) {
     const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
     if (!event) return { success: false, error: "Event not found" }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isStaff)) {
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+    if (!isEventOwner(event, band, viewer.userId) && !viewer.isStaff) {
       return { success: false, error: "Unauthorized" }
     }
 
@@ -344,7 +417,7 @@ export async function cancelBandEvent(eventId: string, reason?: string) {
       .where(eq(bandTicketInstances.eventId, eventId))
 
     revalidatePath("/portal")
-    if (band.slug) revalidatePath(`/bands/${band.slug}`)
+    if (band?.slug) revalidatePath(`/bands/${band.slug}`)
 
     return { success: true }
   } catch (err: any) {
@@ -412,7 +485,7 @@ export async function getBandEventById(eventId: string) {
         band: bands,
       })
       .from(bandEvents)
-      .innerJoin(bands, eq(bands.id, bandEvents.bandId))
+      .leftJoin(bands, eq(bands.id, bandEvents.bandId))
       .where(eq(bandEvents.id, eventId))
       .limit(1)
 
@@ -444,13 +517,25 @@ export async function getTicketByToken(qrToken: string) {
       })
       .from(bandTicketInstances)
       .innerJoin(bandEvents, eq(bandEvents.id, bandTicketInstances.eventId))
-      .innerJoin(bands, eq(bands.id, bandTicketInstances.bandId))
+      .leftJoin(bands, eq(bands.id, bandTicketInstances.bandId))
       .innerJoin(bandTicketOrders, eq(bandTicketOrders.id, bandTicketInstances.orderId))
       .where(eq(bandTicketInstances.qrToken, qrToken))
       .limit(1)
 
     if (rows.length === 0) return null
-    return rows[0]
+    const row = rows[0]
+    return {
+      instance: row.instance,
+      event: row.event,
+      order: row.order,
+      band: row.band || {
+        id: "",
+        name: row.event.organizerName || "StarCast Event",
+        slug: null,
+        logoUrl: null,
+        type: "event",
+      },
+    }
   } catch (err: any) {
     console.error("getTicketByToken error:", err)
     return null
@@ -464,8 +549,10 @@ export async function getEventTicketGuestlist(eventId: string) {
     const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
     if (!event) return { success: false, error: "Event not found" }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isStaff)) {
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+    if (!isEventOwner(event, band, viewer.userId) && !viewer.isStaff) {
       return { success: false, error: "Unauthorized" }
     }
 
@@ -519,8 +606,10 @@ export async function addEventScannerByEmail(eventId: string, email: string) {
     const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
     if (!event) return { success: false, error: "Event not found" }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isAdmin)) {
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+    if (!isEventOwner(event, band, viewer.userId) && !viewer.isAdmin) {
       return { success: false, error: "Only the event creator or an admin can add scanners." }
     }
 
@@ -572,8 +661,10 @@ export async function removeEventScanner(eventId: string, scannerId: string) {
     const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
     if (!event) return { success: false, error: "Event not found" }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isAdmin)) {
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+    if (!isEventOwner(event, band, viewer.userId) && !viewer.isAdmin) {
       return { success: false, error: "Unauthorized" }
     }
 
@@ -596,13 +687,22 @@ export async function getEventScannerData(eventId: string) {
     const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
     if (!event) return { success: false, error: "Event not found" }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band) return { success: false, error: "Band not found" }
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
 
-    const isCreator = band.ownerUserId === viewer.userId
+    const isCreator = isEventOwner(event, band, viewer.userId)
     const isAssigned = await isAssignedEventScanner(eventId, viewer.userId)
     if (!isCreator && !viewer.isStaff && !isAssigned) {
       return { success: false, error: "Unauthorized to manage or scan for this event" }
+    }
+
+    const fallbackBand = band || {
+      id: "",
+      name: event.organizerName || "StarCast Event",
+      slug: null,
+      logoUrl: null,
+      ownerUserId: event.ownerUserId || "",
     }
 
     const canEdit = isCreator || viewer.isAdmin
@@ -665,7 +765,7 @@ export async function getEventScannerData(eventId: string) {
     return {
       success: true,
       event,
-      band,
+      band: fallbackBand,
       instances,
       canEdit,
       canManageScanners,
@@ -705,7 +805,7 @@ export async function checkInTicket(tokenOrId: string, eventId?: string) {
       })
       .from(bandTicketInstances)
       .innerJoin(bandEvents, eq(bandEvents.id, bandTicketInstances.eventId))
-      .innerJoin(bands, eq(bands.id, bandTicketInstances.bandId))
+      .leftJoin(bands, eq(bands.id, bandTicketInstances.bandId))
       .where(
         ticketNum !== null && eventId
           ? and(
@@ -725,7 +825,7 @@ export async function checkInTicket(tokenOrId: string, eventId?: string) {
     }
 
     const isAssigned = await isAssignedEventScanner(ticket.event.id, viewer.userId)
-    if (ticket.band.ownerUserId !== viewer.userId && !viewer.isStaff && !isAssigned) {
+    if (!isEventOwner(ticket.event, ticket.band, viewer.userId) && !viewer.isStaff && !isAssigned) {
       return { success: false, error: "Unauthorized to check in tickets for this event" }
     }
 
@@ -793,10 +893,11 @@ export async function recordDoorCashSale({
     const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
     if (!event) return { success: false, error: "Event not found" }
 
-    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band) return { success: false, error: "Band not found" }
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
 
-    const isCreator = band.ownerUserId === viewer.userId
+    const isCreator = isEventOwner(event, band, viewer.userId)
     const isAssigned = await isAssignedEventScanner(eventId, viewer.userId)
     if (!isCreator && !viewer.isStaff && !isAssigned) {
       return { success: false, error: "Unauthorized to record cash sales for this event" }
@@ -843,7 +944,7 @@ export async function recordDoorCashSale({
       .insert(bandTicketOrders)
       .values({
         eventId: event.id,
-        bandId: band.id,
+        bandId: band?.id || null,
         buyerUserId: viewer.userId,
         buyerEmail: "cash@door.starcast.online",
         buyerName: holderLabel,
@@ -862,7 +963,7 @@ export async function recordDoorCashSale({
       instancesToInsert.push({
         orderId: order.id,
         eventId: event.id,
-        bandId: band.id,
+        bandId: band?.id || null,
         ticketNumber: Math.max(1, currentSold + i + 1),
         qrToken: crypto.randomUUID(),
         holderName: holderLabel,
@@ -892,7 +993,7 @@ export async function recordDoorCashSale({
   }
 }
 
-/** Ticket Seller Central: returns sales, events, and tax export data strictly for the signed-in user's own approved acts */
+/** Ticket Seller Central: accessible to all admin-approved ticket sellers AND admins (strictly their own events & standalone events) */
 export async function getTicketSellerCentralData() {
   try {
     const viewer = await requireViewer()
@@ -911,11 +1012,13 @@ export async function getTicketSellerCentralData() {
       .orderBy(asc(bands.name))
 
     const approvedBands = myBands.filter((b) => b.ticketingStatus === "approved")
+    const hasAccess = approvedBands.length > 0 || viewer.isAdmin
 
-    if (approvedBands.length === 0) {
+    if (!hasAccess) {
       return {
         success: true,
         isApprovedSeller: false,
+        isAdmin: viewer.isAdmin,
         myBands,
         approvedBands: [],
         events: [],
@@ -925,24 +1028,38 @@ export async function getTicketSellerCentralData() {
 
     const approvedBandIds = approvedBands.map((b) => b.id)
 
+    // Fetch strictly events owned by this user (standalone OR via their own approved bands)
+    const eventFilter =
+      approvedBandIds.length > 0
+        ? or(
+            eq(bandEvents.ownerUserId, viewer.userId),
+            inArray(bandEvents.bandId, approvedBandIds)
+          )
+        : eq(bandEvents.ownerUserId, viewer.userId)
+
     const myEvents = await db
       .select()
       .from(bandEvents)
-      .where(inArray(bandEvents.bandId, approvedBandIds))
+      .where(eventFilter)
       .orderBy(desc(bandEvents.eventDate))
 
-    const myOrders = await db
-      .select()
-      .from(bandTicketOrders)
-      .where(
-        and(
-          inArray(bandTicketOrders.bandId, approvedBandIds),
-          eq(bandTicketOrders.status, "paid")
-        )
-      )
-      .orderBy(desc(bandTicketOrders.createdAt))
+    const myEventIds = myEvents.map((e) => e.id)
 
-    const bandNameMap = new Map(approvedBands.map((b) => [b.id, b.name]))
+    const myOrders =
+      myEventIds.length > 0
+        ? await db
+            .select()
+            .from(bandTicketOrders)
+            .where(
+              and(
+                inArray(bandTicketOrders.eventId, myEventIds),
+                eq(bandTicketOrders.status, "paid")
+              )
+            )
+            .orderBy(desc(bandTicketOrders.createdAt))
+        : []
+
+    const bandNameMap = new Map(myBands.map((b) => [b.id, b.name]))
     const eventMap = new Map(myEvents.map((e) => [e.id, e]))
 
     const enrichedOrders = myOrders.map((o) => {
@@ -954,8 +1071,8 @@ export async function getTicketSellerCentralData() {
         eventTitle: ev?.title || "Event",
         venueName: ev?.venueName || "",
         eventDate: ev?.eventDate ? ev.eventDate.toISOString() : null,
-        bandId: o.bandId,
-        bandName: bandNameMap.get(o.bandId) || "Act",
+        bandId: o.bandId || "standalone",
+        bandName: (o.bandId && bandNameMap.get(o.bandId)) || ev?.organizerName || "Standalone Event",
         buyerName: o.buyerName,
         buyerEmail: o.buyerEmail,
         quantity: o.quantity,
@@ -971,8 +1088,9 @@ export async function getTicketSellerCentralData() {
 
     const enrichedEvents = myEvents.map((ev) => ({
       id: ev.id,
-      bandId: ev.bandId,
-      bandName: bandNameMap.get(ev.bandId) || "Act",
+      bandId: ev.bandId || "standalone",
+      bandName: (ev.bandId && bandNameMap.get(ev.bandId)) || ev.organizerName || "Standalone Event",
+      isStandalone: !ev.bandId,
       title: ev.title,
       venueName: ev.venueName,
       eventDate: ev.eventDate.toISOString(),
@@ -986,6 +1104,7 @@ export async function getTicketSellerCentralData() {
     return {
       success: true,
       isApprovedSeller: true,
+      isAdmin: viewer.isAdmin,
       myBands,
       approvedBands,
       events: enrichedEvents,
@@ -1020,7 +1139,7 @@ export async function releaseEscrowPayout(eventId: string) {
         band: bands,
       })
       .from(bandEvents)
-      .innerJoin(bands, eq(bands.id, bandEvents.bandId))
+      .leftJoin(bands, eq(bands.id, bandEvents.bandId))
       .where(eq(bandEvents.id, eventId))
       .limit(1)
 
@@ -1046,8 +1165,11 @@ export async function releaseEscrowPayout(eventId: string) {
       }
     }
 
-    if (!band.stripeAccountId) {
-      return { success: false, error: `Band "${band.name}" has not connected a Stripe payout account yet.` }
+    if (!band?.stripeAccountId) {
+      return {
+        success: false,
+        error: `"${band?.name || event.organizerName || "This organizer"}" has not connected a Stripe payout account yet.`,
+      }
     }
 
     // Calculate net online Stripe ticket revenue (90% seller payout, 10% StarCast platform escrow hold)
@@ -1197,15 +1319,15 @@ export async function adminListHeldEscrows() {
         band: bands,
       })
       .from(bandEvents)
-      .innerJoin(bands, eq(bands.id, bandEvents.bandId))
+      .leftJoin(bands, eq(bands.id, bandEvents.bandId))
       .orderBy(asc(bandEvents.eventDate))
 
     return rows.map((r) => ({
       ...r.event,
-      bandName: r.band.name,
-      bandSlug: r.band.slug,
-      stripeAccountId: r.band.stripeAccountId,
-      stripeAccountStatus: r.band.stripeAccountStatus,
+      bandName: r.band?.name || r.event.organizerName || "Standalone Event",
+      bandSlug: r.band?.slug || null,
+      stripeAccountId: r.band?.stripeAccountId || null,
+      stripeAccountStatus: r.band?.stripeAccountStatus || null,
     }))
   } catch (err: any) {
     console.error("adminListHeldEscrows error:", err)

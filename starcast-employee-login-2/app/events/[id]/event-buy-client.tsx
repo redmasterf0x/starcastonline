@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { createTicketCheckoutSession } from "@/app/actions/ticket-purchase"
-import { updateBandEvent } from "@/app/actions/band-tickets"
+import { updateBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,6 +37,9 @@ import {
   Upload,
   ImageIcon,
   X,
+  Link2,
+  ExternalLink,
+  Plus,
 } from "lucide-react"
 
 interface EventBuyClientProps {
@@ -90,6 +93,7 @@ export function EventBuyClient({
       | "weekly"
       | "monthly"
       | "yearly",
+    customLinks: (Array.isArray(initialEvent.customLinks) ? initialEvent.customLinks : []) as EventCustomLink[],
   })
 
   useEffect(() => {
@@ -133,6 +137,7 @@ export function EventBuyClient({
         | "weekly"
         | "monthly"
         | "yearly",
+      customLinks: (Array.isArray(event.customLinks) ? event.customLinks : []) as EventCustomLink[],
     })
     setEditError("")
     setEditOpen(true)
@@ -309,13 +314,20 @@ export function EventBuyClient({
 
             <div className="p-6 sm:p-8 space-y-5">
               <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/bands/${band.slug || band.id}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#ffd166] hover:underline"
-                >
-                  <Music className="w-3.5 h-3.5 text-[#ea6f2a]" />
-                  {band.name}
-                </Link>
+                {band.id ? (
+                  <Link
+                    href={`/bands/${band.slug || band.id}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#ffd166] hover:underline"
+                  >
+                    <Music className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    {band.name}
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#ffd166]">
+                    <Ticket className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    {band.name}
+                  </span>
+                )}
 
                 {event.recurrenceFrequency && event.recurrenceFrequency !== "one_time" && (
                   <Badge className="bg-[#20efe0]/15 text-[#20efe0] border-[#20efe0]/40 text-[11px] capitalize">
@@ -365,6 +377,29 @@ export function EventBuyClient({
                   <p className="text-sm text-[#dbe0fb] leading-relaxed whitespace-pre-wrap">
                     {event.description}
                   </p>
+                </div>
+              )}
+
+              {Array.isArray(event.customLinks) && event.customLinks.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-[#20205a]/70">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[#9a9fc4] flex items-center gap-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-[#20efe0]" />
+                    Event Links
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {event.customLinks.map((lnk: EventCustomLink, idx: number) => (
+                      <a
+                        key={idx}
+                        href={lnk.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#20efe0]/35 bg-[#05052d]/80 hover:border-[#20efe0] hover:bg-[#20efe0]/10 text-xs font-semibold text-[#f5f7ff] transition-colors"
+                      >
+                        <span>{lnk.title || lnk.url}</span>
+                        <ExternalLink className="w-3 h-3 text-[#20efe0]" />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -716,6 +751,73 @@ export function EventBuyClient({
                   />
                 )}
               </div>
+            </div>
+
+            {/* Event Links (Titled) */}
+            <div className="space-y-2 rounded-2xl border border-[#20205a] bg-[#05052d]/60 p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-xs text-[#f5f7ff] flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-[#20efe0]" /> Event Links (Optional)
+                </Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      customLinks: [...prev.customLinks, { title: "", url: "" }],
+                    }))
+                  }
+                  className="h-7 px-2.5 text-[11px] border-[#20205a] bg-[#0c0c3f] text-[#20efe0] hover:bg-[#20205a]/50"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Link
+                </Button>
+              </div>
+              {editForm.customLinks.length === 0 ? (
+                <p className="text-[11px] text-[#9a9fc4]">No links added yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {editForm.customLinks.map((lnk, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                      <Input
+                        placeholder="Link Title (e.g. Venue Parking)"
+                        value={lnk.title}
+                        onChange={(e) => {
+                          const next = [...editForm.customLinks]
+                          next[idx] = { ...next[idx], title: e.target.value }
+                          setEditForm({ ...editForm, customLinks: next })
+                        }}
+                        className="sm:col-span-5 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                      />
+                      <Input
+                        placeholder="https://..."
+                        value={lnk.url}
+                        onChange={(e) => {
+                          const next = [...editForm.customLinks]
+                          next[idx] = { ...next[idx], url: e.target.value }
+                          setEditForm({ ...editForm, customLinks: next })
+                        }}
+                        className="sm:col-span-6 h-8 text-xs bg-[#0c0c3f] border-[#20205a] text-[#f5f7ff]"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() =>
+                          setEditForm({
+                            ...editForm,
+                            customLinks: editForm.customLinks.filter((_, i) => i !== idx),
+                          })
+                        }
+                        className="sm:col-span-1 h-8 w-8 text-red-400 hover:text-red-300"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
