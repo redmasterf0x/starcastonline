@@ -28,6 +28,10 @@ export default async function SellerEventPage({
       band={res.band}
       initialInstances={res.instances || []}
       canEdit={Boolean(res.canEdit)}
+      canManageScanners={Boolean(res.canManageScanners)}
+      isScannerOnly={Boolean(res.isScannerOnly)}
+      initialScanners={res.scanners || []}
+      initialCashSales={res.cashSales || { ticketsCount: 0, totalCents: 0, orders: [] }}
     />
   )
 }

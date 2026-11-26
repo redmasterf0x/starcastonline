@@ -2,8 +2,8 @@
 
 import { stripe } from "@/lib/stripe"
 import { db } from "@/lib/db"
-import { bands, bandEvents, bandTicketOrders, bandTicketInstances } from "@/lib/db/schema"
-import { eq, and, desc, gte, sql, asc } from "drizzle-orm"
+import { bands, bandEvents, bandTicketOrders, bandTicketInstances, bandEventScanners, user } from "@/lib/db/schema"
+import { eq, and, desc, gte, sql, asc, ilike } from "drizzle-orm"
 import { requireViewer, requireStaff } from "@/lib/permissions"
 import { revalidatePath } from "next/cache"
 import crypto from "crypto"
@@ -497,6 +497,98 @@ export async function getEventTicketGuestlist(eventId: string) {
   }
 }
 
+/** Check if a user is assigned as a door scanner for a specific event */
+export async function isAssignedEventScanner(eventId: string, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: bandEventScanners.id })
+    .from(bandEventScanners)
+    .where(and(eq(bandEventScanners.eventId, eventId), eq(bandEventScanners.userId, userId)))
+    .limit(1)
+  return Boolean(row)
+}
+
+/** Add a registered StarCast user as a door scanner for an event by email (creator or admin only) */
+export async function addEventScannerByEmail(eventId: string, email: string) {
+  try {
+    const viewer = await requireViewer()
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return { success: false, error: "Please enter a valid email address." }
+    }
+
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
+    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isAdmin)) {
+      return { success: false, error: "Only the event creator or an admin can add scanners." }
+    }
+
+    const [registeredUser] = await db
+      .select({ id: user.id, email: user.email, name: user.name })
+      .from(user)
+      .where(ilike(user.email, cleanEmail))
+      .limit(1)
+
+    if (!registeredUser) {
+      return {
+        success: false,
+        error: "No registered StarCast user found with that email. They must sign up first.",
+      }
+    }
+
+    const existing = await db
+      .select()
+      .from(bandEventScanners)
+      .where(and(eq(bandEventScanners.eventId, eventId), eq(bandEventScanners.userId, registeredUser.id)))
+      .limit(1)
+
+    if (existing.length > 0) {
+      return { success: false, error: "This user is already a scanner for this event." }
+    }
+
+    const [inserted] = await db
+      .insert(bandEventScanners)
+      .values({
+        eventId,
+        userId: registeredUser.id,
+        email: registeredUser.email.toLowerCase(),
+        addedByUserId: viewer.userId,
+      })
+      .returning()
+
+    revalidatePath(`/portal/events/${eventId}`)
+    return { success: true, scanner: { ...inserted, name: registeredUser.name } }
+  } catch (err: any) {
+    console.error("addEventScannerByEmail error:", err)
+    return { success: false, error: err?.message || "Failed to add scanner" }
+  }
+}
+
+/** Remove a door scanner from an event (creator or admin only) */
+export async function removeEventScanner(eventId: string, scannerId: string) {
+  try {
+    const viewer = await requireViewer()
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
+    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isAdmin)) {
+      return { success: false, error: "Unauthorized" }
+    }
+
+    await db
+      .delete(bandEventScanners)
+      .where(and(eq(bandEventScanners.id, scannerId), eq(bandEventScanners.eventId, eventId)))
+
+    revalidatePath(`/portal/events/${eventId}`)
+    return { success: true }
+  } catch (err: any) {
+    console.error("removeEventScanner error:", err)
+    return { success: false, error: err?.message || "Failed to remove scanner" }
+  }
+}
+
 /** Seller Event Page & Scanner data: returns event, band, and all issued ticket instances */
 export async function getEventScannerData(eventId: string) {
   try {
@@ -505,9 +597,17 @@ export async function getEventScannerData(eventId: string) {
     if (!event) return { success: false, error: "Event not found" }
 
     const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isStaff)) {
-      return { success: false, error: "Unauthorized to manage this event" }
+    if (!band) return { success: false, error: "Band not found" }
+
+    const isCreator = band.ownerUserId === viewer.userId
+    const isAssigned = await isAssignedEventScanner(eventId, viewer.userId)
+    if (!isCreator && !viewer.isStaff && !isAssigned) {
+      return { success: false, error: "Unauthorized to manage or scan for this event" }
     }
+
+    const canEdit = isCreator || viewer.isAdmin
+    const canManageScanners = isCreator || viewer.isAdmin
+    const isScannerOnly = isAssigned && !isCreator && !viewer.isStaff
 
     const instances = await db
       .select()
@@ -515,12 +615,67 @@ export async function getEventScannerData(eventId: string) {
       .where(eq(bandTicketInstances.eventId, eventId))
       .orderBy(asc(bandTicketInstances.ticketNumber))
 
+    let scanners: Array<{ id: string; userId: string; email: string; name: string | null; createdAt: Date }> = []
+    if (canManageScanners) {
+      const scannerRows = await db
+        .select({
+          id: bandEventScanners.id,
+          userId: bandEventScanners.userId,
+          email: bandEventScanners.email,
+          name: user.name,
+          createdAt: bandEventScanners.createdAt,
+        })
+        .from(bandEventScanners)
+        .leftJoin(user, eq(user.id, bandEventScanners.userId))
+        .where(eq(bandEventScanners.eventId, eventId))
+        .orderBy(asc(bandEventScanners.createdAt))
+      scanners = scannerRows
+    }
+
+    let cashOrders: Array<{
+      id: string
+      buyerName: string
+      quantity: number
+      unitPriceCents: number
+      totalCents: number
+      createdAt: Date
+    }> = []
+    cashOrders = await db
+      .select({
+        id: bandTicketOrders.id,
+        buyerName: bandTicketOrders.buyerName,
+        quantity: bandTicketOrders.quantity,
+        unitPriceCents: bandTicketOrders.unitPriceCents,
+        totalCents: bandTicketOrders.totalCents,
+        createdAt: bandTicketOrders.createdAt,
+      })
+      .from(bandTicketOrders)
+      .where(
+        and(
+          eq(bandTicketOrders.eventId, eventId),
+          eq(bandTicketOrders.stripeSessionId, "cash-door"),
+          eq(bandTicketOrders.status, "paid")
+        )
+      )
+      .orderBy(desc(bandTicketOrders.createdAt))
+
+    const cashTicketsCount = cashOrders.reduce((sum, o) => sum + (o.quantity || 0), 0)
+    const cashTotalCents = cashOrders.reduce((sum, o) => sum + (o.totalCents || 0), 0)
+
     return {
       success: true,
       event,
       band,
       instances,
-      canEdit: band.ownerUserId === viewer.userId || viewer.isAdmin,
+      canEdit,
+      canManageScanners,
+      isScannerOnly,
+      scanners,
+      cashSales: {
+        ticketsCount: cashTicketsCount,
+        totalCents: cashTotalCents,
+        orders: cashOrders,
+      },
     }
   } catch (err: any) {
     console.error("getEventScannerData error:", err)
@@ -569,7 +724,8 @@ export async function checkInTicket(tokenOrId: string, eventId?: string) {
       return { success: false, error: "Ticket is for a different event!" }
     }
 
-    if (ticket.band.ownerUserId !== viewer.userId && !viewer.isStaff) {
+    const isAssigned = await isAssignedEventScanner(ticket.event.id, viewer.userId)
+    if (ticket.band.ownerUserId !== viewer.userId && !viewer.isStaff && !isAssigned) {
       return { success: false, error: "Unauthorized to check in tickets for this event" }
     }
 
@@ -604,6 +760,7 @@ export async function checkInTicket(tokenOrId: string, eventId?: string) {
       .returning()
 
     revalidatePath("/portal")
+    revalidatePath(`/portal/events/${ticket.event.id}`)
     return {
       success: true,
       ticket: updated,
@@ -614,6 +771,124 @@ export async function checkInTicket(tokenOrId: string, eventId?: string) {
   } catch (err: any) {
     console.error("checkInTicket error:", err)
     return { success: false, error: err?.message || "Failed to check in ticket" }
+  }
+}
+
+/** Record a cash ticket sale at the door (creator, staff, or assigned door scanner for that event) */
+export async function recordDoorCashSale({
+  eventId,
+  quantity,
+  customTotalCents,
+  guestName,
+}: {
+  eventId: string
+  quantity: number
+  customTotalCents?: number
+  guestName?: string
+}) {
+  try {
+    const viewer = await requireViewer()
+    const qty = Math.max(1, Math.min(50, Math.floor(quantity || 1)))
+
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
+    if (!band) return { success: false, error: "Band not found" }
+
+    const isCreator = band.ownerUserId === viewer.userId
+    const isAssigned = await isAssignedEventScanner(eventId, viewer.userId)
+    if (!isCreator && !viewer.isStaff && !isAssigned) {
+      return { success: false, error: "Unauthorized to record cash sales for this event" }
+    }
+
+    if (event.remainingInventory < qty) {
+      return {
+        success: false,
+        error:
+          event.remainingInventory <= 0
+            ? "No remaining tickets left in inventory."
+            : `Only ${event.remainingInventory} ticket(s) remaining.`,
+      }
+    }
+
+    const [updatedEvent] = await db
+      .update(bandEvents)
+      .set({
+        remainingInventory: sql`${bandEvents.remainingInventory} - ${qty}`,
+        status: sql`CASE WHEN ${bandEvents.remainingInventory} - ${qty} <= 0 THEN 'sold_out' ELSE ${bandEvents.status} END`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(bandEvents.id, event.id),
+          sql`${bandEvents.remainingInventory} >= ${qty}`
+        )
+      )
+      .returning()
+
+    if (!updatedEvent) {
+      return { success: false, error: "Not enough tickets remaining." }
+    }
+
+    const unitPriceCents = event.priceCents || 0
+    const totalCents =
+      customTotalCents !== undefined && customTotalCents >= 0
+        ? Math.round(customTotalCents)
+        : unitPriceCents * qty
+
+    const holderLabel = guestName?.trim() || "Door Cash Guest"
+
+    const [order] = await db
+      .insert(bandTicketOrders)
+      .values({
+        eventId: event.id,
+        bandId: band.id,
+        buyerUserId: viewer.userId,
+        buyerEmail: "cash@door.starcast.online",
+        buyerName: holderLabel,
+        quantity: qty,
+        unitPriceCents: qty > 0 ? Math.round(totalCents / qty) : unitPriceCents,
+        totalCents,
+        platformFeeCents: 0,
+        stripeSessionId: "cash-door",
+        status: "paid",
+      })
+      .returning()
+
+    const currentSold = updatedEvent.totalInventory - updatedEvent.remainingInventory - qty
+    const instancesToInsert = []
+    for (let i = 0; i < qty; i++) {
+      instancesToInsert.push({
+        orderId: order.id,
+        eventId: event.id,
+        bandId: band.id,
+        ticketNumber: Math.max(1, currentSold + i + 1),
+        qrToken: crypto.randomUUID(),
+        holderName: holderLabel,
+        holderEmail: "cash@door.starcast.online",
+        status: "checked_in" as const,
+        checkedInAt: new Date(),
+        checkedInByUserId: viewer.userId,
+      })
+    }
+
+    await db.insert(bandTicketInstances).values(instancesToInsert)
+
+    revalidatePath(`/portal/events/${eventId}`)
+    revalidatePath("/portal")
+    revalidatePath(`/events/${eventId}`)
+    revalidatePath("/tickets")
+
+    return {
+      success: true,
+      order,
+      ticketsSold: qty,
+      totalCents,
+    }
+  } catch (err: any) {
+    console.error("recordDoorCashSale error:", err)
+    return { success: false, error: err?.message || "Failed to record door cash sale" }
   }
 }
 

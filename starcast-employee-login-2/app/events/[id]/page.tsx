@@ -4,6 +4,7 @@ import { db } from "@/lib/db"
 import { bandEvents, bands } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
 import { getViewerPermissions } from "@/lib/permissions"
+import { isAssignedEventScanner } from "@/app/actions/band-tickets"
 import { EventBuyClient } from "./event-buy-client"
 
 export const dynamic = "force-dynamic"
@@ -64,7 +65,8 @@ export default async function PublicEventPage({
 
   const viewer = await getViewerPermissions().catch(() => null)
   const isCreator = Boolean(viewer && row.band.ownerUserId === viewer.userId)
-  const canScan = Boolean(isCreator || viewer?.isStaff)
+  const isAssignedScanner = viewer ? await isAssignedEventScanner(row.event.id, viewer.userId) : false
+  const canScan = Boolean(isCreator || viewer?.isStaff || isAssignedScanner)
   const canEdit = Boolean(isCreator || viewer?.isAdmin)
 
   return (

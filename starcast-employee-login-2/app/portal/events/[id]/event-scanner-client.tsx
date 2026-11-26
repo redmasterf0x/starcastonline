@@ -3,7 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import jsQR from "jsqr"
-import { checkInTicket, getEventScannerData, updateBandEvent } from "@/app/actions/band-tickets"
+import {
+  checkInTicket,
+  getEventScannerData,
+  updateBandEvent,
+  addEventScannerByEmail,
+  removeEventScanner,
+  recordDoorCashSale,
+} from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,13 +48,40 @@ import {
   ImageIcon,
   Repeat,
   X,
+  UserPlus,
+  Trash2,
+  Copy,
+  Banknote,
 } from "lucide-react"
+
+interface CashSaleOrder {
+  id: string
+  buyerName: string
+  quantity: number
+  unitPriceCents: number
+  totalCents: number
+  createdAt: Date | string
+}
 
 interface EventScannerClientProps {
   event: any
   band: any
   initialInstances: any[]
   canEdit?: boolean
+  canManageScanners?: boolean
+  isScannerOnly?: boolean
+  initialScanners?: Array<{
+    id: string
+    userId: string
+    email: string
+    name: string | null
+    createdAt: Date | string
+  }>
+  initialCashSales?: {
+    ticketsCount: number
+    totalCents: number
+    orders: CashSaleOrder[]
+  }
 }
 
 function playScanSound(ok: boolean) {
@@ -79,10 +113,36 @@ export function EventScannerClient({
   band,
   initialInstances,
   canEdit = false,
+  canManageScanners = false,
+  isScannerOnly = false,
+  initialScanners = [],
+  initialCashSales = { ticketsCount: 0, totalCents: 0, orders: [] },
 }: EventScannerClientProps) {
   const [event, setEvent] = useState(initialEvent)
   const [instances, setInstances] = useState(initialInstances)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Door Cash Sales state
+  const [cashSales, setCashSales] = useState(initialCashSales)
+  const [cashQty, setCashQty] = useState(1)
+  const [cashGuestName, setCashGuestName] = useState("")
+  const [cashCustomAmount, setCashCustomAmount] = useState("")
+  const [recordingCash, setRecordingCash] = useState(false)
+  const [cashMsg, setCashMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null)
+
+  // Ticket scanned confirmation popup
+  const [scanPopup, setScanPopup] = useState<{
+    ticketNumber: number
+    holderName: string
+    eventTitle: string
+  } | null>(null)
+
+  // Door Scanners management state
+  const [scanners, setScanners] = useState(initialScanners)
+  const [scannerEmailInput, setScannerEmailInput] = useState("")
+  const [addingScanner, setAddingScanner] = useState(false)
+  const [scannerMsg, setScannerMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   // Edit Ticket/Event modal state
   const [editOpen, setEditOpen] = useState(false)
@@ -196,6 +256,8 @@ export function EventScannerClient({
       if (res.success && res.event) {
         setEvent(res.event)
         setInstances(res.instances || [])
+        if (res.scanners) setScanners(res.scanners)
+        if (res.cashSales) setCashSales(res.cashSales)
       }
     } finally {
       setRefreshing(false)
@@ -205,7 +267,7 @@ export function EventScannerClient({
   const handleCheckIn = useCallback(
     async (rawToken: string) => {
       const token = rawToken.trim()
-      if (!token || scanning) return
+      if (!token || scanning || scanPopup) return
 
       setScanning(true)
       try {
@@ -215,6 +277,11 @@ export function EventScannerClient({
           setScanResult({
             type: "valid",
             message: `CHECKED IN: Ticket #${res.ticketNumber} (${res.holderName})`,
+          })
+          setScanPopup({
+            ticketNumber: res.ticketNumber || 1,
+            holderName: res.holderName || "Guest",
+            eventTitle: res.eventTitle || event.title,
           })
           setManualInput("")
           await refreshData()
@@ -241,8 +308,79 @@ export function EventScannerClient({
         setScanning(false)
       }
     },
-    [event.id, refreshData, scanning]
+    [event.id, event.title, refreshData, scanning, scanPopup]
   )
+
+  async function handleAddScanner(e: React.FormEvent) {
+    e.preventDefault()
+    if (!scannerEmailInput.trim() || addingScanner) return
+    setAddingScanner(true)
+    setScannerMsg(null)
+    try {
+      const res = await addEventScannerByEmail(event.id, scannerEmailInput)
+      if (res.success && res.scanner) {
+        setScanners((prev) => [...prev, res.scanner!])
+        setScannerEmailInput("")
+        setScannerMsg({ type: "ok", text: `Added ${res.scanner.email} as a door scanner.` })
+      } else {
+        setScannerMsg({ type: "err", text: res.error || "Could not add scanner." })
+      }
+    } catch (err: any) {
+      setScannerMsg({ type: "err", text: err?.message || "Could not add scanner." })
+    } finally {
+      setAddingScanner(false)
+    }
+  }
+
+  async function handleRemoveScanner(scannerId: string) {
+    setScannerMsg(null)
+    const res = await removeEventScanner(event.id, scannerId)
+    if (res.success) {
+      setScanners((prev) => prev.filter((s) => s.id !== scannerId))
+    } else {
+      setScannerMsg({ type: "err", text: res.error || "Failed to remove scanner." })
+    }
+  }
+
+  async function handleRecordCashSale(e: React.FormEvent) {
+    e.preventDefault()
+    if (recordingCash) return
+    setRecordingCash(true)
+    setCashMsg(null)
+    try {
+      const customCents =
+        cashCustomAmount.trim() !== ""
+          ? Math.max(0, Math.round(parseFloat(cashCustomAmount) * 100))
+          : undefined
+
+      const res = await recordDoorCashSale({
+        eventId: event.id,
+        quantity: cashQty,
+        customTotalCents: customCents,
+        guestName: cashGuestName,
+      })
+
+      if (res.success) {
+        playScanSound(true)
+        setCashMsg({
+          type: "ok",
+          text: `Recorded ${res.ticketsSold} cash ticket(s) — $${((res.totalCents || 0) / 100).toFixed(2)}`,
+        })
+        setCashQty(1)
+        setCashGuestName("")
+        setCashCustomAmount("")
+        await refreshData()
+      } else {
+        playScanSound(false)
+        setCashMsg({ type: "err", text: res.error || "Failed to record cash sale." })
+      }
+    } catch (err: any) {
+      playScanSound(false)
+      setCashMsg({ type: "err", text: err?.message || "Failed to record cash sale." })
+    } finally {
+      setRecordingCash(false)
+    }
+  }
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) {
@@ -440,11 +578,13 @@ export function EventScannerClient({
               <StatTile icon={<Ticket className="w-4 h-4 text-[#ea6f2a]" />} label="Sold" value={`${soldCount}/${totalInventory}`} />
               <StatTile icon={<Users className="w-4 h-4 text-[#20efe0]" />} label="Checked In" value={`${checkedInCount}/${soldCount}`} />
               <StatTile icon={<QrCode className="w-4 h-4 text-[#ffd166]" />} label="Remaining" value={String(remaining)} />
-              <StatTile
-                icon={<DollarSign className="w-4 h-4 text-emerald-400" />}
-                label="Gross"
-                value={event.priceCents > 0 ? `$${(grossCents / 100).toFixed(0)}` : "Free"}
-              />
+              {!isScannerOnly && (
+                <StatTile
+                  icon={<DollarSign className="w-4 h-4 text-emerald-400" />}
+                  label="Gross"
+                  value={event.priceCents > 0 ? `$${(grossCents / 100).toFixed(0)}` : "Free"}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -555,6 +695,228 @@ export function EventScannerClient({
           )}
         </div>
 
+        {/* Door Cash Sales Tracker (Creator, Admin & Assigned Door Scanners) */}
+        <div className="rounded-3xl border border-emerald-500/30 bg-[#0c0c3f] p-5 sm:p-6 space-y-4 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-[#f5f7ff] flex items-center gap-2">
+                <Banknote className="w-5 h-5 text-emerald-400" />
+                Door Cash Sales
+              </h2>
+              <p className="text-xs text-[#9a9fc4]">
+                Record cash tickets sold at the door. Automatically deducts from remaining inventory and checks guests in.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border border-[#20205a] bg-[#05052d]/80 px-3.5 py-2 text-right">
+                <p className="text-[10px] uppercase tracking-wider text-[#9a9fc4]">Cash Tickets</p>
+                <p className="text-sm font-black text-white font-mono">{cashSales.ticketsCount}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/30 px-3.5 py-2 text-right">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-300">Cash Collected</p>
+                <p className="text-sm font-black text-emerald-400 font-mono">
+                  ${(cashSales.totalCents / 100).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleRecordCashSale} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+            <div className="sm:col-span-2">
+              <Label htmlFor="cash-qty" className="text-[11px] text-[#9a9fc4]">
+                Tickets
+              </Label>
+              <Input
+                id="cash-qty"
+                type="number"
+                min="1"
+                max={Math.max(1, remaining)}
+                value={String(cashQty)}
+                onChange={(e) => setCashQty(Math.max(1, parseInt(e.target.value || "1", 10)))}
+                className="mt-1 h-10 bg-[#05052d] border-[#20205a] text-[#f5f7ff] rounded-xl text-sm font-mono"
+              />
+            </div>
+
+            <div className="sm:col-span-3">
+              <Label htmlFor="cash-amt" className="text-[11px] text-[#9a9fc4]">
+                Cash Amount ($ USD)
+              </Label>
+              <Input
+                id="cash-amt"
+                type="number"
+                min="0"
+                step="0.50"
+                placeholder={(((event.priceCents || 0) * cashQty) / 100).toFixed(2)}
+                value={cashCustomAmount}
+                onChange={(e) => setCashCustomAmount(e.target.value)}
+                className="mt-1 h-10 bg-[#05052d] border-[#20205a] text-[#f5f7ff] rounded-xl text-sm font-mono"
+              />
+            </div>
+
+            <div className="sm:col-span-4">
+              <Label htmlFor="cash-guest" className="text-[11px] text-[#9a9fc4]">
+                Guest Name / Note (Optional)
+              </Label>
+              <Input
+                id="cash-guest"
+                value={cashGuestName}
+                onChange={(e) => setCashGuestName(e.target.value)}
+                placeholder="Door Cash Guest"
+                className="mt-1 h-10 bg-[#05052d] border-[#20205a] text-[#f5f7ff] rounded-xl text-sm"
+              />
+            </div>
+
+            <div className="sm:col-span-3">
+              <Button
+                type="submit"
+                disabled={recordingCash || remaining <= 0}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-[#05051f] font-extrabold rounded-xl h-10 text-xs"
+              >
+                {recordingCash ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                ) : (
+                  <Banknote className="w-4 h-4 mr-1.5" />
+                )}
+                {remaining <= 0 ? "Sold Out" : "Log Cash Sale"}
+              </Button>
+            </div>
+          </form>
+
+          {cashMsg && (
+            <div
+              className={`p-3 rounded-xl text-xs border ${
+                cashMsg.type === "ok"
+                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-200"
+                  : "bg-red-950/40 border-red-500/40 text-red-200"
+              }`}
+            >
+              {cashMsg.text}
+            </div>
+          )}
+
+          {cashSales.orders.length > 0 && (
+            <div className="divide-y divide-[#20205a]/70 rounded-2xl border border-[#20205a] bg-[#05052d]/60 overflow-hidden max-h-48 overflow-y-auto">
+              {cashSales.orders.map((ord) => (
+                <div key={ord.id} className="px-4 py-2 flex items-center justify-between gap-3 text-xs">
+                  <div className="min-w-0">
+                    <span className="font-semibold text-[#f5f7ff]">{ord.buyerName}</span>
+                    <span className="text-[#9a9fc4] ml-2">
+                      ({ord.quantity} {ord.quantity === 1 ? "ticket" : "tickets"})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono font-bold text-emerald-400">
+                      ${(ord.totalCents / 100).toFixed(2)}
+                    </span>
+                    <span className="font-mono text-[#9a9fc4]">
+                      {new Date(ord.createdAt).toLocaleTimeString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Door Scanners Management (Creator & Admin only) */}
+        {canManageScanners && (
+          <div className="rounded-3xl border border-[#20205a] bg-[#0c0c3f] p-5 sm:p-6 space-y-4 shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#f5f7ff] flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-[#ffd166]" />
+                  Door Scanners ({scanners.length})
+                </h2>
+                <p className="text-xs text-[#9a9fc4]">
+                  Add registered StarCast users by email so they can scan tickets at the door for this event only (cannot edit event or prices).
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (typeof window !== "undefined" && navigator.clipboard) {
+                    navigator.clipboard.writeText(window.location.href)
+                    setCopiedLink(true)
+                    setTimeout(() => setCopiedLink(false), 2000)
+                  }
+                }}
+                className="border-[#20205a] bg-[#05052d]/80 text-[#20efe0] hover:bg-[#20205a]/50 rounded-xl h-9 text-xs"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
+                    Scanner Link Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 mr-1.5" />
+                    Copy Scanner Link
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <form onSubmit={handleAddScanner} className="flex flex-col sm:flex-row gap-2.5">
+              <Input
+                type="email"
+                value={scannerEmailInput}
+                onChange={(e) => setScannerEmailInput(e.target.value)}
+                placeholder="Enter registered user's email (e.g. door@example.com)..."
+                className="h-10 bg-[#05052d] border-[#20205a] text-[#f5f7ff] rounded-xl text-sm flex-1"
+              />
+              <Button
+                type="submit"
+                disabled={addingScanner || !scannerEmailInput.trim()}
+                className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-bold rounded-xl h-10 px-5 text-xs"
+              >
+                {addingScanner ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <UserPlus className="w-4 h-4 mr-1.5" />}
+                Add Scanner
+              </Button>
+            </form>
+
+            {scannerMsg && (
+              <div
+                className={`p-3 rounded-xl text-xs border ${
+                  scannerMsg.type === "ok"
+                    ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-200"
+                    : "bg-red-950/40 border-red-500/40 text-red-200"
+                }`}
+              >
+                {scannerMsg.text}
+              </div>
+            )}
+
+            {scanners.length > 0 && (
+              <div className="divide-y divide-[#20205a]/70 rounded-2xl border border-[#20205a] bg-[#05052d]/60 overflow-hidden">
+                {scanners.map((sc) => (
+                  <div key={sc.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#f5f7ff] truncate">
+                        {sc.name || sc.email}
+                      </p>
+                      <p className="text-xs text-[#9a9fc4] truncate">{sc.email}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleRemoveScanner(sc.id)}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-lg h-8 px-2.5 text-xs"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Guestlist & Issued Tickets Ledger */}
         <div className="rounded-3xl border border-[#20205a] bg-[#0c0c3f] p-5 sm:p-6 space-y-4 shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -649,6 +1011,41 @@ export function EventScannerClient({
           )}
         </div>
       </div>
+
+      {/* Ticket Scanned Confirmation Popup */}
+      <Dialog open={!!scanPopup} onOpenChange={(open) => !open && setScanPopup(null)}>
+        <DialogContent className="border-emerald-500/60 bg-[#0c0c3f] text-[#f5f7ff] max-w-sm text-center p-6 sm:p-8 shadow-2xl">
+          <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 mb-2">
+            <CheckCircle2 className="w-9 h-9" />
+          </div>
+          <DialogHeader className="text-center space-y-1.5">
+            <DialogTitle className="text-2xl font-black text-white text-center">
+              Ticket Scanned!
+            </DialogTitle>
+            <DialogDescription className="text-[#dbe0fb] text-sm text-center">
+              {scanPopup ? (
+                <>
+                  <span className="block font-bold text-[#ffd166] text-base mt-1">
+                    Ticket #{scanPopup.ticketNumber} &bull; {scanPopup.holderName}
+                  </span>
+                  <span className="block text-xs text-[#9a9fc4] mt-1">
+                    Checked in for {scanPopup.eventTitle}
+                  </span>
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-3 sm:justify-center">
+            <Button
+              type="button"
+              onClick={() => setScanPopup(null)}
+              className="w-full sm:w-40 h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-[#05051f] font-extrabold text-sm"
+            >
+              Okay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Ticket / Event Modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

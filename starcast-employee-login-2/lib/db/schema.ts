@@ -554,6 +554,17 @@ export const bandTicketInstances = pgTable("band_ticket_instances", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const bandEventScanners = pgTable("band_event_scanners", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id")
+    .references(() => bandEvents.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id").notNull(),
+  email: text("email").notNull(),
+  addedByUserId: text("added_by_user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 // --- Community & Social Notifications ---------------------------------------
 
 export const notifications = pgTable("notifications", {
