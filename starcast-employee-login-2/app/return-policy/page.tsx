@@ -242,6 +242,10 @@ export default function ReturnPolicyPage() {
                       <span className="text-[#ea6f2a] font-bold">&bull;</span>
                       <span><strong>Return shipping is free</strong>, and we will provide a return label.</span>
                     </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#ea6f2a] font-bold">&bull;</span>
+                      <span><strong>Event Tickets:</strong> Paid online tickets are eligible for full refunds if an event is cancelled by the act or venue (covered by our 24-hour post-event Stripe escrow hold).</span>
+                    </li>
                   </ul>
                 </div>
 

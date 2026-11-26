@@ -1034,7 +1034,7 @@ export function BandTicketingPanel({
                 24-Hour Post-Event Escrow Protection
               </p>
               <p>
-                Ticket funds are held in escrow until 24 hours after the scheduled event date and then automatically disbursed to your connected Stripe account.
+                Online ticket funds are held in escrow until 24 hours after the scheduled event date. At release, 90% net online proceeds are transferred to your connected Stripe account and StarCast retains a 10% online platform fee (0% fee on door cash sales).
               </p>
             </div>
 

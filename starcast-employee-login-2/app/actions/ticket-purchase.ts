@@ -59,8 +59,8 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
 
     const unitPriceCents = event.priceCents || 0
     const totalCents = unitPriceCents * quantity
-    // Optional standard StarCast fee: 0 for now or configurable
-    const platformFeeCents = 0
+    // StarCast retains a 10% platform & escrow service fee on paid online ticket sales
+    const platformFeeCents = totalCents > 0 ? Math.round(totalCents * 0.1) : 0
 
     // FREE TICKET FLOW
     if (totalCents === 0) {

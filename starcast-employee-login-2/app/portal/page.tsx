@@ -246,9 +246,6 @@ export default function PortalPage() {
 
       if (myBands.length > 0) {
         setSelectedBandId(myBands[0].id)
-      } else if ((viewer.isStaff || viewer.isAdmin) && allBands.length > 0) {
-        setViewMode("all")
-        setSelectedBandId(allBands[0].id)
       }
     } catch (e: any) {
       console.error("Portal initialization error:", e)
@@ -1042,7 +1039,7 @@ export default function PortalPage() {
                 {portalTab === "ticketing" && (
                   <BandTicketingPanel
                     band={selectedBand as any}
-                    isOwner={bands.some((b) => b.id === selectedBand.id) || isAdmin}
+                    isOwner={bands.some((b) => b.id === selectedBand.id)}
                     onRefreshBand={refreshBands}
                   />
                 )}

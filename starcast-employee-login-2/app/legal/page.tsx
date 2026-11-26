@@ -43,7 +43,7 @@ const LEGAL_DOCUMENTS = [
     highlights: [
       "User account security & Google OAuth / SMS authentication",
       "Community code of conduct & The Deck 24h public wall",
-      "Live ticketing, Stripe escrow, and anti-scalping policies",
+      "Live ticketing, 10% online platform fee, 24h Stripe escrow, and Ticket Seller Central",
       "Venue equipment guidelines & studio rental policies",
     ],
   },

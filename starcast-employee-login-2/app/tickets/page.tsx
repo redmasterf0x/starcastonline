@@ -36,6 +36,7 @@ export default async function TicketsPage() {
     .where(and(eq(bandEvents.status, "active"), gte(bandEvents.eventDate, now)))
     .orderBy(asc(bandEvents.eventDate))
 
+  let isApprovedSeller = false
   let myTickets: Array<{
     instance: typeof bandTicketInstances.$inferSelect
     event: typeof bandEvents.$inferSelect
@@ -44,6 +45,13 @@ export default async function TicketsPage() {
   }> = []
 
   if (session?.user) {
+    const approvedRows = await db
+      .select({ id: bands.id })
+      .from(bands)
+      .where(and(eq(bands.ownerUserId, session.user.id), eq(bands.ticketingStatus, "approved")))
+      .limit(1)
+    isApprovedSeller = approvedRows.length > 0
+
     const matchConditions = [eq(bandTicketOrders.buyerUserId, session.user.id)]
     if (session.user.email) {
       matchConditions.push(ilike(bandTicketInstances.holderEmail, session.user.email))
@@ -90,13 +98,24 @@ export default async function TicketsPage() {
             </p>
           </div>
 
-          <Button
-            asChild
-            variant="outline"
-            className="border-[#20205a] bg-[#0c0c3f]/70 text-[#f5f7ff] hover:bg-[#20205a]/50 rounded-xl h-10 px-4 text-xs font-semibold self-start sm:self-auto"
-          >
-            <Link href="/dashboard">Sell Tickets on StarCast &rarr;</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {isApprovedSeller ? (
+              <Button
+                asChild
+                className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
+              >
+                <Link href="/tickets/seller-central">Ticket Seller Central &rarr;</Link>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                variant="outline"
+                className="border-[#20205a] bg-[#0c0c3f]/70 text-[#f5f7ff] hover:bg-[#20205a]/50 rounded-xl h-10 px-4 text-xs font-semibold"
+              >
+                <Link href="/dashboard">Sell Tickets on StarCast &rarr;</Link>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* ── MY TICKETS SECTION ── */}

@@ -59,7 +59,7 @@ export default function TermsPage() {
             StarCast Media <span className="text-[#ffd166]">Terms &amp; Conditions</span>
           </h1>
           <p className="text-sm text-[#9a9fc4]">
-            Effective Date: January 1, 2026 &middot; Last Revised: November 10, 2026 &middot; StarCast Live Media LLC
+            Effective Date: January 1, 2026 &middot; Last Revised: November 26, 2026 &middot; StarCast Live Media LLC
           </p>
         </header>
 
@@ -215,10 +215,13 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
-                <strong>Ticket Purchases &amp; Delivery:</strong> Event tickets are purchased via Stripe Checkout. Upon verified payment, buyers receive digital tickets with unique, cryptographically signed QR tokens accessible at <code>/tickets/[token]</code> and sent via confirmation email.
+                <strong>Ticket Purchases &amp; Delivery:</strong> Event tickets are purchased via Stripe Checkout (or reserved at no cost for free events). Upon verified payment or reservation, buyers receive digital tickets with unique, cryptographically signed QR tokens accessible at <code>/tickets/[token]</code>, saved under <strong>My Tickets</strong> (<code>/tickets</code>), and sent via confirmation email.
               </li>
               <li>
-                <strong>Escrow &amp; Stripe Connect Payouts:</strong> Ticket sales proceeds are deposited into an escrow account and disbursed to the band&apos;s verified Stripe Connect account 24 hours after the scheduled event date, ensuring attendee protection against cancellations or fraud.
+                <strong>10% Platform Fee &amp; Dual Escrow Payouts (24h Post-Event):</strong> For all paid online ticket sales processed through Stripe Checkout, StarCast retains a <strong>10% platform &amp; escrow service fee</strong>. Online ticket proceeds are held in escrow until 24 hours after the scheduled event date to protect attendees against cancellations or fraud. At payout release, <strong>90% net online proceeds</strong> are transferred to the approved seller&apos;s verified Stripe Connect account, and the <strong>10% platform fee</strong> is settled into StarCast&apos;s platform fee escrow hold for disbursement to StarCast Live Media LLC. Door cash sales logged at the venue carry a <strong>0% StarCast platform fee</strong>.
+              </li>
+              <li>
+                <strong>Ticket Seller Central, Price Locks &amp; Door Scanners:</strong> Approved sellers manage their own sales and export tax-ready CSV reports via <strong>Ticket Seller Central</strong> (<code>/tickets/seller-central</code>). Ticket prices may be edited only before the first ticket is purchased or claimed; once a ticket is sold, the price locks permanently for that event. Event creators may assign registered StarCast users as door scanners for a specific event (check-in and door cash logging only).
               </li>
               <li>
                 <strong>Event Cancellations &amp; Refunds:</strong> If an event is cancelled by the band or venue, ticket buyers are entitled to full refunds processed through Stripe. In the case of rescheduled events, tickets remain valid for the new date unless refund requests are submitted.

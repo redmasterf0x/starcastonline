@@ -1,0 +1,509 @@
+"use client"
+
+import { useState, useMemo } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import {
+  ArrowLeft,
+  Download,
+  Ticket,
+  DollarSign,
+  Banknote,
+  CreditCard,
+  QrCode,
+  ExternalLink,
+  Calendar,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Plus,
+} from "lucide-react"
+
+interface SellerCentralProps {
+  isApprovedSeller: boolean
+  myBands: Array<{
+    id: string
+    name: string
+    slug: string | null
+    ticketingStatus: string
+  }>
+  approvedBands: Array<{
+    id: string
+    name: string
+    slug: string | null
+    ticketingStatus: string
+    stripeAccountStatus: string | null
+  }>
+  events: Array<{
+    id: string
+    bandId: string
+    bandName: string
+    title: string
+    venueName: string
+    eventDate: string
+    priceCents: number
+    totalInventory: number
+    remainingInventory: number
+    status: string
+    escrowStatus: string
+  }>
+  orders: Array<{
+    id: string
+    eventId: string
+    eventTitle: string
+    venueName: string
+    eventDate: string | null
+    bandId: string
+    bandName: string
+    buyerName: string
+    buyerEmail: string
+    quantity: number
+    unitPriceCents: number
+    totalCents: number
+    platformFeeCents: number
+    netCents: number
+    paymentMethod: "stripe" | "cash"
+    stripeRef: string
+    createdAt: string
+  }>
+}
+
+function csvEscape(val: string | number | null | undefined): string {
+  const str = String(val ?? "")
+  if (/[",\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+export function SellerCentralClient({
+  isApprovedSeller,
+  myBands,
+  approvedBands,
+  events,
+  orders,
+}: SellerCentralProps) {
+  const [selectedBandId, setSelectedBandId] = useState<string>("all")
+  const [selectedYear, setSelectedYear] = useState<string>("all")
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "stripe" | "cash">("all")
+  const [search, setSearch] = useState("")
+
+  const availableYears = useMemo(() => {
+    const years = new Set<string>()
+    orders.forEach((o) => {
+      years.add(String(new Date(o.createdAt).getFullYear()))
+    })
+    return Array.from(years).sort((a, b) => Number(b) - Number(a))
+  }, [orders])
+
+  const filteredOrders = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    return orders.filter((o) => {
+      if (selectedBandId !== "all" && o.bandId !== selectedBandId) return false
+      if (selectedYear !== "all" && String(new Date(o.createdAt).getFullYear()) !== selectedYear) {
+        return false
+      }
+      if (paymentFilter !== "all" && o.paymentMethod !== paymentFilter) return false
+      if (
+        q &&
+        !o.eventTitle.toLowerCase().includes(q) &&
+        !o.buyerName.toLowerCase().includes(q) &&
+        !o.buyerEmail.toLowerCase().includes(q) &&
+        !o.bandName.toLowerCase().includes(q)
+      ) {
+        return false
+      }
+      return true
+    })
+  }, [orders, selectedBandId, selectedYear, paymentFilter, search])
+
+  const filteredEvents = useMemo(() => {
+    if (selectedBandId === "all") return events
+    return events.filter((e) => e.bandId === selectedBandId)
+  }, [events, selectedBandId])
+
+  const totals = useMemo(() => {
+    let tickets = 0
+    let grossCents = 0
+    let stripeCents = 0
+    let cashCents = 0
+    let feeCents = 0
+    let netCents = 0
+    for (const o of filteredOrders) {
+      tickets += o.quantity
+      grossCents += o.totalCents
+      feeCents += o.platformFeeCents
+      netCents += o.netCents
+      if (o.paymentMethod === "cash") cashCents += o.totalCents
+      else stripeCents += o.totalCents
+    }
+    return { tickets, grossCents, stripeCents, cashCents, feeCents, netCents }
+  }, [filteredOrders])
+
+  function handleExportTaxCsv() {
+    const headers = [
+      "Order Date (ISO)",
+      "Order ID",
+      "Act / Band",
+      "Event Title",
+      "Venue",
+      "Event Date",
+      "Payment Method",
+      "Quantity",
+      "Unit Price ($)",
+      "Gross Sales ($)",
+      "Platform Fee ($)",
+      "Net Payout ($)",
+      "Buyer Name",
+      "Buyer Email",
+      "Stripe / Door Reference",
+    ]
+
+    const rows = filteredOrders.map((o) => [
+      csvEscape(o.createdAt),
+      csvEscape(o.id),
+      csvEscape(o.bandName),
+      csvEscape(o.eventTitle),
+      csvEscape(o.venueName),
+      csvEscape(o.eventDate ? new Date(o.eventDate).toISOString().slice(0, 10) : ""),
+      csvEscape(o.paymentMethod === "cash" ? "Door Cash" : "Stripe Online"),
+      csvEscape(o.quantity),
+      csvEscape((o.unitPriceCents / 100).toFixed(2)),
+      csvEscape((o.totalCents / 100).toFixed(2)),
+      csvEscape((o.platformFeeCents / 100).toFixed(2)),
+      csvEscape((o.netCents / 100).toFixed(2)),
+      csvEscape(o.buyerName),
+      csvEscape(o.buyerEmail),
+      csvEscape(o.stripeRef),
+    ])
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute(
+      "download",
+      `starcast-ticket-sales-tax-${selectedYear === "all" ? "all-years" : selectedYear}.csv`
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  if (!isApprovedSeller) {
+    const hasPending = myBands.some((b) => b.ticketingStatus === "applied")
+    return (
+      <div className="public-shell min-h-[calc(100vh-5rem)] px-4 py-12 flex items-center justify-center">
+        <div className="max-w-lg w-full rounded-3xl border border-[#20205a] bg-[#0c0c3f]/90 p-8 text-center space-y-5 shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-[#ffd166]/15 border border-[#ffd166]/40 flex items-center justify-center mx-auto text-[#ffd166]">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-white">Ticket Seller Central</h1>
+            <p className="text-sm text-[#9a9fc4]">
+              {hasPending
+                ? "Your ticket seller application is currently pending admin approval. Once approved, your sales dashboard and tax exports will unlock here."
+                : "Ticket Seller Central is available to approved StarCast ticket sellers. Apply from your Dashboard or Artist Portal to start selling tickets."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Button
+              asChild
+              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold rounded-xl h-10 px-5 text-sm"
+            >
+              <Link href={myBands.length > 0 ? "/portal?tab=ticketing" : "/dashboard"}>
+                {hasPending ? "Check Application Status" : "Apply to Sell Tickets"}
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="border-[#20205a] bg-[#05052d] text-[#dbe0fb] rounded-xl h-10 px-4 text-sm"
+            >
+              <Link href="/tickets">Back to Tickets</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="public-shell min-h-[calc(100vh-5rem)] px-4 py-8 sm:py-12">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Top Bar */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#20205a] pb-6">
+          <div className="space-y-1.5">
+            <Link
+              href="/tickets"
+              className="inline-flex items-center gap-1.5 text-xs text-[#9a9fc4] hover:text-white mb-1"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Tickets
+            </Link>
+            <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+              <Ticket className="w-7 h-7 text-[#ffd166]" />
+              Ticket Seller Central
+            </h1>
+            <p className="text-sm text-[#9a9fc4]">
+              Your own approved acts, ticket sales breakdown, door scanners, and tax-ready CSV exports.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              asChild
+              variant="outline"
+              className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] hover:bg-[#20205a]/50 rounded-xl h-10 px-4 text-xs font-semibold"
+            >
+              <Link href="/portal?tab=ticketing">
+                <Plus className="w-4 h-4 mr-1.5 text-[#ea6f2a]" />
+                Post / Manage Events
+              </Link>
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleExportTaxCsv}
+              disabled={filteredOrders.length === 0}
+              className="bg-emerald-500 hover:bg-emerald-600 text-[#05051f] font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
+            >
+              <Download className="w-4 h-4 mr-1.5" />
+              Export Tax CSV ({filteredOrders.length})
+            </Button>
+          </div>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+          <KpiCard icon={<Ticket className="w-4 h-4 text-[#ea6f2a]" />} label="Tickets Sold" value={String(totals.tickets)} />
+          <KpiCard icon={<DollarSign className="w-4 h-4 text-[#ffd166]" />} label="Gross Sales" value={`$${(totals.grossCents / 100).toFixed(2)}`} />
+          <KpiCard icon={<CreditCard className="w-4 h-4 text-[#20efe0]" />} label="Stripe Online" value={`$${(totals.stripeCents / 100).toFixed(2)}`} />
+          <KpiCard icon={<Banknote className="w-4 h-4 text-emerald-400" />} label="Door Cash" value={`$${(totals.cashCents / 100).toFixed(2)}`} />
+          <KpiCard icon={<ShieldCheck className="w-4 h-4 text-emerald-300" />} label="Net Revenue" value={`$${(totals.netCents / 100).toFixed(2)}`} />
+        </div>
+
+        {/* Your Events */}
+        <section className="space-y-3">
+          <h2 className="text-lg font-extrabold text-[#f5f7ff]">Your Events ({filteredEvents.length})</h2>
+          {filteredEvents.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#20205a] bg-[#0c0c3f]/40 p-8 text-center text-sm text-[#9a9fc4]">
+              You haven&apos;t posted any events yet. Click <strong>Post / Manage Events</strong> above to create your first event.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredEvents.map((ev) => {
+                const sold = Math.max(0, ev.totalInventory - ev.remainingInventory)
+                return (
+                  <div
+                    key={ev.id}
+                    className="rounded-2xl border border-[#20205a] bg-[#0c0c3f]/80 p-5 flex flex-col justify-between gap-4"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-[#ffd166] uppercase tracking-wider">
+                          {ev.bandName}
+                        </span>
+                        <Badge variant="outline" className="border-[#20205a] text-[#cbd0f2] text-[10px] font-mono">
+                          {ev.priceCents > 0 ? `$${(ev.priceCents / 100).toFixed(2)}` : "FREE"}
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-bold text-white">{ev.title}</h3>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-[#9a9fc4]">
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-[#ffd166]" />
+                          {new Date(ev.eventDate).toLocaleDateString()}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-[#20efe0]" />
+                          {ev.venueName}
+                        </span>
+                        <span className="font-mono text-[#20efe0]">
+                          {sold}/{ev.totalInventory} sold
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#20205a]/60">
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-[#20efe0] hover:bg-[#19cbbd] text-[#05051f] font-extrabold rounded-xl h-8 px-3 text-xs flex-1"
+                      >
+                        <Link href={`/portal/events/${ev.id}`}>
+                          <QrCode className="w-3.5 h-3.5 mr-1.5" />
+                          Scan &amp; Cash Sales
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="border-[#20205a] bg-[#05052d] text-[#dbe0fb] rounded-xl h-8 px-3 text-xs"
+                      >
+                        <Link href={`/events/${ev.id}`}>
+                          <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                          Ticket Page
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Sales Ledger & Tax Export Filters */}
+        <section className="rounded-3xl border border-[#20205a] bg-[#0c0c3f]/80 p-5 sm:p-6 space-y-4 shadow-xl">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <h2 className="text-lg font-extrabold text-[#f5f7ff]">
+              Ticket Sales Ledger ({filteredOrders.length})
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-[#9a9fc4] absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search event, buyer..."
+                  className="pl-8 h-9 w-48 bg-[#05052d] border-[#20205a] text-[#f5f7ff] rounded-xl text-xs"
+                />
+              </div>
+
+              {approvedBands.length > 1 && (
+                <select
+                  value={selectedBandId}
+                  onChange={(e) => setSelectedBandId(e.target.value)}
+                  className="h-9 rounded-xl border border-[#20205a] bg-[#05052d] px-3 text-xs text-[#f5f7ff]"
+                >
+                  <option value="all">All My Acts</option>
+                  {approvedBands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="h-9 rounded-xl border border-[#20205a] bg-[#05052d] px-3 text-xs text-[#f5f7ff]"
+              >
+                <option value="all">All Years (Tax)</option>
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+
+              <div className="inline-flex rounded-xl bg-[#05052d] border border-[#20205a] p-0.5 text-xs">
+                {(
+                  [
+                    { id: "all", label: "All" },
+                    { id: "stripe", label: "Stripe" },
+                    { id: "cash", label: "Cash" },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setPaymentFilter(t.id)}
+                    className={`px-3 py-1 rounded-lg font-semibold transition-colors ${
+                      paymentFilter === t.id ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-white"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {filteredOrders.length === 0 ? (
+            <div className="py-10 text-center text-sm text-[#9a9fc4] border border-dashed border-[#20205a] rounded-2xl">
+              No paid or cash ticket orders match your current filters.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-[#20205a] bg-[#05052d]/60">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-[#20205a] text-[#9a9fc4] uppercase tracking-wider bg-[#080936]">
+                  <tr>
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Event / Act</th>
+                    <th className="py-3 px-4">Buyer</th>
+                    <th className="py-3 px-4">Method</th>
+                    <th className="py-3 px-4 text-right">Qty</th>
+                    <th className="py-3 px-4 text-right">Gross</th>
+                    <th className="py-3 px-4 text-right">Net</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#20205a]/60">
+                  {filteredOrders.map((o) => (
+                    <tr key={o.id} className="hover:bg-[#0c0c3f]/50">
+                      <td className="py-3 px-4 font-mono text-[#cbd0f2] whitespace-nowrap">
+                        {new Date(o.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-bold text-white">{o.eventTitle}</p>
+                        <p className="text-[11px] text-[#9a9fc4]">{o.bandName}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-semibold text-[#f5f7ff]">{o.buyerName}</p>
+                        <p className="text-[11px] text-[#9a9fc4]">{o.buyerEmail}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge
+                          variant="outline"
+                          className={
+                            o.paymentMethod === "cash"
+                              ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10 text-[10px]"
+                              : "border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10 text-[10px]"
+                          }
+                        >
+                          {o.paymentMethod === "cash" ? "Door Cash" : "Stripe Online"}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-white">{o.quantity}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-[#ffd166]">
+                        ${(o.totalCents / 100).toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400">
+                        ${(o.netCents / 100).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  )
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-2xl border border-[#20205a] bg-[#0c0c3f]/80 p-4 space-y-1 shadow-md">
+      <div className="flex items-center gap-1.5 text-xs text-[#9a9fc4]">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="text-xl sm:text-2xl font-black text-white font-mono">{value}</div>
+    </div>
+  )
+}

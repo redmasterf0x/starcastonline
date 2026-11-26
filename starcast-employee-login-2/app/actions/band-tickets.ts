@@ -3,7 +3,7 @@
 import { stripe } from "@/lib/stripe"
 import { db } from "@/lib/db"
 import { bands, bandEvents, bandTicketOrders, bandTicketInstances, bandEventScanners, user } from "@/lib/db/schema"
-import { eq, and, desc, gte, sql, asc, ilike } from "drizzle-orm"
+import { eq, and, desc, gte, sql, asc, ilike, inArray } from "drizzle-orm"
 import { requireViewer, requireStaff } from "@/lib/permissions"
 import { revalidatePath } from "next/cache"
 import crypto from "crypto"
@@ -892,6 +892,119 @@ export async function recordDoorCashSale({
   }
 }
 
+/** Ticket Seller Central: returns sales, events, and tax export data strictly for the signed-in user's own approved acts */
+export async function getTicketSellerCentralData() {
+  try {
+    const viewer = await requireViewer()
+
+    const myBands = await db
+      .select({
+        id: bands.id,
+        name: bands.name,
+        slug: bands.slug,
+        ticketingStatus: bands.ticketingStatus,
+        stripeAccountId: bands.stripeAccountId,
+        stripeAccountStatus: bands.stripeAccountStatus,
+      })
+      .from(bands)
+      .where(eq(bands.ownerUserId, viewer.userId))
+      .orderBy(asc(bands.name))
+
+    const approvedBands = myBands.filter((b) => b.ticketingStatus === "approved")
+
+    if (approvedBands.length === 0) {
+      return {
+        success: true,
+        isApprovedSeller: false,
+        myBands,
+        approvedBands: [],
+        events: [],
+        orders: [],
+      }
+    }
+
+    const approvedBandIds = approvedBands.map((b) => b.id)
+
+    const myEvents = await db
+      .select()
+      .from(bandEvents)
+      .where(inArray(bandEvents.bandId, approvedBandIds))
+      .orderBy(desc(bandEvents.eventDate))
+
+    const myOrders = await db
+      .select()
+      .from(bandTicketOrders)
+      .where(
+        and(
+          inArray(bandTicketOrders.bandId, approvedBandIds),
+          eq(bandTicketOrders.status, "paid")
+        )
+      )
+      .orderBy(desc(bandTicketOrders.createdAt))
+
+    const bandNameMap = new Map(approvedBands.map((b) => [b.id, b.name]))
+    const eventMap = new Map(myEvents.map((e) => [e.id, e]))
+
+    const enrichedOrders = myOrders.map((o) => {
+      const ev = eventMap.get(o.eventId)
+      const isCash = o.stripeSessionId === "cash-door"
+      return {
+        id: o.id,
+        eventId: o.eventId,
+        eventTitle: ev?.title || "Event",
+        venueName: ev?.venueName || "",
+        eventDate: ev?.eventDate ? ev.eventDate.toISOString() : null,
+        bandId: o.bandId,
+        bandName: bandNameMap.get(o.bandId) || "Act",
+        buyerName: o.buyerName,
+        buyerEmail: o.buyerEmail,
+        quantity: o.quantity,
+        unitPriceCents: o.unitPriceCents,
+        totalCents: o.totalCents,
+        platformFeeCents: o.platformFeeCents,
+        netCents: Math.max(0, o.totalCents - o.platformFeeCents),
+        paymentMethod: isCash ? ("cash" as const) : ("stripe" as const),
+        stripeRef: isCash ? "DOOR-CASH" : o.stripePaymentIntentId || o.stripeSessionId || "",
+        createdAt: o.createdAt.toISOString(),
+      }
+    })
+
+    const enrichedEvents = myEvents.map((ev) => ({
+      id: ev.id,
+      bandId: ev.bandId,
+      bandName: bandNameMap.get(ev.bandId) || "Act",
+      title: ev.title,
+      venueName: ev.venueName,
+      eventDate: ev.eventDate.toISOString(),
+      priceCents: ev.priceCents,
+      totalInventory: ev.totalInventory,
+      remainingInventory: ev.remainingInventory,
+      status: ev.status,
+      escrowStatus: ev.escrowStatus,
+    }))
+
+    return {
+      success: true,
+      isApprovedSeller: true,
+      myBands,
+      approvedBands,
+      events: enrichedEvents,
+      orders: enrichedOrders,
+    }
+  } catch (err: any) {
+    console.error("getTicketSellerCentralData error:", err)
+    return {
+      success: false,
+      error: err?.message || "Failed to load Ticket Seller Central",
+      isApprovedSeller: false,
+      myBands: [],
+      approvedBands: [],
+      events: [],
+      orders: [],
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 4. Escrow Payouts & 24h Post-Event Release
 // ---------------------------------------------------------------------------
@@ -937,32 +1050,50 @@ export async function releaseEscrowPayout(eventId: string) {
       return { success: false, error: `Band "${band.name}" has not connected a Stripe payout account yet.` }
     }
 
-    // Calculate total net ticket revenue
+    // Calculate net online Stripe ticket revenue (90% seller payout, 10% StarCast platform escrow hold)
     const orders = await db
       .select()
       .from(bandTicketOrders)
       .where(and(eq(bandTicketOrders.eventId, eventId), eq(bandTicketOrders.status, "paid")))
 
-    const totalCents = orders.reduce((acc, o) => acc + (o.totalCents - o.platformFeeCents), 0)
+    // Exclude door cash sales (those were collected in person at the door, 0% platform fee)
+    const onlineOrders = orders.filter((o) => o.stripeSessionId !== "cash-door")
+    const onlineGrossCents = onlineOrders.reduce((acc, o) => acc + o.totalCents, 0)
+    const platformFeeCents = onlineOrders.reduce(
+      (acc, o) => acc + (o.platformFeeCents > 0 ? o.platformFeeCents : Math.round(o.totalCents * 0.1)),
+      0
+    )
+    const sellerNetCents = Math.max(0, onlineGrossCents - platformFeeCents)
 
-    if (totalCents <= 0) {
+    if (sellerNetCents <= 0) {
       await db
         .update(bandEvents)
-        .set({ escrowStatus: "released", updatedAt: new Date() })
+        .set({
+          escrowStatus: "released",
+          platformFeeCents,
+          platformEscrowStatus: platformFeeCents > 0 ? "held" : "released",
+          updatedAt: new Date(),
+        })
         .where(eq(bandEvents.id, eventId))
-      return { success: true, message: "No funds to transfer (free or zero sales). Escrow marked released." }
+      return {
+        success: true,
+        message: "No online funds to transfer (free or cash-only sales). Escrow marked released.",
+      }
     }
 
-    // Execute transfer from StarCast platform to the band's connected Stripe account
+    // Transfer 90% net online proceeds to the seller's connected Stripe account;
+    // the remaining 10% stays in StarCast's platform fee escrow hold for payout to the StarCast owner.
     const transfer = await stripe.transfers.create({
-      amount: totalCents,
+      amount: sellerNetCents,
       currency: "usd",
       destination: band.stripeAccountId,
-      description: `Ticket proceeds: ${event.title} (${orders.length} orders)`,
+      description: `Ticket proceeds (90% net of 10% platform fee): ${event.title} (${onlineOrders.length} online orders)`,
       metadata: {
         event_id: event.id,
         band_id: band.id,
         event_title: event.title,
+        online_gross_cents: String(onlineGrossCents),
+        platform_fee_cents: String(platformFeeCents),
       },
     })
 
@@ -971,22 +1102,88 @@ export async function releaseEscrowPayout(eventId: string) {
       .set({
         escrowStatus: "released",
         stripeTransferId: transfer.id,
+        platformFeeCents,
+        platformEscrowStatus: platformFeeCents > 0 ? "held" : "released",
         updatedAt: new Date(),
       })
       .where(eq(bandEvents.id, eventId))
 
     revalidatePath("/admin")
     revalidatePath("/portal")
+    revalidatePath("/tickets/seller-central")
 
     return {
       success: true,
       transferId: transfer.id,
-      amountTransferredCents: totalCents,
-      message: `Successfully transferred $${(totalCents / 100).toFixed(2)} to ${band.name}!`,
+      amountTransferredCents: sellerNetCents,
+      platformFeeCents,
+      message: `Transferred $${(sellerNetCents / 100).toFixed(2)} (90% net) to ${band.name}. $${(platformFeeCents / 100).toFixed(2)} (10% fee) moved to StarCast platform escrow hold.`,
     }
   } catch (err: any) {
     console.error("releaseEscrowPayout error:", err)
     return { success: false, error: err?.message || "Failed to release escrow payout" }
+  }
+}
+
+/** Admin: release the held 10% StarCast platform fee escrow to the StarCast owner's Stripe account */
+export async function releasePlatformFeeEscrow(eventId: string) {
+  try {
+    await requireStaff()
+
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    if (event.platformEscrowStatus === "released") {
+      return { success: false, error: "Platform fee escrow has already been released for this event." }
+    }
+
+    const feeCents = event.platformFeeCents || 0
+    if (feeCents <= 0) {
+      await db
+        .update(bandEvents)
+        .set({ platformEscrowStatus: "released", updatedAt: new Date() })
+        .where(eq(bandEvents.id, eventId))
+      return { success: true, message: "No platform fee balance to disburse." }
+    }
+
+    const ownerStripeAccountId = process.env.STARCAST_OWNER_STRIPE_ACCOUNT_ID?.trim()
+    let transferId: string | null = null
+
+    if (ownerStripeAccountId) {
+      const transfer = await stripe.transfers.create({
+        amount: feeCents,
+        currency: "usd",
+        destination: ownerStripeAccountId,
+        description: `StarCast 10% Ticket Platform Fee: ${event.title}`,
+        metadata: {
+          event_id: event.id,
+          kind: "platform_fee_10pct",
+        },
+      })
+      transferId = transfer.id
+    }
+
+    await db
+      .update(bandEvents)
+      .set({
+        platformEscrowStatus: "released",
+        platformTransferId: transferId,
+        updatedAt: new Date(),
+      })
+      .where(eq(bandEvents.id, eventId))
+
+    revalidatePath("/admin")
+    return {
+      success: true,
+      transferId,
+      amountReleasedCents: feeCents,
+      message: ownerStripeAccountId
+        ? `Disbursed $${(feeCents / 100).toFixed(2)} platform fee to StarCast owner Stripe account.`
+        : `Settled $${(feeCents / 100).toFixed(2)} platform fee in StarCast Stripe balance.`,
+    }
+  } catch (err: any) {
+    console.error("releasePlatformFeeEscrow error:", err)
+    return { success: false, error: err?.message || "Failed to release platform fee escrow" }
   }
 }
 

@@ -504,6 +504,9 @@ export const bandEvents = pgTable("band_events", {
   stripeProductId: text("stripe_product_id"),
   stripePriceId: text("stripe_price_id"),
   stripeTransferId: text("stripe_transfer_id"),
+  platformFeeCents: integer("platform_fee_cents").notNull().default(0),
+  platformEscrowStatus: text("platform_escrow_status").notNull().default("held"), // held | released
+  platformTransferId: text("platform_transfer_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
