@@ -27,6 +27,7 @@ export default async function SellerEventPage({
       event={res.event}
       band={res.band}
       initialInstances={res.instances || []}
+      canEdit={Boolean(res.canEdit)}
     />
   )
 }

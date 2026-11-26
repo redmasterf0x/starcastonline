@@ -218,8 +218,8 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
     if (!event) return { success: false, error: "Event not found" }
 
     const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || band.ownerUserId !== viewer.userId) {
-      return { success: false, error: "Only the creator of this ticket can edit it." }
+    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isAdmin)) {
+      return { success: false, error: "Only the creator of this ticket or an admin can edit it." }
     }
 
     // Check if any ticket has already been purchased/claimed for this event
@@ -505,6 +505,7 @@ export async function getEventScannerData(eventId: string) {
       event,
       band,
       instances,
+      canEdit: band.ownerUserId === viewer.userId || viewer.isAdmin,
     }
   } catch (err: any) {
     console.error("getEventScannerData error:", err)

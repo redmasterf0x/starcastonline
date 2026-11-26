@@ -2,10 +2,20 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
-import { checkInTicket, getEventScannerData } from "@/app/actions/band-tickets"
+import { checkInTicket, getEventScannerData, updateBandEvent } from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   ArrowLeft,
   Camera,
@@ -23,12 +33,16 @@ import {
   RefreshCw,
   ExternalLink,
   Loader2,
+  Pencil,
+  Lock,
+  Check,
 } from "lucide-react"
 
 interface EventScannerClientProps {
   event: any
   band: any
   initialInstances: any[]
+  canEdit?: boolean
 }
 
 function playScanSound(ok: boolean) {
@@ -59,10 +73,70 @@ export function EventScannerClient({
   event: initialEvent,
   band,
   initialInstances,
+  canEdit = false,
 }: EventScannerClientProps) {
   const [event, setEvent] = useState(initialEvent)
   const [instances, setInstances] = useState(initialInstances)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Edit Ticket/Event modal state
+  const [editOpen, setEditOpen] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({
+    title: initialEvent.title || "",
+    description: initialEvent.description || "",
+    venueName: initialEvent.venueName || "",
+    venueAddress: initialEvent.venueAddress || "",
+    eventDate: "",
+    doorsOpenTime: initialEvent.doorsOpenTime || "7:00 PM",
+    startTime: initialEvent.startTime || "8:00 PM",
+    priceCents: initialEvent.priceCents ?? 0,
+    totalInventory: initialEvent.totalInventory ?? 20,
+    ageRestriction: initialEvent.ageRestriction || "All Ages",
+  })
+
+  function openEditModal() {
+    const dt = event.eventDate ? new Date(event.eventDate) : null
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const localDateTime = dt
+      ? `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+      : ""
+    setEditForm({
+      title: event.title || "",
+      description: event.description || "",
+      venueName: event.venueName || "",
+      venueAddress: event.venueAddress || "",
+      eventDate: localDateTime,
+      doorsOpenTime: event.doorsOpenTime || "7:00 PM",
+      startTime: event.startTime || "8:00 PM",
+      priceCents: event.priceCents ?? 0,
+      totalInventory: event.totalInventory ?? 20,
+      ageRestriction: event.ageRestriction || "All Ages",
+    })
+    setEditError(null)
+    setEditOpen(true)
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingEdit(true)
+    setEditError(null)
+    try {
+      const res = await updateBandEvent(event.id, editForm)
+      if (res.success && res.event) {
+        setEvent(res.event)
+        setEditOpen(false)
+        await refreshData()
+      } else {
+        setEditError(res.error || "Failed to update ticket/event")
+      }
+    } catch (err: any) {
+      setEditError(err?.message || "Failed to update ticket/event")
+    } finally {
+      setSavingEdit(false)
+    }
+  }
 
   const [manualInput, setManualInput] = useState("")
   const [scanning, setScanning] = useState(false)
@@ -253,7 +327,17 @@ export function EventScannerClient({
             Back to Artist Portal
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {canEdit && (
+              <Button
+                onClick={openEditModal}
+                size="sm"
+                className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-bold rounded-xl h-9 px-3.5 text-xs"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                Edit Ticket / Event
+              </Button>
+            )}
             {band.slug && (
               <Button
                 asChild
@@ -526,6 +610,205 @@ export function EventScannerClient({
           )}
         </div>
       </div>
+
+      {/* Edit Ticket / Event Modal */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[92vh] overflow-y-auto border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-[#ffd166]" />
+              Edit Ticket &amp; Event
+            </DialogTitle>
+            <DialogDescription className="text-[#9a9fc4]">
+              Update your event details. Ticket price locks permanently once the first ticket is purchased.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveEdit} className="space-y-4 py-2">
+            {editError && (
+              <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200 text-xs">
+                {editError}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="ev-edit-title" className="text-xs text-[#9a9fc4]">
+                Event Title *
+              </Label>
+              <Input
+                id="ev-edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                required
+                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="ev-edit-venue" className="text-xs text-[#9a9fc4]">
+                  Venue Name *
+                </Label>
+                <Input
+                  id="ev-edit-venue"
+                  value={editForm.venueName}
+                  onChange={(e) => setEditForm({ ...editForm, venueName: e.target.value })}
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ev-edit-addr" className="text-xs text-[#9a9fc4]">
+                  Address / City
+                </Label>
+                <Input
+                  id="ev-edit-addr"
+                  value={editForm.venueAddress}
+                  onChange={(e) => setEditForm({ ...editForm, venueAddress: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="ev-edit-date" className="text-xs text-[#9a9fc4]">
+                  Event Date &amp; Time *
+                </Label>
+                <Input
+                  id="ev-edit-date"
+                  type="datetime-local"
+                  value={editForm.eventDate}
+                  onChange={(e) => setEditForm({ ...editForm, eventDate: e.target.value })}
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ev-edit-doors" className="text-xs text-[#9a9fc4]">
+                  Doors Open
+                </Label>
+                <Input
+                  id="ev-edit-doors"
+                  value={editForm.doorsOpenTime}
+                  onChange={(e) => setEditForm({ ...editForm, doorsOpenTime: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ev-edit-start" className="text-xs text-[#9a9fc4]">
+                  Show Start
+                </Label>
+                <Input
+                  id="ev-edit-start"
+                  value={editForm.startTime}
+                  onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="ev-edit-price" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  Price ($ USD)
+                  {soldCount > 0 && <Lock className="w-3 h-3 text-amber-400" />}
+                </Label>
+                <Input
+                  id="ev-edit-price"
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  disabled={soldCount > 0}
+                  value={(editForm.priceCents / 100).toString()}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      priceCents: Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100)),
+                    })
+                  }
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                <p className={`text-[10px] mt-1 ${soldCount > 0 ? "text-amber-400" : "text-[#9a9fc4]"}`}>
+                  {soldCount > 0
+                    ? "Price locked — tickets have already been purchased."
+                    : "Editable until the first ticket is bought ($0 for free)."}
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="ev-edit-inv" className="text-xs text-[#9a9fc4]">
+                  Total Inventory *
+                </Label>
+                <Input
+                  id="ev-edit-inv"
+                  type="number"
+                  min={Math.max(1, soldCount)}
+                  max="10000"
+                  value={String(editForm.totalInventory)}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      totalInventory: parseInt(e.target.value || "20", 10),
+                    })
+                  }
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="ev-edit-age" className="text-xs text-[#9a9fc4]">
+                  Age Policy
+                </Label>
+                <select
+                  id="ev-edit-age"
+                  value={editForm.ageRestriction}
+                  onChange={(e) => setEditForm({ ...editForm, ageRestriction: e.target.value })}
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="All Ages">All Ages</option>
+                  <option value="18+">18+</option>
+                  <option value="21+">21+</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="ev-edit-desc" className="text-xs text-[#9a9fc4]">
+                Event Description
+              </Label>
+              <Textarea
+                id="ev-edit-desc"
+                rows={3}
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+                disabled={savingEdit}
+                className="border-[#20205a] bg-[#05052d] text-[#9a9fc4]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingEdit}
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold"
+              >
+                {savingEdit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

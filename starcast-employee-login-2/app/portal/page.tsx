@@ -1042,7 +1042,7 @@ export default function PortalPage() {
                 {portalTab === "ticketing" && (
                   <BandTicketingPanel
                     band={selectedBand as any}
-                    isOwner={bands.some((b) => b.id === selectedBand.id)}
+                    isOwner={bands.some((b) => b.id === selectedBand.id) || isAdmin}
                     onRefreshBand={refreshBands}
                   />
                 )}
