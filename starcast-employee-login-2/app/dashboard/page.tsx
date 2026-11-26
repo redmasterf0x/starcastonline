@@ -18,13 +18,15 @@ import { ResponsiveHeader } from "@/components/responsive-header"
 import { Footer } from "@/components/footer"
 import { LoadingScreen } from "@/components/loading-screen"
 import { Badge } from "@/components/ui/badge"
-import { Music, ChevronRight, Video, ShieldAlert, Sparkles, Smartphone, CheckCircle2, AlertCircle, ShieldCheck, FileText, ExternalLink, Bell, Ticket } from "lucide-react"
+import { Music, ChevronRight, Video, ShieldAlert, Sparkles, Smartphone, CheckCircle2, AlertCircle, ShieldCheck, FileText, ExternalLink, Bell, Ticket, Palette } from "lucide-react"
 import { getMyBands } from "@/app/actions/bands"
 import { NotificationFeed } from "@/components/dashboard/notification-feed"
+import { getFrameById, getBannerById } from "@/lib/profile-progression"
 
 interface UserProfile {
   id: string
   userId: string
+  username?: string | null
   firstName: string
   lastName: string
   email: string
@@ -34,6 +36,8 @@ interface UserProfile {
   profilePic: string | null
   location: string | null
   website: string | null
+  equippedFrame?: string
+  equippedBanner?: string
   isEmployee: boolean
   isAdmin: boolean
 }
@@ -274,92 +278,100 @@ export default function DashboardPage() {
 
         {/* ── PUBLIC PROFILE PREVIEW ── */}
         <section>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div>
               <h1 className="text-2xl font-bold text-[#f5f7ff] tracking-tight">Public Profile</h1>
               <p className="text-sm text-[#9a9fc4] mt-0.5">
-                This is exactly what other people see when they visit your profile.
+                Center-aligned profile with your level progression, equipped avatar frame, and banner.
               </p>
             </div>
-            <Link
-              href={`/profile/${profile.userId}`}
-              className="text-sm text-[#ea6f2a] hover:text-[#f2a04a] underline-offset-2 hover:underline whitespace-nowrap"
+            <Button
+              asChild
+              size="sm"
+              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl shadow-md"
             >
-              Open profile
-            </Link>
+              <Link href={profile.username ? `/u/${profile.username}` : `/profile/${profile.userId}`}>
+                <Palette className="w-4 h-4 mr-1.5 shrink-0" />
+                Open Profile &amp; Equip Frames
+              </Link>
+            </Button>
           </div>
 
-          <div className="rounded-xl border border-[#20205a] bg-[#0c0c3f]/60 p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-[#20205a] overflow-hidden flex-shrink-0 flex items-center justify-center">
-                {profile.profilePic ? (
-                  <img src={profile.profilePic || "/placeholder.svg"} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xl font-semibold text-[#f5f7ff]">
-                    {profile.firstName?.[0]}
-                    {profile.lastName?.[0]}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-lg font-semibold text-[#f5f7ff]">
-                  {profile.firstName} {profile.lastName}
-                </p>
-                {profile.isEmployee && (
-                  <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/30 mt-1">
-                    Crew
-                  </span>
-                )}
-                {profile.bio ? (
-                  <p className="text-sm text-[#9a9fc4] mt-2 leading-relaxed line-clamp-3">{profile.bio}</p>
-                ) : (
-                  <p className="text-sm text-[#9a9fc4]/50 mt-2 italic">No bio yet — add one below.</p>
-                )}
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-[#20205a] flex flex-wrap gap-x-5 gap-y-1">
-              {profile.location && (
-                <span className="text-xs text-[#9a9fc4] flex items-center gap-1">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-3 h-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+          {(() => {
+            const eqFrame = getFrameById(profile.equippedFrame)
+            const eqBanner = getBannerById(profile.equippedBanner)
+            return (
+              <div className="rounded-2xl border border-[#20205a] bg-[#0c0c3f]/75 overflow-hidden shadow-xl">
+                <div className={`relative h-28 sm:h-32 overflow-hidden ${eqBanner.bgClass}`}>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c3f] via-transparent to-transparent" />
+                </div>
+
+                <div className="-mt-12 px-5 pb-5 flex flex-col items-center text-center relative z-10">
+                  <div
+                    className={`relative w-24 h-24 rounded-full p-[4px] overflow-hidden flex items-center justify-center ${eqFrame.ringClass}`}
                   >
-                    <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                  {profile.location}
-                </span>
-              )}
-              {profile.website && (
-                <span className="text-xs text-[#ea6f2a] flex items-center gap-1">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-3 h-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="2" y1="12" x2="22" y2="12" />
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                  </svg>
-                  {profile.website.replace(/^https?:\/\//, "")}
-                </span>
-              )}
-              {!profile.location && !profile.website && (
-                <span className="text-xs text-[#9a9fc4]/50 italic">No location or website added yet.</span>
-              )}
-            </div>
-          </div>
+                    {eqFrame.animatedConic && (
+                      <div
+                        className="absolute -inset-4 animate-spin pointer-events-none"
+                        style={{ background: eqFrame.animatedConic, animationDuration: "5s" }}
+                      />
+                    )}
+                    <div className="relative z-10 w-full h-full rounded-full bg-[#05052d] border-2 border-[#05052d] overflow-hidden flex items-center justify-center">
+                      {profile.profilePic ? (
+                        <img
+                          src={profile.profilePic}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-2xl font-bold text-[#f5f7ff]">
+                          {profile.firstName?.[0]}
+                          {profile.lastName?.[0]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-lg font-bold text-[#f5f7ff] mt-2.5">
+                    {profile.firstName} {profile.lastName}
+                  </p>
+                  {profile.username && (
+                    <p className="text-xs font-mono text-[#9a9fc4]">@{profile.username}</p>
+                  )}
+                  {profile.isEmployee && (
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs bg-[#ea6f2a]/20 text-[#ea6f2a] border border-[#ea6f2a]/30 mt-1.5">
+                      Crew
+                    </span>
+                  )}
+                  {profile.bio ? (
+                    <p className="text-sm text-[#9a9fc4] mt-2 max-w-lg leading-relaxed line-clamp-3">
+                      {profile.bio}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[#9a9fc4]/50 mt-2 italic">No bio yet — add one below.</p>
+                  )}
+
+                  <div className="mt-4 pt-3 border-t border-[#20205a]/80 w-full max-w-md flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
+                    {profile.location && (
+                      <span className="text-xs text-[#9a9fc4] flex items-center gap-1">
+                        {profile.location}
+                      </span>
+                    )}
+                    {profile.website && (
+                      <span className="text-xs text-[#20efe0] flex items-center gap-1">
+                        {profile.website.replace(/^https?:\/\//, "")}
+                      </span>
+                    )}
+                    {!profile.location && !profile.website && (
+                      <span className="text-xs text-[#9a9fc4]/50 italic">
+                        No location or website added yet.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </section>
 
         {/* ── WORKSPACES & PORTALS ── */}

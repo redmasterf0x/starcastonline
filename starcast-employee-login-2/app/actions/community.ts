@@ -21,6 +21,7 @@ import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { SOCIAL_BAN_MESSAGE } from "@/lib/permissions"
 import { createNotification } from "@/app/actions/notifications"
+import { computeUserLevelProgress } from "@/lib/profile-progression-server"
 
 // Reserved category slug for the shared DECK wall.
 const DECK_SLUG = "the-deck"
@@ -85,6 +86,9 @@ function profileToMember(p: typeof profiles.$inferSelect) {
     is_admin: p.isAdmin,
     username: p.username ?? "",
     role: p.role ?? "user",
+    equipped_frame: p.equippedFrame ?? "none",
+    equipped_banner: p.equippedBanner ?? "cosmic-grid",
+    bonus_xp: p.bonusXp ?? 0,
     created_at: p.createdAt.toISOString(),
   }
 }
@@ -132,29 +136,38 @@ export async function listCommunityCategories() {
   }))
 }
 
-/** A single public profile by profile id, or by auth user id as fallback. */
-export async function getPublicProfile(id: string) {
+/** A single public profile row by profile id, or by auth user id as fallback. */
+async function getPublicProfileRow(id: string) {
   let rows = await db.select().from(profiles).where(eq(profiles.userId, id)).limit(1)
   if (rows.length === 0) {
-    // May be a profile uuid rather than an auth user id
     try {
       rows = await db.select().from(profiles).where(eq(profiles.id, id)).limit(1)
     } catch {
       rows = []
     }
   }
-  return rows[0] ? profileToMember(rows[0]) : null
+  return rows[0] ?? null
+}
+
+/** A single public profile by profile id, or by auth user id as fallback. */
+export async function getPublicProfile(id: string) {
+  const row = await getPublicProfileRow(id)
+  return row ? profileToMember(row) : null
 }
 
 /**
  * Everything the public profile page needs in one round trip:
- * profile, posts with star counts, friends, and viewer friendship status.
+ * profile, posts with star counts, friends, leveling progression, and viewer friendship status.
  */
 export async function getProfilePageData(id: string) {
-  const member = await getPublicProfile(id)
-  if (!member) return null
+  const memberRow = await getPublicProfileRow(id)
+  if (!memberRow) return null
+  const member = profileToMember(memberRow)
 
-  const viewer = await getViewerProfile()
+  const [viewer, progression] = await Promise.all([
+    getViewerProfile(),
+    computeUserLevelProgress(memberRow),
+  ])
 
   // Posts by this profile with star counts
   const postRows = await db
@@ -212,9 +225,11 @@ export async function getProfilePageData(id: string) {
   const friends = friendProfiles.map((p) => ({
     id: p.id,
     user_id: p.userId,
+    username: p.username ?? "",
     first_name: p.firstName,
     last_name: p.lastName,
     profile_pic: p.profilePic ?? "",
+    equipped_frame: p.equippedFrame ?? "none",
     is_employee: p.isEmployee,
   }))
 
@@ -247,6 +262,7 @@ export async function getProfilePageData(id: string) {
 
   return {
     profile: member,
+    progression,
     posts,
     friends,
     totalStars,

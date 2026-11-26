@@ -5,6 +5,9 @@ import { db } from "@/lib/db"
 import { profiles, savedArticles, articles } from "@/lib/db/schema"
 import { and, desc, eq } from "drizzle-orm"
 import { headers } from "next/headers"
+import { revalidatePath } from "next/cache"
+import { PROFILE_FRAMES, PROFILE_BANNERS } from "@/lib/profile-progression"
+import { computeUserLevelProgress } from "@/lib/profile-progression-server"
 
 async function getUserId() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -105,4 +108,77 @@ export async function verifyProfilePhoneCode(code: string) {
   const { verifyPhoneCode } = await import("@/app/actions/onboarding")
   return verifyPhoneCode(code)
 }
+
+/** Equip an unlocked avatar frame and/or hero banner on the signed-in user's profile. */
+export async function equipProfileCosmetics(input: {
+  frameId?: string
+  bannerId?: string
+}) {
+  try {
+    const userId = await getUserId()
+    const [profileRow] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.userId, userId))
+      .limit(1)
+
+    if (!profileRow) {
+      return { success: false, error: "Profile not found." }
+    }
+
+    const isAdmin = Boolean(profileRow.isAdmin || profileRow.role === "admin")
+    const progression = await computeUserLevelProgress(profileRow)
+
+    let nextFrame = profileRow.equippedFrame || "none"
+    let nextBanner = profileRow.equippedBanner || "cosmic-grid"
+
+    if (input.frameId !== undefined) {
+      const frame = PROFILE_FRAMES.find((f) => f.id === input.frameId)
+      if (!frame) return { success: false, error: "Unknown avatar frame." }
+      if (!isAdmin && progression.level < frame.unlockLevel) {
+        return {
+          success: false,
+          error: `"${frame.name}" unlocks at Level ${frame.unlockLevel} (you are Level ${progression.level}).`,
+        }
+      }
+      nextFrame = frame.id
+    }
+
+    if (input.bannerId !== undefined) {
+      const banner = PROFILE_BANNERS.find((b) => b.id === input.bannerId)
+      if (!banner) return { success: false, error: "Unknown profile banner." }
+      if (!isAdmin && progression.level < banner.unlockLevel) {
+        return {
+          success: false,
+          error: `"${banner.name}" unlocks at Level ${banner.unlockLevel} (you are Level ${progression.level}).`,
+        }
+      }
+      nextBanner = banner.id
+    }
+
+    await db
+      .update(profiles)
+      .set({
+        equippedFrame: nextFrame,
+        equippedBanner: nextBanner,
+      })
+      .where(eq(profiles.id, profileRow.id))
+
+    if (profileRow.username) {
+      revalidatePath(`/u/${profileRow.username}`)
+    }
+    revalidatePath(`/profile/${profileRow.userId}`)
+    revalidatePath("/dashboard")
+
+    return {
+      success: true,
+      equippedFrame: nextFrame,
+      equippedBanner: nextBanner,
+    }
+  } catch (err: any) {
+    console.error("equipProfileCosmetics error:", err)
+    return { success: false, error: err?.message || "Failed to equip profile cosmetics." }
+  }
+}
+
 

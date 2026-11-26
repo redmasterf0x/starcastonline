@@ -98,6 +98,9 @@ export const profiles = pgTable("profiles", {
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status"),
   staffEmail: text("staff_email"),
+  equippedFrame: text("equipped_frame").notNull().default("none"),
+  equippedBanner: text("equipped_banner").notNull().default("cosmic-grid"),
+  bonusXp: integer("bonus_xp").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 

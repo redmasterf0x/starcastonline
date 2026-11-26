@@ -93,7 +93,7 @@ Status/enum-like fields are plain `text` (values listed in comments). Few real F
 | Domain | Tables | Notes |
 |---|---|---|
 | Auth | `user`, `session`, `account`, `verification` | Better Auth managed |
-| Members | `profiles`, `phone_verifications` | profile = app user record, roles, onboarding, social ban, `staff_email` (e.g. `dave.staff@starcast.online`), Stripe payout account |
+| Members | `profiles`, `phone_verifications` | profile = app user record, roles, onboarding, social ban, `staff_email` (e.g. `dave.staff@starcast.online`), Stripe payout account, leveling & equipped cosmetics (`equipped_frame`, `equipped_banner`, `bonus_xp`) |
 | Articles | `articles`, `article_likes`, `saved_articles` | `approved` gate; admin approves; 1 like and 1 bookmark per user enforced by unique indexes (`idx_article_likes_unique`, `idx_saved_articles_unique`) |
 | Community | `community_categories`, `community_posts` (`poll_data`), `community_poll_votes`, `post_stars` (`reaction_type`), `post_comments` (threaded via `parent_comment_id`), `comment_stars` (`reaction_type`) | Social stream with persistent `CommunityLeftNav` action rail and expansive feed (`SocialComposer` with StarVote polls & `TheDeck` 1-post/24h wall, Discussions, Bands, Friends, DMs, rich inline media embeds for YouTube/Spotify/SoundCloud/StarCast, and 6-reaction cosmic emojis). 1 reaction/like per user on posts & comments strictly enforced at DB & action levels (`idx_post_stars_unique`, `idx_comment_stars_unique`); selecting another reaction replaces previous choice. Categories tagged per show (`show_id`, `topic` general/community). |
 | Social | `friendships` (status pending/accepted), `messages` (DMs), `notifications` | notifications keyed by **profile ids** |
