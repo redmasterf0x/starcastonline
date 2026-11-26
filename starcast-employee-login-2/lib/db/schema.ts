@@ -494,6 +494,7 @@ export const bandEvents = pgTable("band_events", {
   remainingInventory: integer("remaining_inventory").notNull().default(20),
   ageRestriction: text("age_restriction").default("All Ages"), // "All Ages" | "18+" | "21+"
   flyerUrl: text("flyer_url"),
+  recurrenceFrequency: text("recurrence_frequency"), // null/'one_time' | 'weekly' | 'monthly' | 'yearly'
   // draft | active | sold_out | past | cancelled
   status: text("status").notNull().default("active"),
   // Escrow protection: held until 24 hours after the event

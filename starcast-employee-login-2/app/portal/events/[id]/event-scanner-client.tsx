@@ -36,6 +36,10 @@ import {
   Pencil,
   Lock,
   Check,
+  Upload,
+  ImageIcon,
+  Repeat,
+  X,
 } from "lucide-react"
 
 interface EventScannerClientProps {
@@ -94,7 +98,32 @@ export function EventScannerClient({
     priceCents: initialEvent.priceCents ?? 0,
     totalInventory: initialEvent.totalInventory ?? 20,
     ageRestriction: initialEvent.ageRestriction || "All Ages",
+    flyerUrl: initialEvent.flyerUrl || "",
+    recurrenceFrequency: (initialEvent.recurrenceFrequency || "one_time") as "one_time" | "weekly" | "monthly" | "yearly",
   })
+  const [uploadingFlyer, setUploadingFlyer] = useState(false)
+
+  async function handleUploadFlyer(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setEditError("Event image exceeds 10MB limit.")
+      return
+    }
+    setUploadingFlyer(true)
+    setEditError(null)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", "events/flyers")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+      setEditForm((prev) => ({ ...prev, flyerUrl: data.url }))
+    } catch (err: any) {
+      setEditError(err?.message || "Failed to upload event image")
+    } finally {
+      setUploadingFlyer(false)
+    }
+  }
 
   function openEditModal() {
     const dt = event.eventDate ? new Date(event.eventDate) : null
@@ -113,6 +142,8 @@ export function EventScannerClient({
       priceCents: event.priceCents ?? 0,
       totalInventory: event.totalInventory ?? 20,
       ageRestriction: event.ageRestriction || "All Ages",
+      flyerUrl: event.flyerUrl || "",
+      recurrenceFrequency: (event.recurrenceFrequency || "one_time") as "one_time" | "weekly" | "monthly" | "yearly",
     })
     setEditError(null)
     setEditOpen(true)
@@ -338,19 +369,17 @@ export function EventScannerClient({
                 Edit Ticket / Event
               </Button>
             )}
-            {band.slug && (
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="border-[#20205a] bg-[#0c0c3f]/70 text-[#dbe0fb] hover:bg-[#20205a]/50 rounded-xl h-9 text-xs"
-              >
-                <Link href={`/bands/${band.slug}`} target="_blank">
-                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                  Public Event Page
-                </Link>
-              </Button>
-            )}
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="border-[#20205a] bg-[#0c0c3f]/70 text-[#dbe0fb] hover:bg-[#20205a]/50 rounded-xl h-9 text-xs"
+            >
+              <Link href={`/events/${event.id}`} target="_blank">
+                <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                Public Event Page
+              </Link>
+            </Button>
             <Button
               onClick={refreshData}
               disabled={refreshing}
@@ -771,6 +800,73 @@ export function EventScannerClient({
                   <option value="18+">18+</option>
                   <option value="21+">21+</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="ev-edit-repeat" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <Repeat className="w-3.5 h-3.5 text-[#20efe0]" /> Repeat Schedule
+                </Label>
+                <select
+                  id="ev-edit-repeat"
+                  value={editForm.recurrenceFrequency}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      recurrenceFrequency: e.target.value as "one_time" | "weekly" | "monthly" | "yearly",
+                    })
+                  }
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="one_time">One-time event (Default)</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+
+              <div>
+                <Label className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-[#ffd166]" /> Event Image / Flyer (Optional)
+                </Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-[#20205a] bg-[#05052d] hover:border-[#ea6f2a]/60 text-xs font-semibold text-[#f5f7ff] transition-colors">
+                    {uploadingFlyer ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea6f2a]" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    )}
+                    {editForm.flyerUrl ? "Change Image" : "Upload Image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingFlyer}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleUploadFlyer(file)
+                      }}
+                    />
+                  </label>
+                  {editForm.flyerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, flyerUrl: "" })}
+                      className="text-xs text-red-400 hover:underline flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" /> Remove
+                    </button>
+                  )}
+                </div>
+                {editForm.flyerUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={editForm.flyerUrl}
+                    alt="Event flyer preview"
+                    className="mt-2 h-24 w-full object-cover rounded-lg border border-[#20205a]"
+                  />
+                )}
               </div>
             </div>
 

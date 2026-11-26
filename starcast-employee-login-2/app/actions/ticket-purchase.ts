@@ -6,6 +6,8 @@ import { bandEvents, bands, bandTicketOrders, bandTicketInstances } from "@/lib/
 import { eq, and, sql } from "drizzle-orm"
 import crypto from "crypto"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
+import { auth } from "@/lib/auth"
 import { sendTicketConfirmationEmail } from "@/lib/email"
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://starcast.online"
@@ -52,6 +54,9 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
     const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
     if (!band) return { success: false, error: "Band not found" }
 
+    const authSession = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+    const resolvedBuyerUserId = input.buyerUserId || authSession?.user?.id || null
+
     const unitPriceCents = event.priceCents || 0
     const totalCents = unitPriceCents * quantity
     // Optional standard StarCast fee: 0 for now or configurable
@@ -85,7 +90,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         .values({
           eventId: event.id,
           bandId: band.id,
-          buyerUserId: input.buyerUserId || null,
+          buyerUserId: resolvedBuyerUserId,
           buyerEmail: input.buyerEmail.trim().toLowerCase(),
           buyerName: input.buyerName.trim(),
           quantity,

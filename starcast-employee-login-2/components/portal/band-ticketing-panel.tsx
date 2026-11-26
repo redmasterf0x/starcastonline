@@ -47,6 +47,10 @@ import {
   Ban,
   ArrowRight,
   Pencil,
+  Upload,
+  ImageIcon,
+  Repeat,
+  X,
 } from "lucide-react"
 
 interface Band {
@@ -92,6 +96,7 @@ export function BandTicketingPanel({
     totalInventory: 20, // 20 tickets default
     ageRestriction: "All Ages",
     flyerUrl: "",
+    recurrenceFrequency: "one_time",
   })
 
   // Edit Event dialog
@@ -108,7 +113,35 @@ export function BandTicketingPanel({
     totalInventory: 20,
     ageRestriction: "All Ages",
     flyerUrl: "",
+    recurrenceFrequency: "one_time",
   })
+  const [uploadingFlyer, setUploadingFlyer] = useState(false)
+
+  async function handleUploadFlyer(file: File, target: "create" | "edit") {
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Event image exceeds 10MB limit.")
+      return
+    }
+    setUploadingFlyer(true)
+    setError("")
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("folder", "events/flyers")
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed")
+      if (target === "create") {
+        setEventForm((prev) => ({ ...prev, flyerUrl: data.url }))
+      } else {
+        setEditForm((prev) => ({ ...prev, flyerUrl: data.url }))
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to upload event image")
+    } finally {
+      setUploadingFlyer(false)
+    }
+  }
 
   // Door Scanner / Guestlist dialog
   const [scannerEvent, setScannerEvent] = useState<any | null>(null)
@@ -250,6 +283,7 @@ export function BandTicketingPanel({
       totalInventory: ev.totalInventory ?? 20,
       ageRestriction: ev.ageRestriction || "All Ages",
       flyerUrl: ev.flyerUrl || "",
+      recurrenceFrequency: ev.recurrenceFrequency || "one_time",
     })
     setError("")
   }
@@ -646,6 +680,16 @@ export function BandTicketingPanel({
                           <QrCode className="w-3.5 h-3.5 mr-1.5" /> Event Page &amp; Door Scanner
                         </Link>
                       </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="border-[#20205a] bg-[#05052d]/80 text-[#20efe0] hover:bg-[#20205a]/50 font-semibold text-xs"
+                      >
+                        <Link href={`/events/${ev.id}`} target="_blank">
+                          <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Ticket Page
+                        </Link>
+                      </Button>
                       {isOwner && (
                         <Button
                           onClick={() => handleOpenEditEvent(ev)}
@@ -903,6 +947,73 @@ export function BandTicketingPanel({
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="event-repeat" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <Repeat className="w-3.5 h-3.5 text-[#20efe0]" /> Repeat Schedule
+                </Label>
+                <select
+                  id="event-repeat"
+                  value={eventForm.recurrenceFrequency || "one_time"}
+                  onChange={(e) =>
+                    setEventForm({
+                      ...eventForm,
+                      recurrenceFrequency: e.target.value as CreateEventInput["recurrenceFrequency"],
+                    })
+                  }
+                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                >
+                  <option value="one_time">One-time event (Default)</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+
+              <div>
+                <Label className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-[#ffd166]" /> Event Image / Flyer (Optional)
+                </Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-[#20205a] bg-[#05052d] hover:border-[#ea6f2a]/60 text-xs font-semibold text-[#f5f7ff] transition-colors">
+                    {uploadingFlyer ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea6f2a]" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                    )}
+                    {eventForm.flyerUrl ? "Change Image" : "Upload Image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingFlyer}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleUploadFlyer(file, "create")
+                      }}
+                    />
+                  </label>
+                  {eventForm.flyerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEventForm({ ...eventForm, flyerUrl: "" })}
+                      className="text-xs text-red-400 hover:underline flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" /> Remove
+                    </button>
+                  )}
+                </div>
+                {eventForm.flyerUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={eventForm.flyerUrl}
+                    alt="Event flyer preview"
+                    className="mt-2 h-24 w-full object-cover rounded-lg border border-[#20205a]"
+                  />
+                )}
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="event-desc" className="text-xs text-[#9a9fc4]">
                 Show Description &amp; Lineup
@@ -1110,6 +1221,73 @@ export function BandTicketingPanel({
                       <option value="18+">18+</option>
                       <option value="21+">21+</option>
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="edit-event-repeat" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                      <Repeat className="w-3.5 h-3.5 text-[#20efe0]" /> Repeat Schedule
+                    </Label>
+                    <select
+                      id="edit-event-repeat"
+                      value={editForm.recurrenceFrequency || "one_time"}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          recurrenceFrequency: e.target.value as CreateEventInput["recurrenceFrequency"],
+                        })
+                      }
+                      className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
+                    >
+                      <option value="one_time">One-time event (Default)</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-[#ffd166]" /> Event Image / Flyer (Optional)
+                    </Label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 h-9 rounded-md border border-[#20205a] bg-[#05052d] hover:border-[#ea6f2a]/60 text-xs font-semibold text-[#f5f7ff] transition-colors">
+                        {uploadingFlyer ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea6f2a]" />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                        )}
+                        {editForm.flyerUrl ? "Change Image" : "Upload Image"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingFlyer}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleUploadFlyer(file, "edit")
+                          }}
+                        />
+                      </label>
+                      {editForm.flyerUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditForm({ ...editForm, flyerUrl: "" })}
+                          className="text-xs text-red-400 hover:underline flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> Remove
+                        </button>
+                      )}
+                    </div>
+                    {editForm.flyerUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={editForm.flyerUrl}
+                        alt="Event flyer preview"
+                        className="mt-2 h-24 w-full object-cover rounded-lg border border-[#20205a]"
+                      />
+                    )}
                   </div>
                 </div>
 

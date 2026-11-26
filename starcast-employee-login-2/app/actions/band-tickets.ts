@@ -20,6 +20,7 @@ export type CreateEventInput = {
   totalInventory: number // e.g. 20
   ageRestriction?: string // "All Ages" | "18+" | "21+"
   flyerUrl?: string
+  recurrenceFrequency?: "one_time" | "weekly" | "monthly" | "yearly"
 }
 
 export type UpdateEventInput = Partial<CreateEventInput> & {
@@ -176,6 +177,11 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
       }
     }
 
+    const recurrenceFrequency =
+      input.recurrenceFrequency && ["weekly", "monthly", "yearly"].includes(input.recurrenceFrequency)
+        ? input.recurrenceFrequency
+        : null
+
     const [newEvent] = await db
       .insert(bandEvents)
       .values({
@@ -192,6 +198,7 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
         remainingInventory: totalInventory,
         ageRestriction: input.ageRestriction || "All Ages",
         flyerUrl: input.flyerUrl?.trim() || null,
+        recurrenceFrequency,
         status: "active",
         escrowStatus: "held",
         escrowReleaseDate,
@@ -201,6 +208,7 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
       .returning()
 
     revalidatePath("/portal")
+    revalidatePath("/tickets")
     if (band.slug) revalidatePath(`/bands/${band.slug}`)
 
     return { success: true, event: newEvent }
@@ -278,7 +286,13 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
         totalInventory,
         remainingInventory,
         ageRestriction: input.ageRestriction !== undefined ? input.ageRestriction : event.ageRestriction,
-        flyerUrl: input.flyerUrl !== undefined ? input.flyerUrl : event.flyerUrl,
+        flyerUrl: input.flyerUrl !== undefined ? (input.flyerUrl?.trim() || null) : event.flyerUrl,
+        recurrenceFrequency:
+          input.recurrenceFrequency !== undefined
+            ? ["weekly", "monthly", "yearly"].includes(input.recurrenceFrequency)
+              ? input.recurrenceFrequency
+              : null
+            : event.recurrenceFrequency,
         status: input.status || event.status,
         escrowReleaseDate,
         updatedAt: new Date(),
@@ -288,6 +302,7 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
 
     revalidatePath("/portal")
     revalidatePath(`/portal/events/${eventId}`)
+    revalidatePath(`/events/${eventId}`)
     revalidatePath("/tickets")
     if (band.slug) revalidatePath(`/bands/${band.slug}`)
 
