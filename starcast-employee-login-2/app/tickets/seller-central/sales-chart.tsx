@@ -32,86 +32,128 @@ interface SalesChartProps {
   orders: SalesOrder[]
 }
 
-function getCentralDateKey(iso: string, monthly: boolean): { key: string; label: string } {
-  const d = new Date(iso)
+type Timeframe = "day" | "week" | "month" | "year"
+
+function getCentralParts(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Chicago",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(d)
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(date)
   const y = parts.find((p) => p.type === "year")?.value || "2026"
   const m = parts.find((p) => p.type === "month")?.value || "01"
-  const day = parts.find((p) => p.type === "day")?.value || "01"
+  const d = parts.find((p) => p.type === "day")?.value || "01"
+  let h = parts.find((p) => p.type === "hour")?.value || "00"
+  if (h === "24") h = "00"
+  return { y, m, d, h }
+}
 
-  if (monthly) {
-    const label = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Chicago",
-      month: "short",
-      year: "2-digit",
-    }).format(d)
-    return { key: `${y}-${m}`, label }
+function buildTimeBuckets(timeframe: Timeframe, now: Date) {
+  const buckets = new Map<
+    string,
+    {
+      key: string
+      label: string
+      stripe: number
+      cash: number
+      net: number
+      tickets: number
+    }
+  >()
+
+  if (timeframe === "day") {
+    // Last 24 hours (hourly buckets)
+    for (let i = 23; i >= 0; i--) {
+      const dt = new Date(now.getTime() - i * 60 * 60 * 1000)
+      const { y, m, d, h } = getCentralParts(dt)
+      const key = `${y}-${m}-${d}-${h}`
+      const label = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Chicago",
+        hour: "numeric",
+        hour12: true,
+      }).format(dt)
+      if (!buckets.has(key)) {
+        buckets.set(key, { key, label, stripe: 0, cash: 0, net: 0, tickets: 0 })
+      }
+    }
+  } else if (timeframe === "week" || timeframe === "month") {
+    const days = timeframe === "week" ? 7 : 30
+    for (let i = days - 1; i >= 0; i--) {
+      const dt = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+      const { y, m, d } = getCentralParts(dt)
+      const key = `${y}-${m}-${d}`
+      const label = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Chicago",
+        weekday: timeframe === "week" ? "short" : undefined,
+        month: "short",
+        day: "numeric",
+      }).format(dt)
+      if (!buckets.has(key)) {
+        buckets.set(key, { key, label, stripe: 0, cash: 0, net: 0, tickets: 0 })
+      }
+    }
+  } else {
+    // Last 12 months (monthly buckets)
+    const { y: curY, m: curM } = getCentralParts(now)
+    const baseYear = Number(curY)
+    const baseMonthIndex = Number(curM) - 1
+    for (let i = 11; i >= 0; i--) {
+      const dt = new Date(Date.UTC(baseYear, baseMonthIndex - i, 15, 18, 0, 0))
+      const { y, m } = getCentralParts(dt)
+      const key = `${y}-${m}`
+      const label = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Chicago",
+        month: "short",
+        year: "2-digit",
+      }).format(dt)
+      if (!buckets.has(key)) {
+        buckets.set(key, { key, label, stripe: 0, cash: 0, net: 0, tickets: 0 })
+      }
+    }
   }
 
-  const label = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Chicago",
-    month: "short",
-    day: "numeric",
-  }).format(d)
-  return { key: `${y}-${m}-${day}`, label }
+  return buckets
+}
+
+function getOrderBucketKey(iso: string, timeframe: Timeframe): string {
+  const { y, m, d, h } = getCentralParts(new Date(iso))
+  if (timeframe === "day") return `${y}-${m}-${d}-${h}`
+  if (timeframe === "year") return `${y}-${m}`
+  return `${y}-${m}-${d}`
 }
 
 export function SellerSalesChart({ orders }: SalesChartProps) {
   const [viewMode, setViewMode] = useState<"timeline" | "events">("timeline")
+  const [timeframe, setTimeframe] = useState<Timeframe>("week")
   const [metric, setMetric] = useState<"revenue" | "tickets">("revenue")
 
   const timelineData = useMemo(() => {
-    if (orders.length === 0) return []
-    const timestamps = orders.map((o) => new Date(o.createdAt).getTime())
-    const spanDays = (Math.max(...timestamps) - Math.min(...timestamps)) / (1000 * 60 * 60 * 24)
-    const useMonthly = spanDays > 45
-
-    const buckets = new Map<
-      string,
-      {
-        key: string
-        label: string
-        stripe: number
-        cash: number
-        net: number
-        tickets: number
-      }
-    >()
+    const now = new Date()
+    const buckets = buildTimeBuckets(timeframe, now)
 
     for (const o of orders) {
-      const { key, label } = getCentralDateKey(o.createdAt, useMonthly)
-      const existing = buckets.get(key) || {
-        key,
-        label,
-        stripe: 0,
-        cash: 0,
-        net: 0,
-        tickets: 0,
-      }
+      const key = getOrderBucketKey(o.createdAt, timeframe)
+      const target = buckets.get(key)
+      if (!target) continue
       if (o.paymentMethod === "cash") {
-        existing.cash += o.totalCents / 100
+        target.cash += o.totalCents / 100
       } else {
-        existing.stripe += o.totalCents / 100
+        target.stripe += o.totalCents / 100
       }
-      existing.net += o.netCents / 100
-      existing.tickets += o.quantity
-      buckets.set(key, existing)
+      target.net += o.netCents / 100
+      target.tickets += o.quantity
     }
 
-    return Array.from(buckets.values())
-      .sort((a, b) => a.key.localeCompare(b.key))
-      .map((b) => ({
-        ...b,
-        stripe: Number(b.stripe.toFixed(2)),
-        cash: Number(b.cash.toFixed(2)),
-        net: Number(b.net.toFixed(2)),
-      }))
-  }, [orders])
+    return Array.from(buckets.values()).map((b) => ({
+      ...b,
+      stripe: Number(b.stripe.toFixed(2)),
+      cash: Number(b.cash.toFixed(2)),
+      net: Number(b.net.toFixed(2)),
+    }))
+  }, [orders, timeframe])
 
   const eventData = useMemo(() => {
     if (orders.length === 0) return []
@@ -159,7 +201,7 @@ export function SellerSalesChart({ orders }: SalesChartProps) {
 
   return (
     <section className="rounded-3xl border border-[#20205a] bg-[#0c0c3f]/80 p-5 sm:p-6 space-y-4 shadow-xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-extrabold text-[#f5f7ff] flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-[#20efe0]" />
@@ -171,6 +213,7 @@ export function SellerSalesChart({ orders }: SalesChartProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* View Mode */}
           <div className="inline-flex rounded-xl bg-[#05052d] border border-[#20205a] p-0.5 text-xs">
             <button
               type="button"
@@ -196,6 +239,34 @@ export function SellerSalesChart({ orders }: SalesChartProps) {
             </button>
           </div>
 
+          {/* X-Axis Timeframe (when viewing Over Time) */}
+          {viewMode === "timeline" && (
+            <div className="inline-flex rounded-xl bg-[#05052d] border border-[#20205a] p-0.5 text-xs">
+              {(
+                [
+                  { id: "day", label: "Daily" },
+                  { id: "week", label: "Weekly" },
+                  { id: "month", label: "Monthly" },
+                  { id: "year", label: "Yearly" },
+                ] as const
+              ).map((tf) => (
+                <button
+                  key={tf.id}
+                  type="button"
+                  onClick={() => setTimeframe(tf.id)}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                    timeframe === tf.id
+                      ? "bg-[#ffd166] text-[#05051f]"
+                      : "text-[#9a9fc4] hover:text-white"
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Metric */}
           <div className="inline-flex rounded-xl bg-[#05052d] border border-[#20205a] p-0.5 text-xs">
             <button
               type="button"
@@ -253,6 +324,7 @@ export function SellerSalesChart({ orders }: SalesChartProps) {
                   tick={{ fill: "#9a9fc4", fontSize: 11 }}
                   tickLine={false}
                   axisLine={{ stroke: "#20205a" }}
+                  minTickGap={18}
                 />
                 <YAxis
                   stroke="#9a9fc4"
@@ -300,6 +372,7 @@ export function SellerSalesChart({ orders }: SalesChartProps) {
                   tick={{ fill: "#9a9fc4", fontSize: 11 }}
                   tickLine={false}
                   axisLine={{ stroke: "#20205a" }}
+                  minTickGap={18}
                 />
                 <YAxis
                   allowDecimals={false}
