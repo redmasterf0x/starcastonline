@@ -113,6 +113,7 @@ export function SellerCentralClient({
   const [paymentFilter, setPaymentFilter] = useState<"all" | "stripe" | "cash">("all")
   const [search, setSearch] = useState("")
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null)
 
   // Standalone / Band Event Creation modal
   const [createOpen, setCreateOpen] = useState(false)
@@ -216,15 +217,21 @@ export function SellerCentralClient({
     }
   }
 
-  async function handleDeleteEvent(ev: { id: string; title: string }) {
+  async function handleDeleteEvent(ev: { id: string; title: string }, soldCount: number) {
     if (deletingId) return
-    if (!window.confirm(`Permanently delete "${ev.title}"? This cannot be undone.`)) return
+    const confirmMsg =
+      soldCount > 0
+        ? `Permanently delete "${ev.title}"?\n\nAll paid online ticket buyers (${soldCount} ticket${soldCount === 1 ? "" : "s"} issued) will automatically be refunded their full purchase amount via Stripe and notified by email. This cannot be undone.`
+        : `Permanently delete "${ev.title}"? This cannot be undone.`
+    if (!window.confirm(confirmMsg)) return
     setDeletingId(ev.id)
+    setDeleteNotice(null)
     try {
       const res = await deleteBandEvent(ev.id)
       if (!res.success) {
         window.alert(res.error || "Failed to delete event.")
       } else {
+        setDeleteNotice(res.message || `Deleted "${ev.title}".`)
         router.refresh()
       }
     } catch (err: any) {
@@ -422,6 +429,20 @@ export function SellerCentralClient({
           </div>
         </div>
 
+        {deleteNotice && (
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-950/35 p-4 flex items-center justify-between gap-3 text-xs sm:text-sm text-amber-200">
+            <span>{deleteNotice}</span>
+            <button
+              type="button"
+              onClick={() => setDeleteNotice(null)}
+              className="text-amber-300 hover:text-white"
+              aria-label="Dismiss notice"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {createdEventId && (
           <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/35 p-4 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-emerald-200">
             <span>Event created! Your standalone ticket page is live.</span>
@@ -511,23 +532,21 @@ export function SellerCentralClient({
                           Ticket Page
                         </Link>
                       </Button>
-                      {(sold === 0 || isAdmin) && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={deletingId === ev.id}
-                          onClick={() => handleDeleteEvent(ev)}
-                          className="border-red-500/40 bg-red-950/30 text-red-300 hover:bg-red-950/60 hover:text-red-200 rounded-xl h-8 px-2.5 text-xs"
-                          title={sold > 0 ? "Admin delete event" : "Delete event"}
-                        >
-                          {deletingId === ev.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={deletingId === ev.id}
+                        onClick={() => handleDeleteEvent(ev, sold)}
+                        className="border-red-500/40 bg-red-950/30 text-red-300 hover:bg-red-950/60 hover:text-red-200 rounded-xl h-8 px-2.5 text-xs"
+                        title={sold > 0 ? "Delete event & refund all ticket buyers" : "Delete event"}
+                      >
+                        {deletingId === ev.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </Button>
                     </div>
                   </div>
                 )

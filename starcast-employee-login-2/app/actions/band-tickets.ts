@@ -6,6 +6,7 @@ import { bands, bandEvents, bandTicketOrders, bandTicketInstances, bandEventScan
 import { eq, and, desc, gte, sql, asc, ilike, inArray, or } from "drizzle-orm"
 import { requireViewer, requireStaff } from "@/lib/permissions"
 import { revalidatePath } from "next/cache"
+import { sendEventCancelledRefundEmail } from "@/lib/email"
 import crypto from "crypto"
 
 export type EventCustomLink = {
@@ -426,7 +427,7 @@ export async function cancelBandEvent(eventId: string, reason?: string) {
   }
 }
 
-/** Permanently delete an event (creator if 0 tickets sold, or admin anytime) */
+/** Permanently delete an event and automatically refund all paid online ticket buyers via Stripe */
 export async function deleteBandEvent(eventId: string) {
   try {
     const viewer = await requireViewer()
@@ -442,19 +443,91 @@ export async function deleteBandEvent(eventId: string) {
       return { success: false, error: "Unauthorized to delete this event." }
     }
 
-    if (!viewer.isAdmin) {
-      const [{ count }] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(bandTicketInstances)
-        .where(eq(bandTicketInstances.eventId, eventId))
-      if ((count || 0) > 0) {
-        return {
-          success: false,
-          error: "Events with issued tickets cannot be deleted. Cancel the event instead.",
+    // Fetch all paid orders for this event so we can issue full refunds before removing the event
+    const paidOrders = await db
+      .select()
+      .from(bandTicketOrders)
+      .where(and(eq(bandTicketOrders.eventId, eventId), eq(bandTicketOrders.status, "paid")))
+
+    const organizerName = band?.name || event.organizerName || "StarCast Event"
+    let refundedOrdersCount = 0
+    let refundedTotalCents = 0
+    let cashOrdersCount = 0
+
+    for (const order of paidOrders) {
+      const isCashDoor = order.stripeSessionId === "cash-door"
+      if (isCashDoor) {
+        cashOrdersCount += 1
+        continue
+      }
+
+      // Refund paid online Stripe orders for the exact amount the buyer paid
+      if (order.totalCents > 0) {
+        let paymentIntentId = order.stripePaymentIntentId || null
+        if (!paymentIntentId && order.stripeSessionId) {
+          const checkoutSession = await stripe.checkout.sessions.retrieve(order.stripeSessionId)
+          if (typeof checkoutSession.payment_intent === "string") {
+            paymentIntentId = checkoutSession.payment_intent
+          }
         }
+
+        if (!paymentIntentId) {
+          return {
+            success: false,
+            error: `Cannot refund order ${order.id} (${order.buyerEmail}): missing Stripe payment intent. Event was not deleted.`,
+          }
+        }
+
+        try {
+          await stripe.refunds.create({
+            payment_intent: paymentIntentId,
+            amount: order.totalCents,
+            reason: "requested_by_customer",
+            metadata: {
+              event_id: event.id,
+              order_id: order.id,
+              reason: "event_deleted",
+            },
+          })
+        } catch (refundErr: any) {
+          // If already refunded in Stripe, treat as refunded; otherwise abort before deleting event
+          if (refundErr?.code !== "charge_already_refunded") {
+            console.error("Stripe refund error during deleteBandEvent:", refundErr)
+            return {
+              success: false,
+              error: `Stripe refund failed for ${order.buyerEmail} ($${(order.totalCents / 100).toFixed(2)}): ${refundErr?.message || "Unknown Stripe error"}. Event was not deleted.`,
+            }
+          }
+        }
+
+        await db
+          .update(bandTicketOrders)
+          .set({ status: "refunded", updatedAt: new Date() })
+          .where(eq(bandTicketOrders.id, order.id))
+
+        refundedOrdersCount += 1
+        refundedTotalCents += order.totalCents
+      }
+
+      // Notify buyer by email (both paid refunds and free pass cancellations)
+      if (order.buyerEmail && order.buyerEmail !== "cash@door.starcast.online") {
+        await sendEventCancelledRefundEmail({
+          to: order.buyerEmail,
+          buyerName: order.buyerName || "Ticket Holder",
+          organizerName,
+          eventTitle: event.title,
+          venueName: event.venueName,
+          eventDate: event.eventDate,
+          quantity: order.quantity,
+          refundAmountCents: order.totalCents,
+        })
       }
     }
 
+    // Remove event records cleanly
+    await db.delete(bandTicketInstances).where(eq(bandTicketInstances.eventId, eventId))
+    await db.delete(bandTicketOrders).where(eq(bandTicketOrders.eventId, eventId))
+    await db.delete(bandEventScanners).where(eq(bandEventScanners.eventId, eventId))
     await db.delete(bandEvents).where(eq(bandEvents.id, eventId))
 
     revalidatePath("/portal")
@@ -463,7 +536,25 @@ export async function deleteBandEvent(eventId: string) {
     revalidatePath("/admin")
     if (band?.slug) revalidatePath(`/bands/${band.slug}`)
 
-    return { success: true }
+    const parts: string[] = [`Deleted "${event.title}".`]
+    if (refundedOrdersCount > 0) {
+      parts.push(
+        `Refunded ${refundedOrdersCount} online order${refundedOrdersCount === 1 ? "" : "s"} totaling $${(refundedTotalCents / 100).toFixed(2)} via Stripe.`
+      )
+    }
+    if (cashOrdersCount > 0) {
+      parts.push(
+        `${cashOrdersCount} door cash sale${cashOrdersCount === 1 ? "" : "s"} must be refunded in person.`
+      )
+    }
+
+    return {
+      success: true,
+      refundedOrdersCount,
+      refundedTotalCents,
+      cashOrdersCount,
+      message: parts.join(" "),
+    }
   } catch (err: any) {
     console.error("deleteBandEvent error:", err)
     return { success: false, error: err?.message || "Failed to delete event" }

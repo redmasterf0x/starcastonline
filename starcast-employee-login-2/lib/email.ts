@@ -278,3 +278,78 @@ export async function sendTicketConfirmationEmail(payload: TicketEmailPayload): 
   }
 }
 
+export interface EventRefundEmailPayload {
+  to: string
+  buyerName: string
+  organizerName: string
+  eventTitle: string
+  venueName: string
+  eventDate: Date | string
+  quantity: number
+  refundAmountCents: number
+}
+
+/** Notify a ticket buyer that an event was deleted/cancelled and their Stripe refund was issued. */
+export async function sendEventCancelledRefundEmail(payload: EventRefundEmailPayload): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey || apiKey.startsWith("re_dummy")) {
+    console.log(
+      `[EMAIL] Event cancellation/refund notice for ${payload.to}: ${payload.eventTitle} — Refund $${(payload.refundAmountCents / 100).toFixed(2)}`
+    )
+    return
+  }
+
+  const formattedDate = new Date(payload.eventDate).toLocaleDateString("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+
+  const isPaid = payload.refundAmountCents > 0
+  const refundDisplay = `$${(payload.refundAmountCents / 100).toFixed(2)}`
+
+  const body = `
+    <p style="margin:0 0 14px 0;">Hi <strong>${payload.buyerName}</strong>,</p>
+    <p style="margin:0 0 16px 0;">
+      <strong>${payload.organizerName} — ${payload.eventTitle}</strong> scheduled for ${formattedDate} at ${payload.venueName} has been cancelled and removed.
+    </p>
+    ${
+      isPaid
+        ? `<div style="padding:14px 16px;border-radius:8px;background:#081421;border:1px solid rgba(34,181,115,0.4);margin-bottom:18px;">
+            <p style="margin:0 0 6px 0;color:#22b573;font-weight:bold;">Full Refund Issued: ${refundDisplay}</p>
+            <p style="margin:0;font-size:13px;color:${BRAND_CREAM};">
+              We have automatically refunded <strong>${refundDisplay}</strong> (${payload.quantity} ${payload.quantity === 1 ? "ticket" : "tickets"}) back to your original payment method via Stripe. Depending on your bank, funds typically appear within 5&ndash;10 business days.
+            </p>
+          </div>`
+        : `<p style="margin:0 0 16px 0;font-size:14px;">Your free pass (${payload.quantity} ${payload.quantity === 1 ? "ticket" : "tickets"}) has been cancelled automatically. No charge was made.</p>`
+    }
+    <p style="margin:0;font-size:13px;color:#5c6b7a;">If you have any questions, reply to this email or contact StarCast support at starcast.online.</p>
+  `
+
+  const subject = isPaid
+    ? `Refund Issued (${refundDisplay}): ${payload.eventTitle} Cancelled`
+    : `Event Cancelled: ${payload.eventTitle}`
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: payload.to,
+      subject,
+      html: shell(isPaid ? "Event Cancelled & Refund Issued" : "Event Cancelled", body),
+    })
+    if (error) {
+      await resend.emails.send({
+        from: "StarCast Media <onboarding@resend.dev>",
+        to: payload.to,
+        subject,
+        html: shell(isPaid ? "Event Cancelled & Refund Issued" : "Event Cancelled", body),
+      })
+    }
+  } catch (err) {
+    console.error("[EMAIL] Unexpected error sending event refund email:", err)
+  }
+}
+
+
