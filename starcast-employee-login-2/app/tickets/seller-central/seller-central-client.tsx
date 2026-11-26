@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createBandEvent, deleteBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
+import { SellerSalesChart } from "./sales-chart"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -443,6 +444,9 @@ export function SellerCentralClient({
           <KpiCard icon={<Banknote className="w-4 h-4 text-emerald-400" />} label="Door Cash" value={`$${(totals.cashCents / 100).toFixed(2)}`} />
           <KpiCard icon={<ShieldCheck className="w-4 h-4 text-emerald-300" />} label="Net Revenue" value={`$${(totals.netCents / 100).toFixed(2)}`} />
         </div>
+
+        {/* Sales Chart */}
+        <SellerSalesChart orders={filteredOrders} />
 
         {/* Your Events */}
         <section className="space-y-3">
