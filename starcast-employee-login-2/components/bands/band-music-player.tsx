@@ -260,9 +260,8 @@ export function BandMusicPlayer({
                   <img
                     src={currentTrack.coverArtUrl || bandLogo}
                     alt={currentTrack.title}
-                    className={`w-full h-full object-cover transition-transform duration-700 ${
-                      isPlaying ? "scale-105" : "scale-100"
-                    }`}
+                    className={`w-full h-full object-cover transition-transform duration-700 ${isPlaying ? "scale-105" : "scale-100"
+                      }`}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[#ea6f2a]">
@@ -327,9 +326,8 @@ export function BandMusicPlayer({
                   <button
                     type="button"
                     onClick={toggleShuffle}
-                    className={`p-2 rounded-lg text-xs transition-colors ${
-                      isShuffled ? "text-[#20efe0] bg-[#20efe0]/15" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
-                    }`}
+                    className={`p-2 rounded-lg text-xs transition-colors ${isShuffled ? "text-[#20efe0] bg-[#20efe0]/15" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
+                      }`}
                     title="Shuffle"
                   >
                     <Shuffle className="w-4 h-4" />
@@ -337,9 +335,8 @@ export function BandMusicPlayer({
                   <button
                     type="button"
                     onClick={toggleLoop}
-                    className={`p-2 rounded-lg text-xs transition-colors ${
-                      isLooping ? "text-[#20efe0] bg-[#20efe0]/15" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
-                    }`}
+                    className={`p-2 rounded-lg text-xs transition-colors ${isLooping ? "text-[#20efe0] bg-[#20efe0]/15" : "text-[#9a9fc4] hover:text-[#f5f7ff]"
+                      }`}
                     title="Repeat track"
                   >
                     <Repeat className="w-4 h-4" />
@@ -447,11 +444,10 @@ export function BandMusicPlayer({
             return (
               <div
                 key={track.id}
-                className={`flex items-center justify-between py-3.5 px-3 rounded-xl transition-colors cursor-pointer group ${
-                  isThisActive
-                    ? "bg-[#121248]/90 text-[#f5f7ff]"
-                    : "hover:bg-[#05052d]/80 text-[#cbd0f2]"
-                }`}
+                className={`flex items-center justify-between py-3.5 px-3 rounded-xl transition-colors cursor-pointer group ${isThisActive
+                  ? "bg-[#121248]/90 text-[#f5f7ff]"
+                  : "hover:bg-[#05052d]/80 text-[#cbd0f2]"
+                  }`}
                 onClick={() => handlePlayTrack(idx)}
               >
                 {/* Left info */}
@@ -495,9 +491,8 @@ export function BandMusicPlayer({
                   {/* Star / Like Button */}
                   <button
                     onClick={(e) => handleToggleLike(e, track)}
-                    className={`flex items-center gap-1 text-xs transition-colors hover:text-[#ffd166] p-1 cursor-pointer ${
-                      track.isLiked ? "text-[#ffd166] font-bold" : "text-[#7f84ad]"
-                    }`}
+                    className={`flex items-center gap-1 text-xs transition-colors hover:text-[#ffd166] p-1 cursor-pointer ${track.isLiked ? "text-[#ffd166] font-bold" : "text-[#7f84ad]"
+                      }`}
                     title={track.isLiked ? "Unlike song" : "Star song"}
                   >
                     <Star className={`w-3.5 h-3.5 ${track.isLiked ? "fill-[#ffd166] text-[#ffd166]" : ""}`} />

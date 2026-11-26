@@ -123,7 +123,7 @@ export function ResponsiveHeader({
     { href: "/music", label: "Music", show: true },
     { href: "/community", label: "Community", show: true },
     { href: "/merch", label: "Merch", show: true },
-    { href: "/information", label: "Information", show: true },
+    { href: "/tickets", label: "Tickets", show: true },
   ]
 
   // MOBILE: Complete navigation list for mobile hamburger menu
@@ -134,8 +134,8 @@ export function ResponsiveHeader({
     { href: "/music", label: "Music", show: true },
     { href: "/community", label: "The DECK & Community", show: true },
     { href: "/merch", label: "Merch", show: true },
+    { href: "/tickets", label: "Tickets", show: true },
     { href: "/quiz", label: "Quiz", show: true },
-    { href: "/information", label: "Information", show: true },
     { href: "/production", label: "Production", show: isCrew || isAdmin },
     { href: "/dashboard", label: "Dashboard", show: loggedIn },
     { href: "/admin", label: "Admin", show: isAdmin },

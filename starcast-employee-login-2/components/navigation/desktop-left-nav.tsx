@@ -16,6 +16,7 @@ import {
   Sparkles,
   FileText,
   Home,
+  Ticket,
 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import { getMyProfile } from "@/app/actions/profile"
@@ -131,6 +132,12 @@ export function DesktopLeftNav({ currentPage = "/", className = "" }: DesktopLef
       label: "Merch",
       icon: ShoppingBag,
       active: currentPage === "/merch" || currentPage?.startsWith("/merch/"),
+    },
+    {
+      href: "/tickets",
+      label: "Tickets",
+      icon: Ticket,
+      active: currentPage === "/tickets" || currentPage?.startsWith("/tickets/"),
     },
     {
       href: "/quiz",

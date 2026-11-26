@@ -219,46 +219,46 @@ export function TheDeck({
             <h2 className="text-sm sm:text-base font-bold uppercase tracking-[0.2em] text-[#ffd166]">Daily Dispatch on The DECK</h2>
           </div>
 
-        {!currentUserId ? (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-[#05052d]/80 border border-[#20205a]/60 p-5">
-            <p className="text-sm sm:text-base text-[#dbe0fb]">Sign in to claim your daily spot on the DECK.</p>
-            <Button onClick={() => router.push("/login")} className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl h-11 px-6 text-sm sm:text-base shrink-0">
-              Sign In
-            </Button>
-          </div>
-        ) : viewerHasPosted ? (
-          <div className="rounded-2xl bg-[#05052d]/80 border border-[#20205a]/60 p-5">
-            <p className="text-sm sm:text-base text-[#dbe0fb] leading-relaxed">
-              {"You've claimed your spot on the DECK today! Everyone gets one post per day \u2014 but you can reply to anyone as much as you like."}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-[#dbe0fb]">
-              {"You get one post per day on the wall, so make it count. You can reply to others without limit."}
-            </p>
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Broadcast something to the network..."
-              className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[120px] resize-none text-base p-4 rounded-2xl"
-              maxLength={2000}
-            />
-            {error && <p className="text-sm text-red-300">{error}</p>}
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-[#cbd0f2]">{draft.length}/2000</span>
-              <Button
-                onClick={handlePost}
-                disabled={posting || !draft.trim()}
-                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl h-12 px-6 text-sm sm:text-base gap-2 shadow-lg shadow-[#ea6f2a]/25"
-              >
-                <Send className="w-4 h-4" />
-                {posting ? "Posting..." : "Post to the DECK"}
+          {!currentUserId ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-[#05052d]/80 border border-[#20205a]/60 p-5">
+              <p className="text-sm sm:text-base text-[#dbe0fb]">Sign in to claim your daily spot on the DECK.</p>
+              <Button onClick={() => router.push("/login")} className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl h-11 px-6 text-sm sm:text-base shrink-0">
+                Sign In
               </Button>
             </div>
-          </div>
-        )}
-      </div>
+          ) : viewerHasPosted ? (
+            <div className="rounded-2xl bg-[#05052d]/80 border border-[#20205a]/60 p-5">
+              <p className="text-sm sm:text-base text-[#dbe0fb] leading-relaxed">
+                {"You've claimed your spot on the DECK today! Everyone gets one post per day \u2014 but you can reply to anyone as much as you like."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-[#dbe0fb]">
+                {"You get one post per day on the wall, so make it count. You can reply to others without limit."}
+              </p>
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Broadcast something to the network..."
+                className="bg-[#05052d] border-[#20205a] text-[#f5f7ff] min-h-[120px] resize-none text-base p-4 rounded-2xl"
+                maxLength={2000}
+              />
+              {error && <p className="text-sm text-red-300">{error}</p>}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs text-[#cbd0f2]">{draft.length}/2000</span>
+                <Button
+                  onClick={handlePost}
+                  disabled={posting || !draft.trim()}
+                  className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-semibold rounded-xl h-12 px-6 text-sm sm:text-base gap-2 shadow-lg shadow-[#ea6f2a]/25"
+                >
+                  <Send className="w-4 h-4" />
+                  {posting ? "Posting..." : "Post to the DECK"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Wall */}
