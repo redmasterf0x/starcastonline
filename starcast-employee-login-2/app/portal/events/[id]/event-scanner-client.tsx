@@ -52,6 +52,7 @@ import {
   Trash2,
   Copy,
   Banknote,
+  Printer,
 } from "lucide-react"
 
 interface CashSaleOrder {
@@ -409,7 +410,7 @@ export function EventScannerClient({
 
     const video = videoRef.current
     video.srcObject = streamRef.current
-    video.play().catch(() => {})
+    video.play().catch(() => { })
 
     if (!canvasRef.current) {
       canvasRef.current = document.createElement("canvas")
@@ -514,14 +515,27 @@ export function EventScannerClient({
 
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && (
-              <Button
-                onClick={openEditModal}
-                size="sm"
-                className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-bold rounded-xl h-9 px-3.5 text-xs"
-              >
-                <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                Edit Ticket / Event
-              </Button>
+              <>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="border-[#20efe0]/40 bg-[#05052d] text-[#20efe0] hover:bg-[#20efe0]/15 font-bold rounded-xl h-9 px-3.5 text-xs"
+                >
+                  <Link href={`/portal/events/${event.id}/print`}>
+                    <Printer className="w-3.5 h-3.5 mr-1.5" />
+                    Print Physical Tickets
+                  </Link>
+                </Button>
+                <Button
+                  onClick={openEditModal}
+                  size="sm"
+                  className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-bold rounded-xl h-9 px-3.5 text-xs"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                  Edit Ticket / Event
+                </Button>
+              </>
             )}
             <Button
               asChild
@@ -680,13 +694,12 @@ export function EventScannerClient({
           {/* Scan Status Feedback Banner */}
           {scanResult && (
             <div
-              className={`p-4 rounded-2xl border flex items-center gap-3 text-sm font-bold ${
-                scanResult.type === "valid"
+              className={`p-4 rounded-2xl border flex items-center gap-3 text-sm font-bold ${scanResult.type === "valid"
                   ? "bg-emerald-950/50 border-emerald-500 text-emerald-200"
                   : scanResult.type === "used"
-                  ? "bg-amber-950/50 border-amber-500 text-amber-200"
-                  : "bg-red-950/50 border-red-500 text-red-200"
-              }`}
+                    ? "bg-amber-950/50 border-amber-500 text-amber-200"
+                    : "bg-red-950/50 border-red-500 text-red-200"
+                }`}
             >
               {scanResult.type === "valid" ? (
                 <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
@@ -790,11 +803,10 @@ export function EventScannerClient({
 
           {cashMsg && (
             <div
-              className={`p-3 rounded-xl text-xs border ${
-                cashMsg.type === "ok"
+              className={`p-3 rounded-xl text-xs border ${cashMsg.type === "ok"
                   ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-200"
                   : "bg-red-950/40 border-red-500/40 text-red-200"
-              }`}
+                }`}
             >
               {cashMsg.text}
             </div>
@@ -885,11 +897,10 @@ export function EventScannerClient({
 
             {scannerMsg && (
               <div
-                className={`p-3 rounded-xl text-xs border ${
-                  scannerMsg.type === "ok"
+                className={`p-3 rounded-xl text-xs border ${scannerMsg.type === "ok"
                     ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-200"
                     : "bg-red-950/40 border-red-500/40 text-red-200"
-                }`}
+                  }`}
               >
                 {scannerMsg.text}
               </div>
@@ -945,9 +956,8 @@ export function EventScannerClient({
                   <button
                     key={tab}
                     onClick={() => setFilter(tab)}
-                    className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-colors ${
-                      filter === tab ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-white"
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-colors ${filter === tab ? "bg-[#ea6f2a] text-white" : "text-[#9a9fc4] hover:text-white"
+                      }`}
                   >
                     {tab === "checked_in" ? "Checked In" : tab}
                   </button>

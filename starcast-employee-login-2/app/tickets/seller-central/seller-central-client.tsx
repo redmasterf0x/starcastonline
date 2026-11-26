@@ -39,6 +39,7 @@ import {
   Link2,
   X,
   Trash2,
+  Printer,
 } from "lucide-react"
 
 interface SellerCentralProps {
@@ -121,6 +122,7 @@ export function SellerCentralClient({
   const [createError, setCreateError] = useState("")
   const [uploadingFlyer, setUploadingFlyer] = useState(false)
   const [createdEventId, setCreatedEventId] = useState<string | null>(null)
+  const [createdPhysicalCount, setCreatedPhysicalCount] = useState<number>(0)
   const [eventAssociation, setEventAssociation] = useState<string>("standalone")
   const [form, setForm] = useState({
     title: "",
@@ -133,6 +135,7 @@ export function SellerCentralClient({
     startTime: "8:00 PM",
     priceCents: 1500,
     totalInventory: 50,
+    physicalPrintQuantity: 0,
     ageRestriction: "All Ages",
     flyerUrl: "",
     recurrenceFrequency: "one_time" as "one_time" | "weekly" | "monthly" | "yearly",
@@ -179,6 +182,7 @@ export function SellerCentralClient({
         startTime: form.startTime,
         priceCents: form.priceCents,
         totalInventory: form.totalInventory,
+        physicalPrintQuantity: form.physicalPrintQuantity,
         ageRestriction: form.ageRestriction,
         flyerUrl: form.flyerUrl,
         recurrenceFrequency: form.recurrenceFrequency,
@@ -192,6 +196,7 @@ export function SellerCentralClient({
       }
 
       setCreatedEventId(res.event.id)
+      setCreatedPhysicalCount(res.physicalTicketsCount || 0)
       setCreateOpen(false)
       setForm({
         title: "",
@@ -204,6 +209,7 @@ export function SellerCentralClient({
         startTime: "8:00 PM",
         priceCents: 1500,
         totalInventory: 50,
+        physicalPrintQuantity: 0,
         ageRestriction: "All Ages",
         flyerUrl: "",
         recurrenceFrequency: "one_time",
@@ -445,8 +451,21 @@ export function SellerCentralClient({
 
         {createdEventId && (
           <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/35 p-4 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-emerald-200">
-            <span>Event created! Your standalone ticket page is live.</span>
-            <div className="flex items-center gap-2">
+            <span>
+              Event created! Your ticket page is live
+              {createdPhysicalCount > 0
+                ? ` and ${createdPhysicalCount} physical pre-sale ticket${createdPhysicalCount === 1 ? "" : "s"} are ready to print.`
+                : "."}
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {createdPhysicalCount > 0 && (
+                <Button asChild size="sm" className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-extrabold rounded-lg h-8 text-xs">
+                  <Link href={`/portal/events/${createdEventId}/print`}>
+                    <Printer className="w-3.5 h-3.5 mr-1.5" />
+                    Print {createdPhysicalCount} Physical Ticket{createdPhysicalCount === 1 ? "" : "s"}
+                  </Link>
+                </Button>
+              )}
               <Button asChild size="sm" className="bg-[#20efe0] text-[#05051f] font-bold rounded-lg h-8 text-xs">
                 <Link href={`/events/${createdEventId}`}>Open Ticket Page</Link>
               </Button>
@@ -519,6 +538,18 @@ export function SellerCentralClient({
                         <Link href={`/portal/events/${ev.id}`}>
                           <QrCode className="w-3.5 h-3.5 mr-1.5" />
                           Scan &amp; Cash Sales
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="border-[#20205a] bg-[#05052d] text-[#ffd166] hover:bg-[#20205a]/60 rounded-xl h-8 px-3 text-xs"
+                        title="Generate & print physical pre-sale QR tickets"
+                      >
+                        <Link href={`/portal/events/${ev.id}/print`}>
+                          <Printer className="w-3.5 h-3.5 mr-1.5" />
+                          Print
                         </Link>
                       </Button>
                       <Button
@@ -815,6 +846,38 @@ export function SellerCentralClient({
                   value={form.startTime}
                   onChange={(e) => setForm({ ...form, startTime: e.target.value })}
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
+            </div>
+
+            {/* Optional Physical Pre-Sale Tickets to Print */}
+            <div className="rounded-xl border border-[#20efe0]/30 bg-[#05052d]/70 p-3.5 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <Label htmlFor="sc-phys" className="text-xs font-bold text-[#ffd166] flex items-center gap-1.5">
+                    <Printer className="w-3.5 h-3.5 text-[#20efe0]" />
+                    Physical Pre-Sale Tickets to Print (Optional)
+                  </Label>
+                  <p className="text-[11px] text-[#9a9fc4]">
+                    Reserve tickets from your total inventory with unique scannable QR codes ready to print &amp; sell in person beforehand (0% online fee).
+                  </p>
+                </div>
+                <Input
+                  id="sc-phys"
+                  type="number"
+                  min="0"
+                  max={Math.min(200, Math.max(0, form.totalInventory))}
+                  value={String(form.physicalPrintQuantity)}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      physicalPrintQuantity: Math.max(
+                        0,
+                        Math.min(200, Math.min(form.totalInventory, parseInt(e.target.value || "0", 10)))
+                      ),
+                    })
+                  }
+                  className="w-24 h-9 border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] font-mono text-sm shrink-0"
                 />
               </div>
             </div>

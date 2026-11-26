@@ -29,6 +29,7 @@ export type CreateEventInput = {
   flyerUrl?: string
   recurrenceFrequency?: "one_time" | "weekly" | "monthly" | "yearly"
   customLinks?: EventCustomLink[]
+  physicalPrintQuantity?: number
 }
 
 function sanitizeEventLinks(links?: EventCustomLink[]): EventCustomLink[] {
@@ -239,6 +240,11 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
         : null
 
     const cleanLinks = sanitizeEventLinks(input.customLinks)
+    const physicalQty = Math.min(
+      totalInventory,
+      Math.max(0, Math.min(200, Math.floor(Number(input.physicalPrintQuantity || 0))))
+    )
+    const initialRemaining = Math.max(0, totalInventory - physicalQty)
 
     const [newEvent] = await db
       .insert(bandEvents)
@@ -255,12 +261,12 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
         startTime: input.startTime?.trim() || "8:00 PM",
         priceCents,
         totalInventory,
-        remainingInventory: totalInventory,
+        remainingInventory: initialRemaining,
         ageRestriction: input.ageRestriction || "All Ages",
         flyerUrl: input.flyerUrl?.trim() || null,
         recurrenceFrequency,
         customLinks: cleanLinks,
-        status: "active",
+        status: initialRemaining <= 0 ? "sold_out" : "active",
         escrowStatus: "held",
         escrowReleaseDate,
         stripeProductId,
@@ -268,12 +274,47 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
       })
       .returning()
 
+    // If the seller requested physical pre-sale tickets to print immediately, mint them with unique scannable QR codes
+    if (physicalQty > 0) {
+      const [physOrder] = await db
+        .insert(bandTicketOrders)
+        .values({
+          eventId: newEvent.id,
+          bandId: band?.id || null,
+          buyerUserId: viewer.userId,
+          buyerEmail: "physical@print.starcast.online",
+          buyerName: "Physical Pre-Sale Ticket",
+          quantity: physicalQty,
+          unitPriceCents: priceCents,
+          totalCents: priceCents * physicalQty,
+          platformFeeCents: 0,
+          stripeSessionId: "physical-print",
+          status: "paid",
+        })
+        .returning()
+
+      const physInstances = []
+      for (let i = 0; i < physicalQty; i++) {
+        physInstances.push({
+          orderId: physOrder.id,
+          eventId: newEvent.id,
+          bandId: band?.id || null,
+          ticketNumber: i + 1,
+          qrToken: crypto.randomUUID(),
+          holderName: "Physical Pre-Sale Ticket",
+          holderEmail: "physical@print.starcast.online",
+          status: "valid" as const,
+        })
+      }
+      await db.insert(bandTicketInstances).values(physInstances)
+    }
+
     revalidatePath("/portal")
     revalidatePath("/tickets")
     revalidatePath("/tickets/seller-central")
     if (band?.slug) revalidatePath(`/bands/${band.slug}`)
 
-    return { success: true, event: newEvent }
+    return { success: true, event: newEvent, physicalTicketsCount: physicalQty }
   } catch (err: any) {
     console.error("createBandEvent error:", err)
     return { success: false, error: err?.message || "Failed to post ticket event" }
@@ -455,8 +496,9 @@ export async function deleteBandEvent(eventId: string) {
     let cashOrdersCount = 0
 
     for (const order of paidOrders) {
-      const isCashDoor = order.stripeSessionId === "cash-door"
-      if (isCashDoor) {
+      const isOfflineOrder =
+        order.stripeSessionId === "cash-door" || order.stripeSessionId === "physical-print"
+      if (isOfflineOrder) {
         cashOrdersCount += 1
         continue
       }
@@ -1128,6 +1170,155 @@ export async function recordDoorCashSale({
   }
 }
 
+/** Issue a batch of physical pre-sale tickets with unique scannable QR codes ready to print */
+export async function issuePhysicalPrintTickets({
+  eventId,
+  quantity,
+  label,
+}: {
+  eventId: string
+  quantity: number
+  label?: string
+}) {
+  try {
+    const viewer = await requireViewer()
+    const qty = Math.max(1, Math.min(200, Math.floor(quantity || 1)))
+
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+
+    const isCreator = isEventOwner(event, band, viewer.userId)
+    if (!isCreator && !viewer.isAdmin) {
+      return { success: false, error: "Only the event creator or an admin can print physical pre-sale tickets." }
+    }
+
+    if (event.remainingInventory < qty) {
+      return {
+        success: false,
+        error:
+          event.remainingInventory <= 0
+            ? "No remaining tickets left in inventory."
+            : `Only ${event.remainingInventory} ticket(s) remaining in inventory.`,
+      }
+    }
+
+    const [updatedEvent] = await db
+      .update(bandEvents)
+      .set({
+        remainingInventory: sql`${bandEvents.remainingInventory} - ${qty}`,
+        status: sql`CASE WHEN ${bandEvents.remainingInventory} - ${qty} <= 0 THEN 'sold_out' ELSE ${bandEvents.status} END`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(bandEvents.id, event.id), sql`${bandEvents.remainingInventory} >= ${qty}`)
+      )
+      .returning()
+
+    if (!updatedEvent) {
+      return { success: false, error: "Not enough tickets remaining." }
+    }
+
+    const unitPriceCents = event.priceCents || 0
+    const totalCents = unitPriceCents * qty
+    const holderLabel = label?.trim() || "Physical Pre-Sale Ticket"
+
+    const [order] = await db
+      .insert(bandTicketOrders)
+      .values({
+        eventId: event.id,
+        bandId: band?.id || null,
+        buyerUserId: viewer.userId,
+        buyerEmail: "physical@print.starcast.online",
+        buyerName: holderLabel,
+        quantity: qty,
+        unitPriceCents,
+        totalCents,
+        platformFeeCents: 0,
+        stripeSessionId: "physical-print",
+        status: "paid",
+      })
+      .returning()
+
+    const currentSold = updatedEvent.totalInventory - updatedEvent.remainingInventory - qty
+    const instancesToInsert = []
+    for (let i = 0; i < qty; i++) {
+      instancesToInsert.push({
+        orderId: order.id,
+        eventId: event.id,
+        bandId: band?.id || null,
+        ticketNumber: Math.max(1, currentSold + i + 1),
+        qrToken: crypto.randomUUID(),
+        holderName: holderLabel,
+        holderEmail: "physical@print.starcast.online",
+        status: "valid" as const,
+      })
+    }
+
+    const createdInstances = await db
+      .insert(bandTicketInstances)
+      .values(instancesToInsert)
+      .returning()
+
+    revalidatePath(`/portal/events/${eventId}`)
+    revalidatePath(`/portal/events/${eventId}/print`)
+    revalidatePath("/tickets/seller-central")
+    revalidatePath(`/events/${eventId}`)
+    revalidatePath("/tickets")
+
+    return {
+      success: true,
+      tickets: createdInstances,
+      remainingInventory: updatedEvent.remainingInventory,
+    }
+  } catch (err: any) {
+    console.error("issuePhysicalPrintTickets error:", err)
+    return { success: false, error: err?.message || "Failed to generate physical print tickets" }
+  }
+}
+
+/** Load event and its physical pre-sale tickets for the printable sheet page */
+export async function getEventPrintTicketsData(eventId: string) {
+  try {
+    const viewer = await requireViewer()
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const band = event.bandId
+      ? (await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+
+    const isCreator = isEventOwner(event, band, viewer.userId)
+    if (!isCreator && !viewer.isAdmin) {
+      return { success: false, error: "Unauthorized to access printable physical tickets for this event." }
+    }
+
+    const instances = await db
+      .select()
+      .from(bandTicketInstances)
+      .where(
+        and(
+          eq(bandTicketInstances.eventId, eventId),
+          eq(bandTicketInstances.holderEmail, "physical@print.starcast.online")
+        )
+      )
+      .orderBy(asc(bandTicketInstances.ticketNumber))
+
+    return {
+      success: true,
+      event,
+      organizerName: band?.name || event.organizerName || "StarCast Event",
+      tickets: instances,
+    }
+  } catch (err: any) {
+    console.error("getEventPrintTicketsData error:", err)
+    return { success: false, error: err?.message || "Failed to load printable tickets" }
+  }
+}
+
 /** Ticket Seller Central: accessible to all admin-approved ticket sellers AND admins (strictly their own events & standalone events) */
 export async function getTicketSellerCentralData() {
   try {
@@ -1199,7 +1390,7 @@ export async function getTicketSellerCentralData() {
 
     const enrichedOrders = myOrders.map((o) => {
       const ev = eventMap.get(o.eventId)
-      const isCash = o.stripeSessionId === "cash-door"
+      const isCash = o.stripeSessionId === "cash-door" || o.stripeSessionId === "physical-print"
       return {
         id: o.id,
         eventId: o.eventId,
@@ -1216,7 +1407,12 @@ export async function getTicketSellerCentralData() {
         platformFeeCents: o.platformFeeCents,
         netCents: Math.max(0, o.totalCents - o.platformFeeCents),
         paymentMethod: isCash ? ("cash" as const) : ("stripe" as const),
-        stripeRef: isCash ? "DOOR-CASH" : o.stripePaymentIntentId || o.stripeSessionId || "",
+        stripeRef:
+          o.stripeSessionId === "physical-print"
+            ? "PHYSICAL-PRINT"
+            : o.stripeSessionId === "cash-door"
+              ? "DOOR-CASH"
+              : o.stripePaymentIntentId || o.stripeSessionId || "",
         createdAt: o.createdAt.toISOString(),
       }
     })
@@ -1333,8 +1529,10 @@ export async function releaseEscrowPayout(eventId: string) {
       .from(bandTicketOrders)
       .where(and(eq(bandTicketOrders.eventId, eventId), eq(bandTicketOrders.status, "paid")))
 
-    // Exclude door cash sales (those were collected in person at the door, 0% platform fee)
-    const onlineOrders = orders.filter((o) => o.stripeSessionId !== "cash-door")
+    // Exclude door cash sales and physical printed pre-sale batches (0% platform fee)
+    const onlineOrders = orders.filter(
+      (o) => o.stripeSessionId !== "cash-door" && o.stripeSessionId !== "physical-print"
+    )
     const onlineGrossCents = onlineOrders.reduce((acc, o) => acc + o.totalCents, 0)
     const platformFeeCents = onlineOrders.reduce(
       (acc, o) => acc + (o.platformFeeCents > 0 ? o.platformFeeCents : Math.round(o.totalCents * 0.1)),
