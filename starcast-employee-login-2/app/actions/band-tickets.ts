@@ -210,7 +210,7 @@ export async function createBandEvent(bandId: string, input: CreateEventInput) {
   }
 }
 
-/** Update an existing event */
+/** Update an existing event (strictly only the creator/owner can edit; price locks once any ticket is sold) */
 export async function updateBandEvent(eventId: string, input: UpdateEventInput) {
   try {
     const viewer = await requireViewer()
@@ -218,8 +218,32 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
     if (!event) return { success: false, error: "Event not found" }
 
     const [band] = await db.select().from(bands).where(eq(bands.id, event.bandId)).limit(1)
-    if (!band || (band.ownerUserId !== viewer.userId && !viewer.isStaff)) {
-      return { success: false, error: "Unauthorized" }
+    if (!band || band.ownerUserId !== viewer.userId) {
+      return { success: false, error: "Only the creator of this ticket can edit it." }
+    }
+
+    // Check if any ticket has already been purchased/claimed for this event
+    const [{ count: issuedCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bandTicketInstances)
+      .where(
+        and(
+          eq(bandTicketInstances.eventId, eventId),
+          sql`${bandTicketInstances.status} != 'cancelled'`
+        )
+      )
+
+    const soldCount = Math.max(issuedCount || 0, event.totalInventory - event.remainingInventory)
+    const hasSoldTickets = soldCount > 0
+
+    const nextPriceCents =
+      input.priceCents !== undefined ? Math.max(0, Math.round(input.priceCents)) : event.priceCents
+
+    if (hasSoldTickets && nextPriceCents !== event.priceCents) {
+      return {
+        success: false,
+        error: "Ticket price is locked and cannot be edited after someone has purchased a ticket.",
+      }
     }
 
     let eventDate = event.eventDate
@@ -232,13 +256,12 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
       }
     }
 
-    // If total inventory changed, adjust remaining inventory appropriately
+    // If total inventory changed, ensure it never drops below already-sold tickets
     let remainingInventory = event.remainingInventory
     let totalInventory = event.totalInventory
     if (input.totalInventory !== undefined && input.totalInventory !== event.totalInventory) {
-      const diff = input.totalInventory - event.totalInventory
-      totalInventory = Math.max(1, input.totalInventory)
-      remainingInventory = Math.max(0, event.remainingInventory + diff)
+      totalInventory = Math.max(Math.max(1, soldCount), input.totalInventory)
+      remainingInventory = Math.max(0, totalInventory - soldCount)
     }
 
     const [updated] = await db
@@ -251,7 +274,7 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
         eventDate,
         doorsOpenTime: input.doorsOpenTime !== undefined ? input.doorsOpenTime : event.doorsOpenTime,
         startTime: input.startTime !== undefined ? input.startTime : event.startTime,
-        priceCents: input.priceCents !== undefined ? input.priceCents : event.priceCents,
+        priceCents: nextPriceCents,
         totalInventory,
         remainingInventory,
         ageRestriction: input.ageRestriction !== undefined ? input.ageRestriction : event.ageRestriction,
@@ -264,6 +287,8 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
       .returning()
 
     revalidatePath("/portal")
+    revalidatePath(`/portal/events/${eventId}`)
+    revalidatePath("/tickets")
     if (band.slug) revalidatePath(`/bands/${band.slug}`)
 
     return { success: true, event: updated }
