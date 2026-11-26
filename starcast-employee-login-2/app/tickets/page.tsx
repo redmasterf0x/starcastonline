@@ -13,9 +13,9 @@ import { Badge } from "@/components/ui/badge"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Tickets",
+  title: "Top City Tickets",
   description:
-    "Browse upcoming live events, view your saved or purchased QR tickets, and buy passes on StarCast Online.",
+    "Top City Tickets — Browse upcoming live events, view your saved or purchased QR tickets, and buy passes on StarCast Online.",
 }
 
 export default async function TicketsPage() {
@@ -85,38 +85,54 @@ export default async function TicketsPage() {
   return (
     <div className="public-shell min-h-[calc(100vh-5rem)] px-4 py-10 sm:py-14">
       <div className="max-w-5xl mx-auto space-y-10">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#20205a] pb-6">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-[#ffd166]">
-              <Ticket className="w-4 h-4 text-[#ea6f2a]" />
-              StarCast Box Office
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-[#f5f7ff] tracking-tight">
-              Event Tickets
-            </h1>
-            <p className="text-sm text-[#9a9fc4]">
-              Official live show passes with instant QR delivery.
-            </p>
-          </div>
+        {/* Page Header — Top City Tickets Branded Face */}
+        <div className="relative overflow-hidden rounded-3xl border border-[#20efe0]/30 bg-gradient-to-br from-[#0b0b38] via-[#120d3f] to-[#070828] p-6 sm:p-8 shadow-2xl">
+          <div
+            className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full opacity-20 blur-3xl"
+            style={{ background: "radial-gradient(circle, #e845d6 0%, transparent 70%)" }}
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -bottom-24 -right-20 h-64 w-64 rounded-full opacity-20 blur-3xl"
+            style={{ background: "radial-gradient(circle, #20efe0 0%, transparent 70%)" }}
+            aria-hidden="true"
+          />
 
-          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-            {isApprovedSeller ? (
-              <Button
-                asChild
-                className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
-              >
-                <Link href="/tickets/seller-central">Ticket Seller Central &rarr;</Link>
-              </Button>
-            ) : (
-              <Button
-                asChild
-                variant="outline"
-                className="border-[#20205a] bg-[#0c0c3f]/70 text-[#f5f7ff] hover:bg-[#20205a]/50 rounded-xl h-10 px-4 text-xs font-semibold"
-              >
-                <Link href="/dashboard">Sell Tickets on StarCast &rarr;</Link>
-              </Button>
-            )}
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/top-city-tickets-horizontal.webp"
+                  alt="Top City Tickets"
+                  className="h-16 sm:h-20 w-auto object-contain drop-shadow-[0_4px_18px_rgba(32,239,224,0.28)]"
+                />
+                <h1 className="sr-only">Top City Tickets</h1>
+              </div>
+              <p className="text-xs sm:text-sm text-[#cbd0f2] max-w-lg">
+                Official live show &amp; event passes with instant QR delivery &bull;{" "}
+                <span className="text-[#9a9fc4]">Powered by StarCast Online</span>
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+              {isApprovedSeller ? (
+                <Button
+                  asChild
+                  className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
+                >
+                  <Link href="/tickets/seller-central">Ticket Seller Central &rarr;</Link>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-[#20efe0]/40 bg-[#05052d]/80 text-[#f5f7ff] hover:bg-[#20205a]/70 rounded-xl h-10 px-4 text-xs font-semibold"
+                >
+                  <Link href="/dashboard">Sell Tickets on StarCast &rarr;</Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -253,15 +269,18 @@ export default async function TicketsPage() {
 
           {events.length === 0 ? (
             <div className="rounded-3xl border border-[#20205a] bg-gradient-to-b from-[#0c0c3f]/90 to-[#05052d]/90 p-10 sm:p-14 text-center space-y-5 shadow-xl">
-              <div className="w-14 h-14 rounded-2xl bg-[#ea6f2a]/15 border border-[#ea6f2a]/35 flex items-center justify-center mx-auto text-[#ea6f2a]">
-                <Ticket className="w-7 h-7" />
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/top-city-tickets-stacked.webp"
+                alt="Top City Tickets"
+                className="h-28 w-auto mx-auto object-contain opacity-90 drop-shadow-[0_4px_16px_rgba(232,69,214,0.25)]"
+              />
               <div className="space-y-2">
                 <h3 className="text-xl sm:text-2xl font-bold text-[#f5f7ff]">
                   There are no tickets available right now
                 </h3>
                 <p className="text-sm text-[#9a9fc4] max-w-md mx-auto">
-                  No upcoming ticketed shows are currently on sale. Check back soon or explore local bands and artists on StarCast.
+                  No upcoming Top City Tickets shows are currently on sale. Check back soon or explore local bands and artists on StarCast.
                 </p>
               </div>
               <div className="pt-1 flex flex-wrap items-center justify-center gap-3">

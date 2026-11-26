@@ -186,12 +186,14 @@ export function TicketClient({
         >
           {/* Top Cosmic Broadcast Header */}
           <div className="relative bg-gradient-to-r from-[#05052d] via-[#10104e] to-[#05052d] border-b border-[#20205a] p-6 sm:p-8 text-center print:bg-white print:border-b-2 print:border-black print:p-4">
-            <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center justify-between gap-4 mb-3">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ea6f2a] animate-pulse print:hidden" />
-                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#ea6f2a] print:text-black font-mono">
-                  StarCast Live Music
-                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/top-city-tickets-horizontal.webp"
+                  alt="Top City Tickets"
+                  className="h-9 sm:h-10 w-auto object-contain"
+                />
               </div>
 
               {isValid && (

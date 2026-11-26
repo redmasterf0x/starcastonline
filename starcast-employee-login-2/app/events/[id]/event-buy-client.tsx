@@ -248,7 +248,7 @@ export function EventBuyClient({
             className="inline-flex items-center gap-2 text-sm text-[#9a9fc4] hover:text-[#f5f7ff] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            All Tickets
+            All Top City Tickets
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -312,8 +312,13 @@ export function EventBuyClient({
                 />
               </div>
             ) : (
-              <div className="w-full h-44 bg-gradient-to-br from-[#12124a] via-[#0c0c3f] to-[#05052d] border-b border-[#20205a] flex items-center justify-center">
-                <Ticket className="w-14 h-14 text-[#ea6f2a]/40" />
+              <div className="w-full h-48 bg-gradient-to-br from-[#12124a] via-[#0c0c3f] to-[#05052d] border-b border-[#20205a] flex items-center justify-center p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/top-city-tickets-stacked.webp"
+                  alt="Top City Tickets"
+                  className="h-32 w-auto object-contain opacity-90 drop-shadow-[0_4px_16px_rgba(32,239,224,0.25)]"
+                />
               </div>
             )}
 
@@ -411,7 +416,19 @@ export function EventBuyClient({
           </div>
 
           {/* Right: Ticket Checkout / Claim Card */}
-          <div className="lg:col-span-5 rounded-3xl border border-[#ea6f2a]/40 bg-[#0c0c3f] p-6 sm:p-7 shadow-2xl space-y-5 sticky top-24">
+          <div className="lg:col-span-5 rounded-3xl border border-[#20efe0]/35 bg-[#0c0c3f] p-6 sm:p-7 shadow-2xl space-y-5 sticky top-24">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#20205a]/70">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/top-city-tickets-horizontal.webp"
+                alt="Top City Tickets"
+                className="h-9 w-auto object-contain"
+              />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#9a9fc4]">
+                Official Box Office
+              </span>
+            </div>
+
             <div className="flex items-center justify-between gap-2 pb-4 border-b border-[#20205a]">
               <div>
                 <p className="text-xs font-semibold text-[#9a9fc4]">Ticket Price</p>
