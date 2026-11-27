@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth"
 import { getViewerPermissions } from "@/lib/permissions"
 import { db } from "@/lib/db"
 import { bandEvents, bands, bandTicketInstances, bandTicketOrders, profiles } from "@/lib/db/schema"
-import { eq, and, gte, asc, desc, or, ilike } from "drizzle-orm"
+import { eq, and, gte, asc, desc, or, ilike, sql } from "drizzle-orm"
 import { Ticket, Calendar, MapPin, ArrowRight, Music, QrCode, LogIn, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -34,7 +34,12 @@ export default async function TicketsPage() {
     })
     .from(bandEvents)
     .leftJoin(bands, eq(bands.id, bandEvents.bandId))
-    .where(and(eq(bandEvents.status, "active"), gte(bandEvents.eventDate, now)))
+    .where(
+      and(
+        eq(bandEvents.status, "active"),
+        sql`COALESCE(${bandEvents.eventEndDate}, ${bandEvents.eventDate} + interval '3 hours') >= ${now}`
+      )
+    )
     .orderBy(asc(bandEvents.eventDate))
 
   let isApprovedSeller = false

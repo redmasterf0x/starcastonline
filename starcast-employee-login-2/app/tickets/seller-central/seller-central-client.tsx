@@ -75,6 +75,7 @@ interface SellerCentralProps {
     title: string
     venueName: string
     eventDate: string
+    eventEndDate?: string
     escrowReleaseDate?: string
     onlineGrossCents?: number
     onlineNetCents?: number
@@ -163,8 +164,9 @@ export function SellerCentralClient({
     venueName: "",
     venueAddress: "",
     eventDate: "",
+    eventEndDate: "",
     doorsOpenTime: "7:00 PM",
-    startTime: "8:00 PM",
+    startTime: "",
     priceCents: 1500,
     totalInventory: 50,
     physicalPrintQuantity: 0,
@@ -282,8 +284,9 @@ export function SellerCentralClient({
         venueName: form.venueName,
         venueAddress: form.venueAddress,
         eventDate: form.eventDate ? new Date(form.eventDate).toISOString() : "",
+        eventEndDate: form.eventEndDate ? new Date(form.eventEndDate).toISOString() : undefined,
         doorsOpenTime: form.doorsOpenTime,
-        startTime: form.startTime,
+        startTime: form.startTime || undefined,
         priceCents: form.priceCents,
         totalInventory: form.totalInventory,
         physicalPrintQuantity: form.physicalPrintQuantity,
@@ -320,8 +323,9 @@ export function SellerCentralClient({
         venueName: "",
         venueAddress: "",
         eventDate: "",
+        eventEndDate: "",
         doorsOpenTime: "7:00 PM",
-        startTime: "8:00 PM",
+        startTime: "",
         priceCents: 1500,
         totalInventory: 50,
         physicalPrintQuantity: 0,
@@ -846,9 +850,12 @@ export function SellerCentralClient({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {events.map((ev) => {
                 const sold = Math.max(0, ev.totalInventory - ev.remainingInventory)
+                const endTimestamp = ev.eventEndDate
+                  ? new Date(ev.eventEndDate)
+                  : new Date(new Date(ev.eventDate).getTime() + 3 * 60 * 60 * 1000)
                 const releaseTimestamp = ev.escrowReleaseDate
                   ? new Date(ev.escrowReleaseDate)
-                  : new Date(new Date(ev.eventDate).getTime() + 24 * 60 * 60 * 1000)
+                  : new Date(endTimestamp.getTime() + 24 * 60 * 60 * 1000)
                 const exactReleaseStr = `${releaseTimestamp.toLocaleDateString("en-US", {
                   timeZone: "America/Chicago",
                   weekday: "short",
@@ -862,6 +869,7 @@ export function SellerCentralClient({
                 })} CT`
                 const netOnline = ev.onlineNetCents || 0
                 const isReleased = ev.escrowStatus === "released"
+                const isHoldMatured = Date.now() >= releaseTimestamp.getTime()
 
                 return (
                   <div
@@ -922,7 +930,7 @@ export function SellerCentralClient({
                         )}
                       </div>
 
-                      {/* Seller Escrow Hold & Stripe Payout Timeline Banner */}
+                      {/* Seller Escrow Hold & Stripe Payout Timeline Banner (24h after event end) */}
                       {netOnline > 0 ? (
                         isReleased ? (
                           <div className="mt-2 rounded-xl border border-[#22b573]/40 bg-[#22b573]/10 p-3 space-y-1">
@@ -931,7 +939,27 @@ export function SellerCentralClient({
                               Payout Sent to Your Stripe (${(netOnline / 100).toFixed(2)} net)
                             </p>
                             <p className="text-[11px] text-[#cbd0f2] leading-relaxed">
-                              Released from escrow on <span className="font-mono text-white">{exactReleaseStr}</span>. Once sent to your Stripe Connect account, arrival in your Stripe balance is near-instant.
+                              Released 24h after event end (<span className="font-mono text-white">{exactReleaseStr}</span>). Once sent to your Stripe Connect account, arrival in your Stripe balance is near-instant.
+                            </p>
+                          </div>
+                        ) : isHoldMatured && !isStripeActive ? (
+                          <div className="mt-2 rounded-xl border border-[#ffd166]/55 bg-amber-950/35 p-3 space-y-1">
+                            <p className="text-xs font-extrabold text-[#ffd166] flex items-center gap-1.5">
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              24h Post-Event Hold Complete — Link Stripe Above to Receive ${(netOnline / 100).toFixed(2)}!
+                            </p>
+                            <p className="text-[11px] text-[#dbe0fb] leading-relaxed">
+                              Your 24-hour post-event hold finished on <strong className="text-white font-mono">{exactReleaseStr}</strong>. Connect your Stripe payout account at the top of Seller Central to receive your funds immediately.
+                            </p>
+                          </div>
+                        ) : isHoldMatured ? (
+                          <div className="mt-2 rounded-xl border border-[#20efe0]/45 bg-[#052638]/75 p-3 space-y-1">
+                            <p className="text-xs font-extrabold text-[#20efe0] flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-[#ffd166] shrink-0" />
+                              24h Post-Event Hold Complete — Sending ${(netOnline / 100).toFixed(2)} to Your Stripe!
+                            </p>
+                            <p className="text-[11px] text-[#dbe0fb] leading-relaxed">
+                              The 24-hour hold after your event ended finished on <strong className="text-[#ffd166] font-mono">{exactReleaseStr}</strong>. Your payout is queued for immediate Stripe transfer.
                             </p>
                           </div>
                         ) : (
@@ -941,7 +969,7 @@ export function SellerCentralClient({
                               Your money (${(netOnline / 100).toFixed(2)} net) is on the way!
                             </p>
                             <p className="text-[11px] text-[#dbe0fb] leading-relaxed">
-                              Releases from the 24h escrow hold &amp; sends to your Stripe on{" "}
+                              Releases 24 hours after your event ends &amp; sends to your Stripe on{" "}
                               <strong className="text-[#ffd166] font-mono">{exactReleaseStr}</strong>. After sending to your Stripe account, arrival is near-instant.
                             </p>
                           </div>
@@ -949,7 +977,7 @@ export function SellerCentralClient({
                       ) : (
                         (ev.priceCents > 0 || (ev.vipEnabled && (ev.vipPriceCents || 0) > 0)) && (
                           <div className="mt-2 rounded-xl border border-[#20205a] bg-[#05052d]/60 px-3 py-2 text-[11px] text-[#9a9fc4]">
-                            <span className="text-[#cbd0f2] font-semibold">Payout Schedule:</span> Online sales release from escrow &amp; send to your Stripe on{" "}
+                            <span className="text-[#cbd0f2] font-semibold">Payout Schedule:</span> Online sales release 24 hours after your event ends &amp; send to your Stripe on{" "}
                             <span className="font-mono text-[#ffd166]">{exactReleaseStr}</span> (near-instant once sent).
                           </div>
                         )
@@ -1227,14 +1255,41 @@ export function SellerCentralClient({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label htmlFor="sc-date" className="text-xs text-[#9a9fc4]">
-                  Event Date &amp; Time *
+                  Event Start Date &amp; Time *
                 </Label>
                 <Input
                   id="sc-date"
                   type="datetime-local"
                   required
                   value={form.eventDate}
-                  onChange={(e) => setForm({ ...form, eventDate: e.target.value })}
+                  onChange={(e) => {
+                    const nextStart = e.target.value
+                    let nextEnd = form.eventEndDate
+                    if (nextStart) {
+                      const startMs = new Date(nextStart).getTime()
+                      const curEndMs = nextEnd ? new Date(nextEnd).getTime() : 0
+                      if (!isNaN(startMs) && (!nextEnd || isNaN(curEndMs) || curEndMs <= startMs)) {
+                        const d = new Date(startMs + 3 * 60 * 60 * 1000)
+                        const pad = (n: number) => String(n).padStart(2, "0")
+                        nextEnd = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+                      }
+                    }
+                    setForm({ ...form, eventDate: nextStart, eventEndDate: nextEnd })
+                  }}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sc-end-date" className="text-xs text-[#ffd166]">
+                  Event End Date &amp; Time *
+                </Label>
+                <Input
+                  id="sc-end-date"
+                  type="datetime-local"
+                  required
+                  min={form.eventDate || undefined}
+                  value={form.eventEndDate}
+                  onChange={(e) => setForm({ ...form, eventEndDate: e.target.value })}
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
                 />
               </div>
@@ -1249,18 +1304,28 @@ export function SellerCentralClient({
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
                 />
               </div>
-              <div>
-                <Label htmlFor="sc-start" className="text-xs text-[#9a9fc4]">
-                  Show Start
-                </Label>
-                <Input
-                  id="sc-start"
-                  value={form.startTime}
-                  onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
-                />
-              </div>
             </div>
+
+            {form.eventEndDate && !isNaN(new Date(form.eventEndDate).getTime()) && (
+              <div className="rounded-xl border border-[#20efe0]/30 bg-[#052638]/50 px-3.5 py-2 text-[11px] text-[#cbd0f2] flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-[#ffd166] shrink-0" />
+                <span>
+                  Stripe Payout Release (24h after event ends):{" "}
+                  <strong className="font-mono text-[#ffd166]">
+                    {new Date(new Date(form.eventEndDate).getTime() + 24 * 60 * 60 * 1000).toLocaleString("en-US", {
+                      timeZone: "America/Chicago",
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}{" "}
+                    CT
+                  </strong>
+                </span>
+              </div>
+            )}
 
             {/* Optional Physical Pre-Sale Tickets to Print */}
             <div className="rounded-xl border border-[#20efe0]/30 bg-[#05052d]/70 p-3.5 space-y-2">

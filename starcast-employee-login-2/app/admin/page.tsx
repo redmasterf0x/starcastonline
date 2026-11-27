@@ -1443,11 +1443,16 @@ export default function AdminPage() {
                             </p>
 
                             <p className="text-[11px] text-[#9a9fc4] mt-0.5">
-                              Escrow Release Time:{" "}
+                              Escrow Release Time (24h after event end):{" "}
                               <strong>{releaseDate ? releaseDate.toLocaleString() : "24h post-show"}</strong>
                               {!isReleased && !isReadyToRelease && releaseDate && (
                                 <span className="text-amber-400 ml-1.5">
                                   ({Math.ceil((releaseDate.getTime() - now.getTime()) / (1000 * 60 * 60))} hours left)
+                                </span>
+                              )}
+                              {!isReleased && isReadyToRelease && !ev.stripeAccountId && (
+                                <span className="text-amber-300 font-semibold ml-1.5">
+                                  • Waiting for seller to link Stripe payout account
                                 </span>
                               )}
                             </p>

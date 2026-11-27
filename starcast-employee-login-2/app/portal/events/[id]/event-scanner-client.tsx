@@ -156,6 +156,7 @@ export function EventScannerClient({
     venueName: initialEvent.venueName || "",
     venueAddress: initialEvent.venueAddress || "",
     eventDate: "",
+    eventEndDate: "",
     doorsOpenTime: initialEvent.doorsOpenTime || "7:00 PM",
     startTime: initialEvent.startTime || "8:00 PM",
     priceCents: initialEvent.priceCents ?? 0,
@@ -190,9 +191,17 @@ export function EventScannerClient({
 
   function openEditModal() {
     const dt = event.eventDate ? new Date(event.eventDate) : null
+    const endDt = (event as any).eventEndDate
+      ? new Date((event as any).eventEndDate)
+      : dt
+        ? new Date(dt.getTime() + 3 * 60 * 60 * 1000)
+        : null
     const pad = (n: number) => String(n).padStart(2, "0")
     const localDateTime = dt
       ? `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+      : ""
+    const localEndDateTime = endDt
+      ? `${endDt.getFullYear()}-${pad(endDt.getMonth() + 1)}-${pad(endDt.getDate())}T${pad(endDt.getHours())}:${pad(endDt.getMinutes())}`
       : ""
     setEditForm({
       title: event.title || "",
@@ -200,6 +209,7 @@ export function EventScannerClient({
       venueName: event.venueName || "",
       venueAddress: event.venueAddress || "",
       eventDate: localDateTime,
+      eventEndDate: localEndDateTime,
       doorsOpenTime: event.doorsOpenTime || "7:00 PM",
       startTime: event.startTime || "8:00 PM",
       priceCents: event.priceCents ?? 0,
@@ -220,6 +230,7 @@ export function EventScannerClient({
       const payload = {
         ...editForm,
         eventDate: editForm.eventDate ? new Date(editForm.eventDate).toISOString() : "",
+        eventEndDate: editForm.eventEndDate ? new Date(editForm.eventEndDate).toISOString() : undefined,
       }
       const res = await updateBandEvent(event.id, payload)
       if (res.success && res.event) {
@@ -1136,13 +1147,27 @@ export function EventScannerClient({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label htmlFor="ev-edit-date" className="text-xs text-[#9a9fc4]">
-                  Event Date &amp; Time *
+                  Event Start Date &amp; Time *
                 </Label>
                 <Input
                   id="ev-edit-date"
                   type="datetime-local"
                   value={editForm.eventDate}
                   onChange={(e) => setEditForm({ ...editForm, eventDate: e.target.value })}
+                  required
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ev-edit-end-date" className="text-xs text-[#ffd166]">
+                  Event End Date &amp; Time *
+                </Label>
+                <Input
+                  id="ev-edit-end-date"
+                  type="datetime-local"
+                  min={editForm.eventDate || undefined}
+                  value={editForm.eventEndDate}
+                  onChange={(e) => setEditForm({ ...editForm, eventEndDate: e.target.value })}
                   required
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
                 />
@@ -1155,17 +1180,6 @@ export function EventScannerClient({
                   id="ev-edit-doors"
                   value={editForm.doorsOpenTime}
                   onChange={(e) => setEditForm({ ...editForm, doorsOpenTime: e.target.value })}
-                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
-                />
-              </div>
-              <div>
-                <Label htmlFor="ev-edit-start" className="text-xs text-[#9a9fc4]">
-                  Show Start
-                </Label>
-                <Input
-                  id="ev-edit-start"
-                  value={editForm.startTime}
-                  onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })}
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
                 />
               </div>

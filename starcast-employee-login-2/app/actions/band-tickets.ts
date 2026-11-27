@@ -21,7 +21,8 @@ export type CreateEventInput = {
   organizerName?: string
   venueName: string
   venueAddress?: string
-  eventDate: string // ISO string
+  eventDate: string // ISO string (Event Start)
+  eventEndDate?: string // ISO string (Event End — escrow releases 24h after this)
   doorsOpenTime?: string // e.g. "7:00 PM"
   startTime?: string // e.g. "8:00 PM"
   priceCents: number // e.g. 1500 for $15.00
@@ -64,6 +65,25 @@ function isEventOwner(
     (event.ownerUserId && event.ownerUserId === userId) ||
       (band?.ownerUserId && band.ownerUserId === userId)
   )
+}
+
+/** Resolve the effective end timestamp of an event (defaults to 3 hours after start if omitted) */
+function resolveEventEndDate(startDate: Date, rawEndDate?: string | Date | null): Date {
+  if (rawEndDate) {
+    const parsed = rawEndDate instanceof Date ? rawEndDate : new Date(rawEndDate)
+    if (!isNaN(parsed.getTime()) && parsed.getTime() >= startDate.getTime()) {
+      return parsed
+    }
+  }
+  return new Date(startDate.getTime() + 3 * 60 * 60 * 1000)
+}
+
+function formatCentralTimeShort(d: Date): string {
+  return d.toLocaleTimeString("en-US", {
+    timeZone: "America/Chicago",
+    hour: "numeric",
+    minute: "2-digit",
+  })
 }
 
 export type UpdateEventInput = Partial<CreateEventInput> & {
@@ -344,7 +364,15 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
 
     const eventDate = new Date(input.eventDate)
     if (isNaN(eventDate.getTime())) {
-      return { success: false, error: "Valid event date and time is required" }
+      return { success: false, error: "Valid event start date and time is required" }
+    }
+
+    const eventEndDate = resolveEventEndDate(eventDate, input.eventEndDate)
+    if (input.eventEndDate) {
+      const explicitEnd = new Date(input.eventEndDate)
+      if (!isNaN(explicitEnd.getTime()) && explicitEnd.getTime() < eventDate.getTime()) {
+        return { success: false, error: "Event end date & time must be after the start date & time." }
+      }
     }
 
     const totalInventory = Math.max(1, input.totalInventory || 20)
@@ -355,8 +383,8 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
       "Top City Live Event"
     const organizerLabel = band?.name || input.organizerName?.trim() || fallbackSellerName
 
-    // Calculate escrow release date: exactly 24 hours after the event time
-    const escrowReleaseDate = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000)
+    // Calculate escrow release date: strictly 24 hours after the END of the event
+    const escrowReleaseDate = new Date(eventEndDate.getTime() + 24 * 60 * 60 * 1000)
 
     // Optionally create Stripe product & price for this event if priced
     let stripeProductId: string | null = null
@@ -429,8 +457,9 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
         venueName: input.venueName.trim(),
         venueAddress: input.venueAddress?.trim() || null,
         eventDate,
+        eventEndDate,
         doorsOpenTime: input.doorsOpenTime?.trim() || "7:00 PM",
-        startTime: input.startTime?.trim() || "8:00 PM",
+        startTime: input.startTime?.trim() || formatCentralTimeShort(eventDate),
         priceCents,
         totalInventory,
         remainingInventory: initialRemaining,
@@ -584,13 +613,30 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
     }
 
     let eventDate = event.eventDate
+    let eventEndDate = resolveEventEndDate(event.eventDate, event.eventEndDate)
     let escrowReleaseDate = event.escrowReleaseDate
+
     if (input.eventDate) {
       const parsed = new Date(input.eventDate)
       if (!isNaN(parsed.getTime())) {
         eventDate = parsed
-        escrowReleaseDate = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000)
       }
+    }
+
+    if (input.eventEndDate) {
+      const parsedEnd = new Date(input.eventEndDate)
+      if (!isNaN(parsedEnd.getTime())) {
+        if (parsedEnd.getTime() < eventDate.getTime()) {
+          return { success: false, error: "Event end date & time must be after the start date & time." }
+        }
+        eventEndDate = parsedEnd
+      }
+    } else if (input.eventDate) {
+      eventEndDate = resolveEventEndDate(eventDate, event.eventEndDate)
+    }
+
+    if (input.eventDate || input.eventEndDate || !escrowReleaseDate) {
+      escrowReleaseDate = new Date(eventEndDate.getTime() + 24 * 60 * 60 * 1000)
     }
 
     // If total inventory changed, ensure it never drops below already-sold tickets
@@ -664,8 +710,14 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
         venueName: input.venueName !== undefined ? input.venueName.trim() : event.venueName,
         venueAddress: input.venueAddress !== undefined ? (input.venueAddress.trim() || null) : event.venueAddress,
         eventDate,
+        eventEndDate,
         doorsOpenTime: input.doorsOpenTime !== undefined ? input.doorsOpenTime : event.doorsOpenTime,
-        startTime: input.startTime !== undefined ? input.startTime : event.startTime,
+        startTime:
+          input.startTime !== undefined
+            ? input.startTime
+            : input.eventDate
+              ? formatCentralTimeShort(eventDate)
+              : event.startTime,
         priceCents: nextPriceCents,
         totalInventory,
         remainingInventory,
@@ -1750,10 +1802,11 @@ export async function getTicketSellerCentralData() {
       onlineStatsByEvent.set(o.eventId, cur)
     }
 
-    // Automatically settle any held event escrows whose exact 24h release timestamp has arrived
+    // Automatically settle any held event escrows whose exact 24h post-event-end release timestamp has arrived
     const now = new Date()
     for (const ev of myEvents) {
-      const relDate = ev.escrowReleaseDate || new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000)
+      const endRef = resolveEventEndDate(ev.eventDate, ev.eventEndDate)
+      const relDate = ev.escrowReleaseDate || new Date(endRef.getTime() + 24 * 60 * 60 * 1000)
       const evOnline = onlineStatsByEvent.get(ev.id)
       if (
         ev.escrowStatus === "held" &&
@@ -1769,7 +1822,8 @@ export async function getTicketSellerCentralData() {
     }
 
     const enrichedEvents = myEvents.map((ev) => {
-      const relDate = ev.escrowReleaseDate || new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000)
+      const endRef = resolveEventEndDate(ev.eventDate, ev.eventEndDate)
+      const relDate = ev.escrowReleaseDate || new Date(endRef.getTime() + 24 * 60 * 60 * 1000)
       const evOnline = onlineStatsByEvent.get(ev.id) || { grossCents: 0, netCents: 0 }
       return {
         id: ev.id,
@@ -1779,6 +1833,7 @@ export async function getTicketSellerCentralData() {
         title: ev.title,
         venueName: ev.venueName,
         eventDate: ev.eventDate.toISOString(),
+        eventEndDate: endRef.toISOString(),
         escrowReleaseDate: relDate.toISOString(),
         onlineGrossCents: evOnline.grossCents,
         onlineNetCents: evOnline.netCents,
@@ -1865,13 +1920,14 @@ async function executeEscrowReleaseInternal(
     }
 
     const now = new Date()
-    const releaseDate = event.escrowReleaseDate || new Date(event.eventDate.getTime() + 24 * 60 * 60 * 1000)
+    const endRef = resolveEventEndDate(event.eventDate, event.eventEndDate)
+    const releaseDate = event.escrowReleaseDate || new Date(endRef.getTime() + 24 * 60 * 60 * 1000)
 
     if (now < releaseDate) {
       const hoursRemaining = Math.ceil((releaseDate.getTime() - now.getTime()) / (1000 * 60 * 60))
       return {
         success: false,
-        error: `Escrow hold is still active. Releases 24 hours post-event (${hoursRemaining} hours remaining).`,
+        error: `Escrow hold is still active. Releases 24 hours after event end (${hoursRemaining} hours remaining).`,
       }
     }
 
@@ -2049,13 +2105,14 @@ export async function releasePlatformFeeEscrow(eventId: string) {
   }
 }
 
-/** Sweep and release any held event escrows whose 24h post-event timestamp has arrived */
+/** Sweep and release any held event escrows whose 24h post-event-end timestamp has arrived */
 export async function sweepMatureTicketEscrows() {
   const now = new Date()
   const heldEvents = await db
     .select({
       id: bandEvents.id,
       eventDate: bandEvents.eventDate,
+      eventEndDate: bandEvents.eventEndDate,
       escrowReleaseDate: bandEvents.escrowReleaseDate,
       status: bandEvents.status,
     })
@@ -2067,7 +2124,8 @@ export async function sweepMatureTicketEscrows() {
 
   for (const ev of heldEvents) {
     if (ev.status === "cancelled") continue
-    const relDate = ev.escrowReleaseDate || new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000)
+    const endRef = resolveEventEndDate(ev.eventDate, ev.eventEndDate)
+    const relDate = ev.escrowReleaseDate || new Date(endRef.getTime() + 24 * 60 * 60 * 1000)
     if (now >= relDate) {
       const res = await executeEscrowReleaseInternal(ev.id, { skipRevalidate: true })
       if (res.success) releasedCount += 1

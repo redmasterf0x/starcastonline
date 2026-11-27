@@ -496,6 +496,7 @@ export const bandEvents = pgTable("band_events", {
   venueName: text("venue_name").notNull(),
   venueAddress: text("venue_address"),
   eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
+  eventEndDate: timestamp("event_end_date", { withTimezone: true }),
   doorsOpenTime: text("doors_open_time"), // e.g. "7:00 PM"
   startTime: text("start_time"), // e.g. "8:00 PM"
   priceCents: integer("price_cents").notNull().default(0),
