@@ -43,7 +43,7 @@ const LEGAL_DOCUMENTS = [
     highlights: [
       "User account security & Google OAuth / SMS authentication",
       "Community code of conduct & The Deck 24h public wall",
-      "Live ticketing (branded as Top City Tickets on starcast.online), 10% online platform fee, 24h Stripe escrow, and Ticket Seller Central",
+      "Live ticketing (branded as Top City Tickets on starcast.online), 10% online platform fee, 24h escrow hold w/ exact release time & near-instant Stripe transfers",
       "Venue equipment guidelines & studio rental policies",
     ],
   },

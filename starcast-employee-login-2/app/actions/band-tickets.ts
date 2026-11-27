@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe"
 import { db } from "@/lib/db"
 import { bands, bandEvents, bandTicketOrders, bandTicketInstances, bandEventScanners, user, profiles } from "@/lib/db/schema"
 import { eq, and, desc, gte, sql, asc, ilike, inArray, or } from "drizzle-orm"
-import { requireViewer, requireStaff } from "@/lib/permissions"
+import { requireViewer, requireStaff, requireAdmin } from "@/lib/permissions"
 import { revalidatePath } from "next/cache"
 import { sendEventCancelledRefundEmail } from "@/lib/email"
 import crypto from "crypto"
@@ -301,7 +301,8 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
         flyerUrl: input.flyerUrl?.trim() || null,
         recurrenceFrequency,
         customLinks: cleanLinks,
-        status: allPoolsExhausted ? "sold_out" : "active",
+        // All newly created ticketed events require explicit Admin approval before tickets open for purchase
+        status: "pending_approval",
         escrowStatus: "held",
         escrowReleaseDate,
         stripeProductId,
@@ -541,7 +542,7 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
             : event.recurrenceFrequency,
         customLinks:
           input.customLinks !== undefined ? sanitizeEventLinks(input.customLinks) : event.customLinks,
-        status: input.status || event.status,
+        status: viewer.isAdmin && input.status ? input.status : event.status,
         escrowReleaseDate,
         updatedAt: new Date(),
       })
@@ -1558,26 +1559,62 @@ export async function getTicketSellerCentralData() {
       }
     })
 
-    const enrichedEvents = myEvents.map((ev) => ({
-      id: ev.id,
-      bandId: ev.bandId || "standalone",
-      bandName: (ev.bandId && bandNameMap.get(ev.bandId)) || ev.organizerName || "Standalone Event",
-      isStandalone: !ev.bandId,
-      title: ev.title,
-      venueName: ev.venueName,
-      eventDate: ev.eventDate.toISOString(),
-      priceCents: ev.priceCents,
-      totalInventory: ev.totalInventory,
-      remainingInventory: ev.remainingInventory,
-      vipEnabled: ev.vipEnabled,
-      vipPriceCents: ev.vipPriceCents,
-      vipTotalInventory: ev.vipTotalInventory,
-      vipRemainingInventory: ev.vipRemainingInventory,
-      vipTableBarService: ev.vipTableBarService,
-      vipFoodService: ev.vipFoodService,
-      status: ev.status,
-      escrowStatus: ev.escrowStatus,
-    }))
+    // Per-event online Stripe sales & net payout aggregation
+    const onlineStatsByEvent = new Map<string, { grossCents: number; netCents: number }>()
+    for (const o of myOrders) {
+      if (o.stripeSessionId === "cash-door" || o.stripeSessionId === "physical-print") continue
+      const cur = onlineStatsByEvent.get(o.eventId) || { grossCents: 0, netCents: 0 }
+      const fee = o.platformFeeCents > 0 ? o.platformFeeCents : Math.round(o.totalCents * 0.1)
+      cur.grossCents += o.totalCents
+      cur.netCents += Math.max(0, o.totalCents - fee)
+      onlineStatsByEvent.set(o.eventId, cur)
+    }
+
+    // Automatically settle any held event escrows whose exact 24h release timestamp has arrived
+    const now = new Date()
+    for (const ev of myEvents) {
+      const relDate = ev.escrowReleaseDate || new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000)
+      const evOnline = onlineStatsByEvent.get(ev.id)
+      if (
+        ev.escrowStatus === "held" &&
+        ev.status !== "cancelled" &&
+        now >= relDate &&
+        (evOnline?.netCents || 0) > 0
+      ) {
+        const res = await executeEscrowReleaseInternal(ev.id, { skipRevalidate: true })
+        if (res.success) {
+          ev.escrowStatus = "released"
+        }
+      }
+    }
+
+    const enrichedEvents = myEvents.map((ev) => {
+      const relDate = ev.escrowReleaseDate || new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000)
+      const evOnline = onlineStatsByEvent.get(ev.id) || { grossCents: 0, netCents: 0 }
+      return {
+        id: ev.id,
+        bandId: ev.bandId || "standalone",
+        bandName: (ev.bandId && bandNameMap.get(ev.bandId)) || ev.organizerName || "Standalone Event",
+        isStandalone: !ev.bandId,
+        title: ev.title,
+        venueName: ev.venueName,
+        eventDate: ev.eventDate.toISOString(),
+        escrowReleaseDate: relDate.toISOString(),
+        onlineGrossCents: evOnline.grossCents,
+        onlineNetCents: evOnline.netCents,
+        priceCents: ev.priceCents,
+        totalInventory: ev.totalInventory,
+        remainingInventory: ev.remainingInventory,
+        vipEnabled: ev.vipEnabled,
+        vipPriceCents: ev.vipPriceCents,
+        vipTotalInventory: ev.vipTotalInventory,
+        vipRemainingInventory: ev.vipRemainingInventory,
+        vipTableBarService: ev.vipTableBarService,
+        vipFoodService: ev.vipFoodService,
+        status: ev.status,
+        escrowStatus: ev.escrowStatus,
+      }
+    })
 
     return {
       success: true,
@@ -1606,11 +1643,11 @@ export async function getTicketSellerCentralData() {
 // 4. Escrow Payouts & 24h Post-Event Release
 // ---------------------------------------------------------------------------
 
-/** Release held ticket escrow payout to the band's connected Stripe account */
-export async function releaseEscrowPayout(eventId: string) {
+async function executeEscrowReleaseInternal(
+  eventId: string,
+  options?: { skipRevalidate?: boolean }
+) {
   try {
-    await requireStaff()
-
     const [row] = await db
       .select({
         event: bandEvents,
@@ -1643,7 +1680,6 @@ export async function releaseEscrowPayout(eventId: string) {
       }
     }
 
-    // Resolve destination Stripe Connect account (band's Stripe account, or creator's profile/band Stripe account for standalone events)
     let destinationStripeAccountId = band?.stripeAccountId || null
     if (!destinationStripeAccountId && event.ownerUserId) {
       const [ownerProfile] = await db
@@ -1670,13 +1706,11 @@ export async function releaseEscrowPayout(eventId: string) {
       }
     }
 
-    // Calculate net online Stripe ticket revenue (90% seller payout, 10% StarCast platform escrow hold)
     const orders = await db
       .select()
       .from(bandTicketOrders)
       .where(and(eq(bandTicketOrders.eventId, eventId), eq(bandTicketOrders.status, "paid")))
 
-    // Exclude door cash sales and physical printed pre-sale batches (0% platform fee)
     const onlineOrders = orders.filter(
       (o) => o.stripeSessionId !== "cash-door" && o.stripeSessionId !== "physical-print"
     )
@@ -1703,8 +1737,6 @@ export async function releaseEscrowPayout(eventId: string) {
       }
     }
 
-    // Transfer 90% net online proceeds to the seller's connected Stripe account;
-    // the remaining 10% stays in StarCast's platform fee escrow hold for payout to the StarCast owner.
     const transfer = await stripe.transfers.create({
       amount: sellerNetCents,
       currency: "usd",
@@ -1730,9 +1762,11 @@ export async function releaseEscrowPayout(eventId: string) {
       })
       .where(eq(bandEvents.id, eventId))
 
-    revalidatePath("/admin")
-    revalidatePath("/portal")
-    revalidatePath("/tickets/seller-central")
+    if (!options?.skipRevalidate) {
+      revalidatePath("/admin")
+      revalidatePath("/portal")
+      revalidatePath("/tickets/seller-central")
+    }
 
     return {
       success: true,
@@ -1741,6 +1775,17 @@ export async function releaseEscrowPayout(eventId: string) {
       platformFeeCents,
       message: `Transferred $${(sellerNetCents / 100).toFixed(2)} (90% net) to ${band?.name || event.organizerName || "the organizer"}. $${(platformFeeCents / 100).toFixed(2)} (10% fee) moved to StarCast platform escrow hold.`,
     }
+  } catch (err: any) {
+    console.error("executeEscrowReleaseInternal error:", err)
+    return { success: false, error: err?.message || "Failed to release escrow payout" }
+  }
+}
+
+/** Release held ticket escrow payout to the band's connected Stripe account */
+export async function releaseEscrowPayout(eventId: string) {
+  try {
+    await requireStaff()
+    return await executeEscrowReleaseInternal(eventId)
   } catch (err: any) {
     console.error("releaseEscrowPayout error:", err)
     return { success: false, error: err?.message || "Failed to release escrow payout" }
@@ -1809,10 +1854,83 @@ export async function releasePlatformFeeEscrow(eventId: string) {
   }
 }
 
+/** Sweep and release any held event escrows whose 24h post-event timestamp has arrived */
+export async function sweepMatureTicketEscrows() {
+  const now = new Date()
+  const heldEvents = await db
+    .select({
+      id: bandEvents.id,
+      eventDate: bandEvents.eventDate,
+      escrowReleaseDate: bandEvents.escrowReleaseDate,
+      status: bandEvents.status,
+    })
+    .from(bandEvents)
+    .where(eq(bandEvents.escrowStatus, "held"))
+
+  let releasedCount = 0
+  const results: Array<{ eventId: string; success: boolean; message?: string; error?: string }> = []
+
+  for (const ev of heldEvents) {
+    if (ev.status === "cancelled") continue
+    const relDate = ev.escrowReleaseDate || new Date(ev.eventDate.getTime() + 24 * 60 * 60 * 1000)
+    if (now >= relDate) {
+      const res = await executeEscrowReleaseInternal(ev.id, { skipRevalidate: true })
+      if (res.success) releasedCount += 1
+      results.push({
+        eventId: ev.id,
+        success: res.success,
+        message: res.message,
+        error: res.error,
+      })
+    }
+  }
+
+  return { releasedCount, results }
+}
+
+/** Admin: approve or reject/unpublish an individual ticketed event before tickets can be purchased */
+export async function adminReviewTicketEvent(eventId: string, approve: boolean) {
+  try {
+    await requireAdmin()
+    const [event] = await db.select().from(bandEvents).where(eq(bandEvents.id, eventId)).limit(1)
+    if (!event) return { success: false, error: "Event not found" }
+
+    const band = event.bandId
+      ? (await db.select({ slug: bands.slug }).from(bands).where(eq(bands.id, event.bandId)).limit(1))[0] || null
+      : null
+
+    const allExhausted =
+      event.remainingInventory <= 0 && (!event.vipEnabled || event.vipRemainingInventory <= 0)
+    const nextStatus = approve ? (allExhausted ? "sold_out" : "active") : "rejected"
+
+    const [updated] = await db
+      .update(bandEvents)
+      .set({
+        status: nextStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(bandEvents.id, eventId))
+      .returning()
+
+    revalidatePath("/admin")
+    revalidatePath("/tickets")
+    revalidatePath("/tickets/seller-central")
+    revalidatePath("/portal")
+    revalidatePath(`/events/${eventId}`)
+    if (band?.slug) revalidatePath(`/bands/${band.slug}`)
+
+    return { success: true, event: updated, status: nextStatus }
+  } catch (err: any) {
+    console.error("adminReviewTicketEvent error:", err)
+    return { success: false, error: err?.message || "Failed to review ticketed event" }
+  }
+}
+
 /** Admin: retrieve all events currently holding funds in escrow */
 export async function adminListHeldEscrows() {
   try {
     await requireStaff()
+    await sweepMatureTicketEscrows().catch(() => {})
     const rows = await db
       .select({
         event: bandEvents,

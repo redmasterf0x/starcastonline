@@ -3,7 +3,12 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { createBandEvent, deleteBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
+import {
+  createBandEvent,
+  deleteBandEvent,
+  adminReviewTicketEvent,
+  type EventCustomLink,
+} from "@/app/actions/band-tickets"
 import { SellerSalesChart } from "./sales-chart"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -43,6 +48,8 @@ import {
   Crown,
   Wine,
   Utensils,
+  Clock,
+  CheckCircle2,
 } from "lucide-react"
 
 interface SellerCentralProps {
@@ -68,6 +75,9 @@ interface SellerCentralProps {
     title: string
     venueName: string
     eventDate: string
+    escrowReleaseDate?: string
+    onlineGrossCents?: number
+    onlineNetCents?: number
     priceCents: number
     totalInventory: number
     remainingInventory: number
@@ -487,14 +497,31 @@ export function SellerCentralClient({
         )}
 
         {createdEventId && (
-          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/35 p-4 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-emerald-200">
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-950/35 p-4 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm text-amber-200">
             <span>
-              Event created! Your ticket page is live
+              Event submitted! Waiting for <strong>StarCast Admin approval</strong> before tickets become available for purchase
               {createdPhysicalCount > 0
-                ? ` and ${createdPhysicalCount} physical pre-sale ticket${createdPhysicalCount === 1 ? "" : "s"} are ready to print.`
+                ? ` (${createdPhysicalCount} physical pre-sale ticket${createdPhysicalCount === 1 ? "" : "s"} ready to print).`
                 : "."}
             </span>
             <div className="flex flex-wrap items-center gap-2">
+              {isAdmin && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={async () => {
+                    const res = await adminReviewTicketEvent(createdEventId, true)
+                    if (res.success) {
+                      setCreatedEventId(null)
+                      router.refresh()
+                    }
+                  }}
+                  className="bg-[#22b573] hover:bg-[#1ca266] text-[#05051f] font-extrabold rounded-lg h-8 text-xs"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                  Admin: Approve &amp; Open Sales Now
+                </Button>
+              )}
               {createdPhysicalCount > 0 && (
                 <Button asChild size="sm" className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-extrabold rounded-lg h-8 text-xs">
                   <Link href={`/portal/events/${createdEventId}/print`}>
@@ -504,9 +531,9 @@ export function SellerCentralClient({
                 </Button>
               )}
               <Button asChild size="sm" className="bg-[#20efe0] text-[#05051f] font-bold rounded-lg h-8 text-xs">
-                <Link href={`/events/${createdEventId}`}>Open Ticket Page</Link>
+                <Link href={`/events/${createdEventId}`}>Preview Event Page</Link>
               </Button>
-              <Button asChild size="sm" variant="outline" className="border-emerald-500/40 text-emerald-200 rounded-lg h-8 text-xs">
+              <Button asChild size="sm" variant="outline" className="border-amber-500/40 text-amber-200 rounded-lg h-8 text-xs">
                 <Link href={`/portal/events/${createdEventId}`}>Open Door Scanner</Link>
               </Button>
             </div>
@@ -536,19 +563,58 @@ export function SellerCentralClient({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredEvents.map((ev) => {
                 const sold = Math.max(0, ev.totalInventory - ev.remainingInventory)
+                const releaseTimestamp = ev.escrowReleaseDate
+                  ? new Date(ev.escrowReleaseDate)
+                  : new Date(new Date(ev.eventDate).getTime() + 24 * 60 * 60 * 1000)
+                const exactReleaseStr = `${releaseTimestamp.toLocaleDateString("en-US", {
+                  timeZone: "America/Chicago",
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })} at ${releaseTimestamp.toLocaleTimeString("en-US", {
+                  timeZone: "America/Chicago",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })} CT`
+                const netOnline = ev.onlineNetCents || 0
+                const isReleased = ev.escrowStatus === "released"
+
                 return (
                   <div
                     key={ev.id}
                     className="rounded-2xl border border-[#20205a] bg-[#0c0c3f]/80 p-5 flex flex-col justify-between gap-4"
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-[#ffd166] uppercase tracking-wider">
                           {ev.bandName}
                         </span>
-                        <Badge variant="outline" className="border-[#20205a] text-[#cbd0f2] text-[10px] font-mono">
-                          {ev.priceCents > 0 ? `$${(ev.priceCents / 100).toFixed(2)}` : "FREE"}
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge
+                            variant="outline"
+                            className={
+                              ev.status === "pending_approval"
+                                ? "border-amber-500/45 bg-amber-500/15 text-amber-300 text-[10px] font-bold"
+                                : ev.status === "active"
+                                ? "border-[#22b573]/45 bg-[#22b573]/15 text-[#22b573] text-[10px] font-bold"
+                                : ev.status === "rejected"
+                                ? "border-red-500/45 bg-red-950/40 text-red-300 text-[10px] font-bold"
+                                : "border-[#20efe0]/40 bg-[#20efe0]/10 text-[#20efe0] text-[10px] font-bold"
+                            }
+                          >
+                            {ev.status === "pending_approval"
+                              ? "Pending Admin Approval"
+                              : ev.status === "active"
+                              ? "Live & On Sale"
+                              : ev.status === "rejected"
+                              ? "Not Approved"
+                              : ev.status}
+                          </Badge>
+                          <Badge variant="outline" className="border-[#20205a] text-[#cbd0f2] text-[10px] font-mono">
+                            {ev.priceCents > 0 ? `$${(ev.priceCents / 100).toFixed(2)}` : "FREE"}
+                          </Badge>
+                        </div>
                       </div>
                       <h3 className="text-lg font-bold text-white">{ev.title}</h3>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-[#9a9fc4]">
@@ -572,9 +638,56 @@ export function SellerCentralClient({
                           </span>
                         )}
                       </div>
+
+                      {/* Seller Escrow Hold & Stripe Payout Timeline Banner */}
+                      {netOnline > 0 ? (
+                        isReleased ? (
+                          <div className="mt-2 rounded-xl border border-[#22b573]/40 bg-[#22b573]/10 p-3 space-y-1">
+                            <p className="text-xs font-extrabold text-[#22b573] flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 shrink-0" />
+                              Payout Sent to Your Stripe (${(netOnline / 100).toFixed(2)} net)
+                            </p>
+                            <p className="text-[11px] text-[#cbd0f2] leading-relaxed">
+                              Released from escrow on <span className="font-mono text-white">{exactReleaseStr}</span>. Once sent to your Stripe Connect account, arrival in your Stripe balance is near-instant.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="mt-2 rounded-xl border border-[#20efe0]/40 bg-gradient-to-r from-[#052638]/80 via-[#081b36]/80 to-[#05052d] p-3 space-y-1">
+                            <p className="text-xs font-extrabold text-[#20efe0] flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-[#ffd166] shrink-0" />
+                              Your money (${(netOnline / 100).toFixed(2)} net) is on the way!
+                            </p>
+                            <p className="text-[11px] text-[#dbe0fb] leading-relaxed">
+                              Releases from the 24h escrow hold &amp; sends to your Stripe on{" "}
+                              <strong className="text-[#ffd166] font-mono">{exactReleaseStr}</strong>. After sending to your Stripe account, arrival is near-instant.
+                            </p>
+                          </div>
+                        )
+                      ) : (
+                        (ev.priceCents > 0 || (ev.vipEnabled && (ev.vipPriceCents || 0) > 0)) && (
+                          <div className="mt-2 rounded-xl border border-[#20205a] bg-[#05052d]/60 px-3 py-2 text-[11px] text-[#9a9fc4]">
+                            <span className="text-[#cbd0f2] font-semibold">Payout Schedule:</span> Online sales release from escrow &amp; send to your Stripe on{" "}
+                            <span className="font-mono text-[#ffd166]">{exactReleaseStr}</span> (near-instant once sent).
+                          </div>
+                        )
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#20205a]/60">
+                      {isAdmin && ev.status === "pending_approval" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={async () => {
+                            const res = await adminReviewTicketEvent(ev.id, true)
+                            if (res.success) router.refresh()
+                          }}
+                          className="bg-[#22b573] hover:bg-[#1ca266] text-[#05051f] font-extrabold rounded-xl h-8 px-3 text-xs"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                          Approve
+                        </Button>
+                      )}
                       <Button
                         asChild
                         size="sm"

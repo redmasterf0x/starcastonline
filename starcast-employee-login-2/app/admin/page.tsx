@@ -13,6 +13,7 @@ import {
 import {
   adminListTicketingApplications,
   adminReviewTicketingApplication,
+  adminReviewTicketEvent,
   adminListHeldEscrows,
   releaseEscrowPayout,
 } from "@/app/actions/band-tickets"
@@ -310,7 +311,9 @@ export default function AdminPage() {
   const handleDeleteCategory = async (categoryId: string) => {
     await adminDeleteCategory(categoryId); fetchCategories()
   }
-  const pendingTicketingCount = ticketingApps.filter((a) => a.ticketingStatus === "applied").length
+  const pendingAppsCount = ticketingApps.filter((a) => a.ticketingStatus === "applied").length
+  const pendingEventsCount = heldEscrows.filter((ev) => ev.status === "pending_approval").length
+  const pendingTicketingCount = pendingAppsCount + pendingEventsCount
 
   const tabs: { id: AdminTab; label: string; icon: any; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -1150,6 +1153,143 @@ export default function AdminPage() {
                 </Button>
               </div>
             )}
+
+            {/* 0. Ticketed Events Approval Queue (Events must be approved before tickets go on sale) */}
+            <Card className="bg-[#0c0c3f]/60 border-[#ffd166]/40">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-[#f5f7ff] text-lg flex items-center gap-2">
+                    <Ticket className="w-5 h-5 text-[#ffd166]" />
+                    Ticketed Event Listings Approval ({pendingEventsCount} Pending)
+                  </CardTitle>
+                  <CardDescription className="text-[#9a9fc4]">
+                    Approve newly posted ticketed events before tickets become publicly available for purchase
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchTicketing}
+                  className="border-[#20205a] text-[#9a9fc4] hover:text-[#f5f7ff] bg-transparent"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {heldEscrows.length === 0 ? (
+                  <p className="text-sm text-[#9a9fc4] text-center py-6">No ticketed events submitted yet.</p>
+                ) : (
+                  <div className="divide-y divide-[#20205a]/50">
+                    {[...heldEscrows]
+                      .sort((a, b) => {
+                        const aPend = a.status === "pending_approval" ? 0 : 1
+                        const bPend = b.status === "pending_approval" ? 0 : 1
+                        return aPend - bPend
+                      })
+                      .map((ev) => {
+                        const isPending = ev.status === "pending_approval"
+                        const isLive = ev.status === "active" || ev.status === "sold_out"
+                        const isRejected = ev.status === "rejected"
+                        return (
+                          <div
+                            key={`approval-${ev.id}`}
+                            className="py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-base font-bold text-[#f5f7ff]">{ev.title}</h4>
+                                <span className="text-xs text-[#ffd166] font-semibold">({ev.bandName})</span>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                    isPending
+                                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                      : isLive
+                                      ? "bg-[#22b573]/20 text-[#22b573] border border-[#22b573]/40"
+                                      : isRejected
+                                      ? "bg-red-900/30 text-red-300 border border-red-700/40"
+                                      : "bg-[#20205a] text-[#9a9fc4]"
+                                  }`}
+                                >
+                                  {isPending ? "Pending Approval" : isLive ? "Approved & Live" : ev.status}
+                                </span>
+                                {ev.vipEnabled && (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#ffd166]/15 text-[#ffd166] border border-[#ffd166]/40 font-bold">
+                                    ★ VIP (${((ev.vipPriceCents || 0) / 100).toFixed(2)} • {ev.vipTotalInventory} seats)
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#9a9fc4]">
+                                Venue: {ev.venueName} • Date:{" "}
+                                {new Date(ev.eventDate).toLocaleDateString("en-US", {
+                                  timeZone: "America/Chicago",
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}{" "}
+                                at {ev.startTime || "8:00 PM"}
+                              </p>
+                              <p className="text-xs text-[#20efe0] font-mono">
+                                GA Price: {ev.priceCents > 0 ? `$${(ev.priceCents / 100).toFixed(2)}` : "FREE"} • Inventory:{" "}
+                                {ev.totalInventory} tickets
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="border-[#20205a] bg-[#05052d] text-[#cbd0f2] hover:text-white"
+                              >
+                                <Link href={`/events/${ev.id}`} target="_blank">
+                                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Preview
+                                </Link>
+                              </Button>
+
+                              {!isLive && (
+                                <Button
+                                  onClick={async () => {
+                                    const res = await adminReviewTicketEvent(ev.id, true)
+                                    if (res.success) {
+                                      setEscrowFeedback(`Approved "${ev.title}" — tickets are now live for purchase!`)
+                                      fetchTicketing()
+                                    } else {
+                                      alert(res.error || "Failed to approve event")
+                                    }
+                                  }}
+                                  size="sm"
+                                  className="bg-[#22b573] hover:bg-[#1ca266] text-black font-bold"
+                                >
+                                  <Check className="w-4 h-4 mr-1" /> Approve &amp; Open Sales
+                                </Button>
+                              )}
+
+                              {!isRejected && (
+                                <Button
+                                  onClick={async () => {
+                                    const res = await adminReviewTicketEvent(ev.id, false)
+                                    if (res.success) {
+                                      setEscrowFeedback(`Paused / rejected ticket sales for "${ev.title}".`)
+                                      fetchTicketing()
+                                    } else {
+                                      alert(res.error || "Failed to update event status")
+                                    }
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-red-700 text-red-400 hover:bg-red-950/40 bg-transparent"
+                                >
+                                  <X className="w-4 h-4 mr-1" /> {isLive ? "Pause Sales" : "Reject"}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* 1. Band Ticketing Applications */}
             <Card className="bg-[#0c0c3f]/60 border-[#20205a]/50">

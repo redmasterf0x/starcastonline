@@ -243,7 +243,9 @@ export function BandTicketingPanel({
       const res = await createBandEvent(band.id, payload)
       if (res.success) {
         setCreateEventOpen(false)
-        setSuccessMessage(`Show "${eventForm.title}" posted with ${eventForm.totalInventory} tickets!`)
+        setSuccessMessage(
+          `Show "${eventForm.title}" submitted for Admin approval! Tickets will open for purchase as soon as StarCast Admin approves the event.`
+        )
         // Reset form
         setEventForm({
           title: "",
@@ -645,12 +647,20 @@ export function BandTicketingPanel({
                         className={
                           ev.status === "active"
                             ? "bg-[#22b573]/20 text-[#22b573] border border-[#22b573]/40"
-                            : ev.status === "sold_out"
+                            : ev.status === "pending_approval"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                            : ev.status === "sold_out" || ev.status === "rejected"
                             ? "bg-red-900/30 text-red-400 border border-red-700/40"
                             : "bg-[#20205a]/50 text-[#9a9fc4]"
                         }
                       >
-                        {ev.status === "active" ? "Live on Page" : ev.status}
+                        {ev.status === "active"
+                          ? "Live on Page"
+                          : ev.status === "pending_approval"
+                          ? "Pending Approval"
+                          : ev.status === "rejected"
+                          ? "Not Approved"
+                          : ev.status}
                       </Badge>
                     </div>
 
@@ -675,10 +685,40 @@ export function BandTicketingPanel({
                         <span>
                           Escrow:{" "}
                           <strong className={isReleased ? "text-emerald-400" : "text-amber-400"}>
-                            {isReleased ? "Released" : "Held (24h Post-Show)"}
+                            {isReleased ? "Sent to Stripe" : "Held (24h Post-Show)"}
                           </strong>
                         </span>
                       </div>
+
+                      {sold > 0 && ev.priceCents > 0 && releaseDate && (
+                        <div className="pt-2 mt-1 border-t border-[#20205a]/70 text-[11px] text-[#dbe0fb] leading-relaxed">
+                          {isReleased ? (
+                            <span className="text-[#22b573] font-semibold">
+                              ✓ Payout sent to your Stripe Connect account (near-instant balance arrival).
+                            </span>
+                          ) : (
+                            <>
+                              <strong className="text-[#20efe0]">Your money is on the way!</strong> Releases from escrow &amp; sends to your Stripe on{" "}
+                              <span className="font-mono text-[#ffd166]">
+                                {releaseDate.toLocaleDateString("en-US", {
+                                  timeZone: "America/Chicago",
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}{" "}
+                                at{" "}
+                                {releaseDate.toLocaleTimeString("en-US", {
+                                  timeZone: "America/Chicago",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })}{" "}
+                                CT
+                              </span>{" "}
+                              (near-instant once sent to Stripe).
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Actions */}

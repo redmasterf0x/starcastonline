@@ -5,7 +5,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { createTicketCheckoutSession } from "@/app/actions/ticket-purchase"
-import { updateBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
+import {
+  updateBandEvent,
+  adminReviewTicketEvent,
+  type EventCustomLink,
+} from "@/app/actions/band-tickets"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -589,8 +593,36 @@ export function EventBuyClient({
             </div>
 
             {isInactive ? (
-              <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/40 text-red-200 text-sm text-center font-semibold">
-                This event is currently {event.status}.
+              <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-500/45 text-amber-200 text-sm text-center space-y-3">
+                <p className="font-bold">
+                  {event.status === "pending_approval"
+                    ? "Pending Admin Approval"
+                    : event.status === "rejected"
+                    ? "Not Approved for Ticket Sales"
+                    : `This event is currently ${event.status}.`}
+                </p>
+                {event.status === "pending_approval" && (
+                  <p className="text-xs text-[#dbe0fb]">
+                    Tickets will become available for purchase as soon as StarCast Admin approves this event listing.
+                  </p>
+                )}
+                {isAdmin && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={async () => {
+                      const res = await adminReviewTicketEvent(event.id, true)
+                      if (res.success && res.event) {
+                        setEvent(res.event)
+                        router.refresh()
+                      }
+                    }}
+                    className="bg-[#22b573] hover:bg-[#1ca266] text-[#05051f] font-extrabold rounded-xl"
+                  >
+                    <Check className="w-4 h-4 mr-1.5" />
+                    Admin: Approve &amp; Open Ticket Sales
+                  </Button>
+                )}
               </div>
             ) : isSoldOut || isTierSoldOut ? (
               <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-sm text-center font-semibold">
