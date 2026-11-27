@@ -67,7 +67,7 @@ function isEventOwner(
   )
 }
 
-/** Resolve the effective end timestamp of an event (defaults to 3 hours after start if omitted) */
+/** Resolve the effective end timestamp of an event (defaults to 1 hour after start if omitted) */
 function resolveEventEndDate(startDate: Date, rawEndDate?: string | Date | null): Date {
   if (rawEndDate) {
     const parsed = rawEndDate instanceof Date ? rawEndDate : new Date(rawEndDate)
@@ -75,7 +75,7 @@ function resolveEventEndDate(startDate: Date, rawEndDate?: string | Date | null)
       return parsed
     }
   }
-  return new Date(startDate.getTime() + 3 * 60 * 60 * 1000)
+  return new Date(startDate.getTime() + 60 * 60 * 1000)
 }
 
 function formatCentralTimeShort(d: Date): string {
@@ -1988,25 +1988,100 @@ async function executeEscrowReleaseInternal(
       }
     }
 
-    const transfer = await stripe.transfers.create({
-      amount: sellerNetCents,
-      currency: "usd",
-      destination: destinationStripeAccountId,
-      description: `Ticket proceeds (90% net of 10% platform fee): ${event.title} (${onlineOrders.length} online orders)`,
-      metadata: {
-        event_id: event.id,
-        band_id: band?.id || "",
-        event_title: event.title,
-        online_gross_cents: String(onlineGrossCents),
-        platform_fee_cents: String(platformFeeCents),
-      },
-    })
+    const transferGroup = `event_${event.id}`
+    const existingTransfers = await stripe.transfers
+      .list({ transfer_group: transferGroup, limit: 100 })
+      .then((r) => r.data)
+      .catch(() => [])
+    const transferredSourceCharges = new Set(
+      existingTransfers.map((t) => (typeof t.source_transaction === "string" ? t.source_transaction : "")).filter(Boolean)
+    )
+
+    const transferIds: string[] = existingTransfers.map((t) => t.id)
+    let totalTransferredCents = existingTransfers.reduce((sum, t) => sum + (t.amount || 0), 0)
+
+    for (const ord of onlineOrders) {
+      const ordFee = ord.platformFeeCents > 0 ? ord.platformFeeCents : Math.round(ord.totalCents * 0.1)
+      const desiredSellerNet = Math.max(0, ord.totalCents - ordFee)
+      if (desiredSellerNet <= 0) continue
+
+      let paymentIntentId = ord.stripePaymentIntentId || null
+      if (!paymentIntentId && ord.stripeSessionId && ord.stripeSessionId.startsWith("cs_")) {
+        try {
+          const sess = await stripe.checkout.sessions.retrieve(ord.stripeSessionId)
+          if (typeof sess.payment_intent === "string") {
+            paymentIntentId = sess.payment_intent
+          }
+        } catch {
+          // ignore session lookup failure
+        }
+      }
+
+      let chargeId: string | null = null
+      let chargeNetAfterStripeFee: number | null = null
+
+      if (paymentIntentId) {
+        try {
+          const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+            expand: ["latest_charge.balance_transaction"],
+          })
+          const latestCharge = pi.latest_charge as any
+          if (latestCharge && typeof latestCharge === "object") {
+            chargeId = latestCharge.id || null
+            const bt = latestCharge.balance_transaction
+            if (bt && typeof bt === "object" && typeof bt.net === "number") {
+              chargeNetAfterStripeFee = bt.net
+            }
+          } else if (typeof latestCharge === "string") {
+            chargeId = latestCharge
+          }
+        } catch {
+          // ignore PI lookup failure
+        }
+      }
+
+      if (chargeId && transferredSourceCharges.has(chargeId)) {
+        continue
+      }
+
+      // Cap at the charge's net settled amount after Stripe card fees when micro-priced tickets (e.g. $1-$2)
+      // have a fixed $0.30 Stripe card fee larger than the 10% platform fee, so transfers never fail or go negative
+      const transferAmount =
+        chargeNetAfterStripeFee !== null && chargeNetAfterStripeFee > 0
+          ? Math.min(desiredSellerNet, chargeNetAfterStripeFee)
+          : desiredSellerNet
+
+      if (transferAmount <= 0) continue
+
+      const tr = await stripe.transfers.create({
+        amount: transferAmount,
+        currency: "usd",
+        destination: destinationStripeAccountId,
+        ...(chargeId ? { source_transaction: chargeId } : {}),
+        transfer_group: transferGroup,
+        description: `Ticket proceeds: ${event.title} (Order ${ord.id.slice(0, 8)})`,
+        metadata: {
+          event_id: event.id,
+          order_id: ord.id,
+          band_id: band?.id || "",
+          event_title: event.title,
+          order_gross_cents: String(ord.totalCents),
+          platform_fee_cents: String(ordFee),
+        },
+      })
+
+      transferIds.push(tr.id)
+      totalTransferredCents += tr.amount
+      if (chargeId) transferredSourceCharges.add(chargeId)
+    }
+
+    const joinedTransferIds = transferIds.join(",")
 
     await db
       .update(bandEvents)
       .set({
         escrowStatus: "released",
-        stripeTransferId: transfer.id,
+        stripeTransferId: joinedTransferIds || null,
         platformFeeCents,
         platformEscrowStatus: platformFeeCents > 0 ? "held" : "released",
         updatedAt: new Date(),
@@ -2021,10 +2096,10 @@ async function executeEscrowReleaseInternal(
 
     return {
       success: true,
-      transferId: transfer.id,
-      amountTransferredCents: sellerNetCents,
+      transferId: joinedTransferIds,
+      amountTransferredCents: totalTransferredCents,
       platformFeeCents,
-      message: `Transferred $${(sellerNetCents / 100).toFixed(2)} (90% net) to ${band?.name || event.organizerName || "the organizer"}. $${(platformFeeCents / 100).toFixed(2)} (10% fee) moved to StarCast platform escrow hold.`,
+      message: `Transferred $${(totalTransferredCents / 100).toFixed(2)} to ${band?.name || event.organizerName || "the organizer"}'s Stripe Connect balance.`,
     }
   } catch (err: any) {
     console.error("executeEscrowReleaseInternal error:", err)

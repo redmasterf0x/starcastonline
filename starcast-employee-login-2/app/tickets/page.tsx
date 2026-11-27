@@ -37,7 +37,7 @@ export default async function TicketsPage() {
     .where(
       and(
         eq(bandEvents.status, "active"),
-        sql`COALESCE(${bandEvents.eventEndDate}, ${bandEvents.eventDate} + interval '3 hours') >= ${now}`
+        sql`COALESCE(${bandEvents.eventEndDate}, ${bandEvents.eventDate} + interval '1 hour') >= ${now}`
       )
     )
     .orderBy(asc(bandEvents.eventDate))

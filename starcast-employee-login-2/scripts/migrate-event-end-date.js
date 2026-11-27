@@ -20,11 +20,11 @@ async function migrate() {
         ADD COLUMN IF NOT EXISTS event_end_date TIMESTAMPTZ;
     `)
 
-    // Backfill event_end_date = event_date + 3 hours for any existing event missing an end time,
+    // Backfill event_end_date = event_date + 1 hour for any existing event missing an end time,
     // and align escrow_release_date = event_end_date + 24 hours for held events
     await client.query(`
       UPDATE band_events
-      SET event_end_date = event_date + INTERVAL '3 hours'
+      SET event_end_date = event_date + INTERVAL '1 hour'
       WHERE event_end_date IS NULL;
     `)
 

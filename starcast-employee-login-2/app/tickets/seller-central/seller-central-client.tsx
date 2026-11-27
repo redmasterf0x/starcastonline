@@ -852,7 +852,7 @@ export function SellerCentralClient({
                 const sold = Math.max(0, ev.totalInventory - ev.remainingInventory)
                 const endTimestamp = ev.eventEndDate
                   ? new Date(ev.eventEndDate)
-                  : new Date(new Date(ev.eventDate).getTime() + 3 * 60 * 60 * 1000)
+                  : new Date(new Date(ev.eventDate).getTime() + 60 * 60 * 1000)
                 const releaseTimestamp = ev.escrowReleaseDate
                   ? new Date(ev.escrowReleaseDate)
                   : new Date(endTimestamp.getTime() + 24 * 60 * 60 * 1000)
@@ -1262,36 +1262,25 @@ export function SellerCentralClient({
                   type="datetime-local"
                   required
                   value={form.eventDate}
-                  onChange={(e) => {
-                    const nextStart = e.target.value
-                    let nextEnd = form.eventEndDate
-                    if (nextStart) {
-                      const startMs = new Date(nextStart).getTime()
-                      const curEndMs = nextEnd ? new Date(nextEnd).getTime() : 0
-                      if (!isNaN(startMs) && (!nextEnd || isNaN(curEndMs) || curEndMs <= startMs)) {
-                        const d = new Date(startMs + 3 * 60 * 60 * 1000)
-                        const pad = (n: number) => String(n).padStart(2, "0")
-                        nextEnd = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-                      }
-                    }
-                    setForm({ ...form, eventDate: nextStart, eventEndDate: nextEnd })
-                  }}
+                  onChange={(e) => setForm({ ...form, eventDate: e.target.value })}
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
                 />
               </div>
               <div>
                 <Label htmlFor="sc-end-date" className="text-xs text-[#ffd166]">
-                  Event End Date &amp; Time *
+                  Event End Date &amp; Time (Opt.)
                 </Label>
                 <Input
                   id="sc-end-date"
                   type="datetime-local"
-                  required
                   min={form.eventDate || undefined}
                   value={form.eventEndDate}
                   onChange={(e) => setForm({ ...form, eventEndDate: e.target.value })}
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
                 />
+                <p className="text-[10px] text-[#9a9fc4] mt-0.5">
+                  Defaults to +1 hr after start if blank
+                </p>
               </div>
               <div>
                 <Label htmlFor="sc-doors" className="text-xs text-[#9a9fc4]">
@@ -1306,26 +1295,32 @@ export function SellerCentralClient({
               </div>
             </div>
 
-            {form.eventEndDate && !isNaN(new Date(form.eventEndDate).getTime()) && (
-              <div className="rounded-xl border border-[#20efe0]/30 bg-[#052638]/50 px-3.5 py-2 text-[11px] text-[#cbd0f2] flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-[#ffd166] shrink-0" />
-                <span>
-                  Stripe Payout Release (24h after event ends):{" "}
-                  <strong className="font-mono text-[#ffd166]">
-                    {new Date(new Date(form.eventEndDate).getTime() + 24 * 60 * 60 * 1000).toLocaleString("en-US", {
-                      timeZone: "America/Chicago",
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}{" "}
-                    CT
-                  </strong>
-                </span>
-              </div>
-            )}
+            {form.eventDate && !isNaN(new Date(form.eventDate).getTime()) && (() => {
+              const startMs = new Date(form.eventDate).getTime()
+              const rawEndMs = form.eventEndDate ? new Date(form.eventEndDate).getTime() : NaN
+              const effectiveEndMs = !isNaN(rawEndMs) && rawEndMs >= startMs ? rawEndMs : startMs + 60 * 60 * 1000
+              const payoutDate = new Date(effectiveEndMs + 24 * 60 * 60 * 1000)
+              return (
+                <div className="rounded-xl border border-[#20efe0]/30 bg-[#052638]/50 px-3.5 py-2 text-[11px] text-[#cbd0f2] flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-[#ffd166] shrink-0" />
+                  <span>
+                    Stripe Payout Release (24h after {form.eventEndDate ? "event ends" : "start + 1hr default end"}):{" "}
+                    <strong className="font-mono text-[#ffd166]">
+                      {payoutDate.toLocaleString("en-US", {
+                        timeZone: "America/Chicago",
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}{" "}
+                      CT
+                    </strong>
+                  </span>
+                </div>
+              )
+            })()}
 
             {/* Optional Physical Pre-Sale Tickets to Print */}
             <div className="rounded-xl border border-[#20efe0]/30 bg-[#05052d]/70 p-3.5 space-y-2">

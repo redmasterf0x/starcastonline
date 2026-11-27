@@ -194,7 +194,7 @@ export function EventScannerClient({
     const endDt = (event as any).eventEndDate
       ? new Date((event as any).eventEndDate)
       : dt
-        ? new Date(dt.getTime() + 3 * 60 * 60 * 1000)
+        ? new Date(dt.getTime() + 60 * 60 * 1000)
         : null
     const pad = (n: number) => String(n).padStart(2, "0")
     const localDateTime = dt
@@ -1160,7 +1160,7 @@ export function EventScannerClient({
               </div>
               <div>
                 <Label htmlFor="ev-edit-end-date" className="text-xs text-[#ffd166]">
-                  Event End Date &amp; Time *
+                  Event End Date &amp; Time (Opt.)
                 </Label>
                 <Input
                   id="ev-edit-end-date"
@@ -1168,9 +1168,11 @@ export function EventScannerClient({
                   min={editForm.eventDate || undefined}
                   value={editForm.eventEndDate}
                   onChange={(e) => setEditForm({ ...editForm, eventEndDate: e.target.value })}
-                  required
                   className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
                 />
+                <p className="text-[10px] text-[#9a9fc4] mt-0.5">
+                  Defaults to +1 hr after start if blank
+                </p>
               </div>
               <div>
                 <Label htmlFor="ev-edit-doors" className="text-xs text-[#9a9fc4]">
