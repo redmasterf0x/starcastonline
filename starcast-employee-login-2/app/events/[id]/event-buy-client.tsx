@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { createTicketCheckoutSession } from "@/app/actions/ticket-purchase"
 import { updateBandEvent, type EventCustomLink } from "@/app/actions/band-tickets"
-import { GooglePayTicketButton } from "@/components/tickets/google-pay-button"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -654,68 +653,29 @@ export function EventBuyClient({
                   />
                 </div>
 
-                {isFree ? (
-                  <Button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full h-12 rounded-xl bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-extrabold text-sm shadow-lg shadow-[#ea6f2a]/20"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Ticket className="w-4 h-4 mr-2" />
-                        Save Free Ticket{quantity > 1 ? "s" : ""}
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <div className="space-y-2.5 pt-1">
-                    <Button
-                      type="submit"
-                      disabled={submitting}
-                      className="w-full h-12 rounded-xl bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-extrabold text-sm shadow-lg shadow-[#ea6f2a]/20"
-                    >
-                      {submitting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Ticket className="w-4 h-4 mr-2" />
-                          Pay with Stripe &bull; ${(totalCents / 100).toFixed(2)}
-                        </>
-                      )}
-                    </Button>
-
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[#9a9fc4]">
-                      <div className="h-px flex-1 bg-[#20205a]" />
-                      <span>or</span>
-                      <div className="h-px flex-1 bg-[#20205a]" />
-                    </div>
-
-                    <GooglePayTicketButton
-                      eventId={event.id}
-                      eventTitle={event.title}
-                      ticketTier={activeTier}
-                      quantity={quantity}
-                      totalCents={totalCents}
-                      buyerName={buyerName}
-                      buyerEmail={buyerEmail}
-                      buyerUserId={session?.user?.id}
-                      disabled={submitting}
-                      onError={(msg) => setError(msg)}
-                      onPopulateBuyer={({ name, email }) => {
-                        if (name && !buyerName) setBuyerName(name)
-                        if (email && !buyerEmail) setBuyerEmail(email)
-                      }}
-                    />
-                  </div>
-                )}
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full h-12 rounded-xl bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-extrabold text-sm shadow-lg shadow-[#ea6f2a]/20"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : isFree ? (
+                    <>
+                      <Ticket className="w-4 h-4 mr-2" />
+                      Save Free Ticket{quantity > 1 ? "s" : ""}
+                    </>
+                  ) : (
+                    <>
+                      <Ticket className="w-4 h-4 mr-2" />
+                      Buy {quantity} {activeTier === "vip" ? "VIP " : ""}Ticket{quantity > 1 ? "s" : ""} &bull; $
+                      {(totalCents / 100).toFixed(2)}
+                    </>
+                  )}
+                </Button>
 
                 <div className="pt-1 flex items-center justify-center gap-2 text-[11px] text-[#9a9fc4]">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#20efe0]" />
