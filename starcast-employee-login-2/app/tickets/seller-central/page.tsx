@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 export const metadata: Metadata = {
   title: "Ticket Seller Central",
   description:
-    "Manage your approved StarCast ticket sales, door cash logs, event scanners, and export tax reports.",
+    "Apply to sell tickets, link your Stripe payout account, create event ticket listings, manage door scanners, and export tax reports.",
 }
 
 export default async function TicketSellerCentralPage() {
@@ -25,8 +25,18 @@ export default async function TicketSellerCentralPage() {
     <SellerCentralClient
       isApprovedSeller={Boolean(data.isApprovedSeller)}
       isAdmin={Boolean(data.isAdmin)}
-      myBands={data.myBands || []}
-      approvedBands={data.approvedBands || []}
+      sellerApplicationStatus={data.sellerApplicationStatus || "none"}
+      sellerApplicationNotes={data.sellerApplicationNotes || ""}
+      defaultOrganizerName={data.defaultOrganizerName || ""}
+      stripeStatus={
+        data.stripeStatus || {
+          connected: false,
+          payoutsEnabled: false,
+          detailsSubmitted: false,
+          status: "not_connected",
+          stripeAccountId: null,
+        }
+      }
       events={data.events || []}
       orders={data.orders || []}
     />

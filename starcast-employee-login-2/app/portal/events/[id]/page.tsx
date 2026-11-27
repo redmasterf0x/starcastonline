@@ -19,7 +19,7 @@ export default async function SellerEventPage({
     if (res.error === "Event not found") {
       notFound()
     }
-    redirect("/portal")
+    redirect("/tickets/seller-central")
   }
 
   return (

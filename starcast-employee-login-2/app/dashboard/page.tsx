@@ -38,6 +38,7 @@ interface UserProfile {
   website: string | null
   equippedFrame?: string
   equippedBanner?: string
+  ticketingStatus?: string
   isEmployee: boolean
   isAdmin: boolean
 }
@@ -424,7 +425,7 @@ export default function DashboardPage() {
             </Link>
 
             {/* Sell Tickets & Events Card */}
-            <Link href={userBand ? "/portal?tab=ticketing" : "/portal"} className="block group h-full">
+            <Link href="/tickets/seller-central" className="block group h-full">
               <Card className="h-full border border-[#20205a] bg-[#0c0c3f]/60 transition-all hover:border-[#ffd166]/60 hover:shadow-[0_0_25px_rgba(255,209,102,0.15)] group-hover:bg-[#0c0c3f]/80">
                 <CardContent className="p-5 flex flex-col justify-between h-full">
                   <div>
@@ -435,35 +436,41 @@ export default function DashboardPage() {
                       <Badge
                         variant="outline"
                         className={
+                          profile.isAdmin ||
+                          profile.ticketingStatus === "approved" ||
                           userBand?.ticketing_status === "approved"
                             ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10 text-[11px]"
-                            : userBand?.ticketing_status === "applied"
+                            : profile.ticketingStatus === "applied" || userBand?.ticketing_status === "applied"
                             ? "border-[#ffd166]/40 text-[#ffd166] bg-[#ffd166]/10 text-[11px]"
                             : "border-[#ea6f2a]/40 text-[#ea6f2a] bg-[#ea6f2a]/10 text-[11px]"
                         }
                       >
-                        {userBand?.ticketing_status === "approved"
+                        {profile.isAdmin ||
+                        profile.ticketingStatus === "approved" ||
+                        userBand?.ticketing_status === "approved"
                           ? "Approved"
-                          : userBand?.ticketing_status === "applied"
+                          : profile.ticketingStatus === "applied" || userBand?.ticketing_status === "applied"
                           ? "Pending Review"
-                          : "Ticketing"}
+                          : "Seller Central"}
                       </Badge>
                     </div>
                     <h3 className="text-lg font-semibold text-[#f5f7ff] group-hover:text-[#ffd166] transition-colors flex items-center justify-between">
-                      Sell Tickets &amp; Events
+                      Ticket Seller Central
                       <ChevronRight className="w-4 h-4 text-[#9a9fc4] group-hover:text-[#ffd166] group-hover:translate-x-1 transition-all" />
                     </h3>
                     <p className="text-sm text-[#9a9fc4] mt-1.5 leading-relaxed">
-                      Apply to sell event tickets with Stripe, set custom ticket inventory, auto-email QR passes, and scan tickets at the door.
+                      Apply to sell event tickets, link your Stripe payout account, post events directly in Seller Central, and scan QR passes at the door.
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-[#20205a]/60 text-xs flex items-center justify-between">
-                    {userBand?.ticketing_status === "approved" ? (
+                    {profile.isAdmin ||
+                    profile.ticketingStatus === "approved" ||
+                    userBand?.ticketing_status === "approved" ? (
                       <>
-                        <span className="text-emerald-400 font-semibold">Post events &amp; scan QR</span>
+                        <span className="text-emerald-400 font-semibold">Open Seller Central</span>
                         <span className="text-emerald-400">&rarr;</span>
                       </>
-                    ) : userBand?.ticketing_status === "applied" ? (
+                    ) : profile.ticketingStatus === "applied" || userBand?.ticketing_status === "applied" ? (
                       <>
                         <span className="text-[#ffd166] font-semibold">Awaiting admin approval</span>
                         <span className="text-[#ffd166]">&rarr;</span>

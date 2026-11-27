@@ -7,6 +7,7 @@ import { eq, and, desc, gte, sql, asc, ilike, inArray, or } from "drizzle-orm"
 import { requireViewer, requireStaff, requireAdmin } from "@/lib/permissions"
 import { revalidatePath } from "next/cache"
 import { sendEventCancelledRefundEmail } from "@/lib/email"
+import { resolveSellerStripeStatusForUser, type SellerStripeStatus } from "@/app/actions/seller-stripe-connect"
 import crypto from "crypto"
 
 export type EventCustomLink = {
@@ -70,8 +71,45 @@ export type UpdateEventInput = Partial<CreateEventInput> & {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Ticketing Feature Application & Admin Review
+// 1. Ticketing Feature Application & Admin Review (User-level & Band-level)
 // ---------------------------------------------------------------------------
+
+/** Submit a standalone user application to unlock Ticket Seller Central (no band page required) */
+export async function applyForUserTicketing(input: { organizerName?: string; notes?: string }) {
+  try {
+    const viewer = await requireViewer()
+    const [profile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.userId, viewer.userId))
+      .limit(1)
+
+    if (!profile) {
+      return { success: false, error: "Profile not found." }
+    }
+
+    const cleanOrg = input.organizerName?.trim() || profile.sellerOrganizerName || null
+    const cleanNotes = input.notes?.trim() || null
+
+    await db
+      .update(profiles)
+      .set({
+        ticketingStatus: profile.ticketingStatus === "approved" ? "approved" : "applied",
+        sellerOrganizerName: cleanOrg,
+        ticketingApplicationNotes: cleanNotes,
+        ticketingAppliedAt: new Date(),
+      })
+      .where(eq(profiles.id, profile.id))
+
+    revalidatePath("/tickets/seller-central")
+    revalidatePath("/tickets")
+    revalidatePath("/admin")
+    return { success: true }
+  } catch (err: any) {
+    console.error("applyForUserTicketing error:", err)
+    return { success: false, error: err?.message || "Failed to submit ticket seller application" }
+  }
+}
 
 /** Submit an application for a band to unlock ticketing & Stripe payouts */
 export async function applyForBandTicketing(bandId: string, notes: string = "") {
@@ -95,6 +133,7 @@ export async function applyForBandTicketing(bandId: string, notes: string = "") 
       .where(eq(bands.id, bandId))
 
     revalidatePath("/portal")
+    revalidatePath("/tickets/seller-central")
     revalidatePath("/admin")
     return { success: true }
   } catch (err: any) {
@@ -103,22 +142,50 @@ export async function applyForBandTicketing(bandId: string, notes: string = "") 
   }
 }
 
-/** Admin review: approve or reject a band's ticketing application */
-export async function adminReviewTicketingApplication(bandId: string, approved: boolean, reason?: string) {
+/** Admin review: approve or reject a user's or band's ticketing application */
+export async function adminReviewTicketingApplication(
+  id: string,
+  approved: boolean,
+  reason?: string,
+  applicationType: "user" | "band" = "band"
+) {
   try {
     await requireStaff()
     const status = approved ? "approved" : "rejected"
 
-    await db
-      .update(bands)
-      .set({
-        ticketingStatus: status,
-        updatedAt: new Date(),
-      })
-      .where(eq(bands.id, bandId))
+    if (applicationType === "user") {
+      await db
+        .update(profiles)
+        .set({
+          ticketingStatus: status,
+          ticketingApprovedAt: approved ? new Date() : null,
+        })
+        .where(eq(profiles.id, id))
+    } else {
+      const updatedBands = await db
+        .update(bands)
+        .set({
+          ticketingStatus: status,
+          updatedAt: new Date(),
+        })
+        .where(eq(bands.id, id))
+        .returning({ id: bands.id })
+
+      if (updatedBands.length === 0) {
+        await db
+          .update(profiles)
+          .set({
+            ticketingStatus: status,
+            ticketingApprovedAt: approved ? new Date() : null,
+          })
+          .where(eq(profiles.id, id))
+      }
+    }
 
     revalidatePath("/admin")
     revalidatePath("/portal")
+    revalidatePath("/tickets")
+    revalidatePath("/tickets/seller-central")
     return { success: true, status }
   } catch (err: any) {
     console.error("adminReviewTicketingApplication error:", err)
@@ -126,29 +193,80 @@ export async function adminReviewTicketingApplication(bandId: string, approved: 
   }
 }
 
-/** Admin list: retrieve all pending and reviewed ticketing applications */
+/** Admin list: retrieve all pending and reviewed ticketing applications (both standalone users and bands) */
 export async function adminListTicketingApplications() {
   try {
     await requireStaff()
-    const rows = await db
-      .select({
-        id: bands.id,
-        name: bands.name,
-        slug: bands.slug,
-        ownerUserId: bands.ownerUserId,
-        contactEmail: bands.contactEmail,
-        ticketingStatus: bands.ticketingStatus,
-        ticketingApplicationNotes: bands.ticketingApplicationNotes,
-        ticketingAppliedAt: bands.ticketingAppliedAt,
-        stripeAccountId: bands.stripeAccountId,
-        stripeAccountStatus: bands.stripeAccountStatus,
-        createdAt: bands.createdAt,
-      })
-      .from(bands)
-      .where(sql`${bands.ticketingStatus} != 'none'`)
-      .orderBy(desc(bands.ticketingAppliedAt))
 
-    return rows
+    const [userRows, bandRows] = await Promise.all([
+      db
+        .select({
+          id: profiles.id,
+          userId: profiles.userId,
+          email: profiles.email,
+          username: profiles.username,
+          firstName: profiles.firstName,
+          lastName: profiles.lastName,
+          sellerOrganizerName: profiles.sellerOrganizerName,
+          ticketingStatus: profiles.ticketingStatus,
+          ticketingApplicationNotes: profiles.ticketingApplicationNotes,
+          ticketingAppliedAt: profiles.ticketingAppliedAt,
+          stripeAccountId: profiles.stripeAccountId,
+          stripeAccountStatus: profiles.stripeAccountStatus,
+          createdAt: profiles.createdAt,
+        })
+        .from(profiles)
+        .where(sql`${profiles.ticketingStatus} != 'none'`)
+        .orderBy(desc(profiles.ticketingAppliedAt)),
+      db
+        .select({
+          id: bands.id,
+          name: bands.name,
+          slug: bands.slug,
+          ownerUserId: bands.ownerUserId,
+          contactEmail: bands.contactEmail,
+          ticketingStatus: bands.ticketingStatus,
+          ticketingApplicationNotes: bands.ticketingApplicationNotes,
+          ticketingAppliedAt: bands.ticketingAppliedAt,
+          stripeAccountId: bands.stripeAccountId,
+          stripeAccountStatus: bands.stripeAccountStatus,
+          createdAt: bands.createdAt,
+        })
+        .from(bands)
+        .where(sql`${bands.ticketingStatus} != 'none'`)
+        .orderBy(desc(bands.ticketingAppliedAt)),
+    ])
+
+    const mappedUsers = userRows.map((u) => {
+      const fullName = `${u.firstName || ""} ${u.lastName || ""}`.trim()
+      const displayName =
+        u.sellerOrganizerName?.trim() || fullName || (u.username ? `@${u.username}` : u.email)
+      return {
+        id: u.id,
+        applicationType: "user" as const,
+        name: displayName,
+        slug: u.username || null,
+        ownerUserId: u.userId,
+        contactEmail: u.email,
+        ticketingStatus: u.ticketingStatus,
+        ticketingApplicationNotes: u.ticketingApplicationNotes,
+        ticketingAppliedAt: u.ticketingAppliedAt,
+        stripeAccountId: u.stripeAccountId,
+        stripeAccountStatus: u.stripeAccountStatus,
+        createdAt: u.createdAt,
+      }
+    })
+
+    const mappedBands = bandRows.map((b) => ({
+      ...b,
+      applicationType: "band" as const,
+    }))
+
+    return [...mappedUsers, ...mappedBands].sort((a, b) => {
+      const aTime = a.ticketingAppliedAt ? new Date(a.ticketingAppliedAt).getTime() : 0
+      const bTime = b.ticketingAppliedAt ? new Date(b.ticketingAppliedAt).getTime() : 0
+      return bTime - aTime
+    })
   } catch (err: any) {
     console.error("adminListTicketingApplications error:", err)
     return []
@@ -159,10 +277,16 @@ export async function adminListTicketingApplications() {
 // 2. Event Ticket Creation ("POST a ticket") & Management
 // ---------------------------------------------------------------------------
 
-/** Create a new event ticket listing (band-linked OR standalone when bandId is null) */
+/** Create a new event ticket listing (neutral standalone event when bandId is null, or band-linked) */
 export async function createBandEvent(bandId: string | null, input: CreateEventInput) {
   try {
     const viewer = await requireViewer()
+
+    const [viewerProfile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.userId, viewer.userId))
+      .limit(1)
 
     let band: typeof bands.$inferSelect | null = null
     if (bandId) {
@@ -171,16 +295,20 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
       if (foundBand.ownerUserId !== viewer.userId && !viewer.isAdmin) {
         return { success: false, error: "Unauthorized to post tickets for this band" }
       }
-      if (foundBand.ticketingStatus !== "approved" && !viewer.isAdmin) {
+      if (
+        foundBand.ticketingStatus !== "approved" &&
+        viewerProfile?.ticketingStatus !== "approved" &&
+        !viewer.isAdmin
+      ) {
         return {
           success: false,
-          error: "This band is not approved for ticketing yet. Please submit an application first.",
+          error: "You are not approved for ticketing yet. Please submit an application in Seller Central first.",
         }
       }
       band = foundBand
     } else {
-      // Standalone event: caller must be an approved ticket seller OR admin
-      if (!viewer.isAdmin) {
+      // Neutral / standalone event: caller must be an approved ticket seller (user-level OR band-level) OR admin
+      if (!viewer.isAdmin && viewerProfile?.ticketingStatus !== "approved") {
         const approvedBands = await db
           .select({ id: bands.id })
           .from(bands)
@@ -189,8 +317,20 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
         if (approvedBands.length === 0) {
           return {
             success: false,
-            error: "Only admin-approved ticket sellers or admins can post standalone events.",
+            error: "Only approved ticket sellers can post events. Apply first in Ticket Seller Central.",
           }
+        }
+      }
+    }
+
+    // Approved sellers must link their Stripe payout account in Seller Central before posting events
+    if (!viewer.isAdmin) {
+      const stripeState = await resolveSellerStripeStatusForUser(viewer.userId)
+      const bandStripeActive = band?.stripeAccountStatus === "active" && Boolean(band?.stripeAccountId)
+      if (stripeState.status !== "active" && !bandStripeActive) {
+        return {
+          success: false,
+          error: "Please link and finish setting up your Stripe payout account in Ticket Seller Central before creating an event.",
         }
       }
     }
@@ -209,7 +349,11 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
 
     const totalInventory = Math.max(1, input.totalInventory || 20)
     const priceCents = Math.max(0, input.priceCents || 0)
-    const organizerLabel = band?.name || input.organizerName?.trim() || "StarCast Event"
+    const fallbackSellerName =
+      viewerProfile?.sellerOrganizerName?.trim() ||
+      `${viewerProfile?.firstName || ""} ${viewerProfile?.lastName || ""}`.trim() ||
+      "Top City Live Event"
+    const organizerLabel = band?.name || input.organizerName?.trim() || fallbackSellerName
 
     // Calculate escrow release date: exactly 24 hours after the event time
     const escrowReleaseDate = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000)
@@ -1460,38 +1604,74 @@ export async function getEventPrintTicketsData(eventId: string) {
   }
 }
 
-/** Ticket Seller Central: accessible to all admin-approved ticket sellers AND admins (strictly their own events & standalone events) */
+/** Ticket Seller Central: accessible to all admin-approved ticket sellers (user-level or band-level) AND admins */
 export async function getTicketSellerCentralData() {
   try {
     const viewer = await requireViewer()
 
-    const myBands = await db
-      .select({
-        id: bands.id,
-        name: bands.name,
-        slug: bands.slug,
-        ticketingStatus: bands.ticketingStatus,
-        stripeAccountId: bands.stripeAccountId,
-        stripeAccountStatus: bands.stripeAccountStatus,
-      })
-      .from(bands)
-      .where(eq(bands.ownerUserId, viewer.userId))
-      .orderBy(asc(bands.name))
+    const [[viewerProfile], myBands] = await Promise.all([
+      db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, viewer.userId))
+        .limit(1),
+      db
+        .select({
+          id: bands.id,
+          name: bands.name,
+          slug: bands.slug,
+          ticketingStatus: bands.ticketingStatus,
+          stripeAccountId: bands.stripeAccountId,
+          stripeAccountStatus: bands.stripeAccountStatus,
+        })
+        .from(bands)
+        .where(eq(bands.ownerUserId, viewer.userId))
+        .orderBy(asc(bands.name)),
+    ])
 
     const approvedBands = myBands.filter((b) => b.ticketingStatus === "approved")
-    const hasAccess = approvedBands.length > 0 || viewer.isAdmin
+    const isUserApproved = viewerProfile?.ticketingStatus === "approved"
+    const hasAccess = isUserApproved || approvedBands.length > 0 || viewer.isAdmin
+
+    const defaultOrganizerName =
+      viewerProfile?.sellerOrganizerName?.trim() ||
+      approvedBands[0]?.name ||
+      `${viewerProfile?.firstName || ""} ${viewerProfile?.lastName || ""}`.trim() ||
+      ""
+
+    const emptyStripe: SellerStripeStatus = {
+      connected: false,
+      payoutsEnabled: false,
+      detailsSubmitted: false,
+      status: "not_connected",
+      stripeAccountId: null,
+    }
 
     if (!hasAccess) {
+      const hasPendingBand = myBands.some((b) => b.ticketingStatus === "applied")
+      const sellerApplicationStatus: "none" | "applied" | "rejected" | "approved" =
+        viewerProfile?.ticketingStatus === "applied" || hasPendingBand
+          ? "applied"
+          : viewerProfile?.ticketingStatus === "rejected"
+            ? "rejected"
+            : "none"
+
       return {
         success: true,
         isApprovedSeller: false,
         isAdmin: viewer.isAdmin,
+        sellerApplicationStatus,
+        sellerApplicationNotes: viewerProfile?.ticketingApplicationNotes || "",
+        defaultOrganizerName,
+        stripeStatus: emptyStripe,
         myBands,
         approvedBands: [],
         events: [],
         orders: [],
       }
     }
+
+    const stripeStatus = await resolveSellerStripeStatusForUser(viewer.userId)
 
     const approvedBandIds = approvedBands.map((b) => b.id)
 
@@ -1620,6 +1800,10 @@ export async function getTicketSellerCentralData() {
       success: true,
       isApprovedSeller: true,
       isAdmin: viewer.isAdmin,
+      sellerApplicationStatus: "approved" as const,
+      sellerApplicationNotes: viewerProfile?.ticketingApplicationNotes || "",
+      defaultOrganizerName,
+      stripeStatus,
       myBands,
       approvedBands,
       events: enrichedEvents,
@@ -1631,6 +1815,17 @@ export async function getTicketSellerCentralData() {
       success: false,
       error: err?.message || "Failed to load Ticket Seller Central",
       isApprovedSeller: false,
+      isAdmin: false,
+      sellerApplicationStatus: "none" as const,
+      sellerApplicationNotes: "",
+      defaultOrganizerName: "",
+      stripeStatus: {
+        connected: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false,
+        status: "not_connected" as const,
+        stripeAccountId: null,
+      },
       myBands: [],
       approvedBands: [],
       events: [],
@@ -1935,17 +2130,28 @@ export async function adminListHeldEscrows() {
       .select({
         event: bandEvents,
         band: bands,
+        ownerProfile: {
+          stripeAccountId: profiles.stripeAccountId,
+          stripeAccountStatus: profiles.stripeAccountStatus,
+          sellerOrganizerName: profiles.sellerOrganizerName,
+        },
       })
       .from(bandEvents)
       .leftJoin(bands, eq(bands.id, bandEvents.bandId))
+      .leftJoin(profiles, eq(profiles.userId, bandEvents.ownerUserId))
       .orderBy(asc(bandEvents.eventDate))
 
     return rows.map((r) => ({
       ...r.event,
-      bandName: r.band?.name || r.event.organizerName || "Standalone Event",
+      bandName:
+        r.band?.name ||
+        r.event.organizerName ||
+        r.ownerProfile?.sellerOrganizerName ||
+        "Standalone Event",
       bandSlug: r.band?.slug || null,
-      stripeAccountId: r.band?.stripeAccountId || null,
-      stripeAccountStatus: r.band?.stripeAccountStatus || null,
+      stripeAccountId: r.band?.stripeAccountId || r.ownerProfile?.stripeAccountId || null,
+      stripeAccountStatus:
+        r.band?.stripeAccountStatus || r.ownerProfile?.stripeAccountStatus || null,
     }))
   } catch (err: any) {
     console.error("adminListHeldEscrows error:", err)

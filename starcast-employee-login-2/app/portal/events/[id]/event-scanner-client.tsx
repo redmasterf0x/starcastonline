@@ -508,11 +508,11 @@ export function EventScannerClient({
         {/* Top Breadcrumb & Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/portal"
+            href="/tickets/seller-central"
             className="inline-flex items-center gap-2 text-sm text-[#9a9fc4] hover:text-[#f5f7ff] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Artist Portal
+            Back to Ticket Seller Central
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">

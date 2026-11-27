@@ -4,7 +4,7 @@ import { headers } from "next/headers"
 import { auth } from "@/lib/auth"
 import { getViewerPermissions } from "@/lib/permissions"
 import { db } from "@/lib/db"
-import { bandEvents, bands, bandTicketInstances, bandTicketOrders } from "@/lib/db/schema"
+import { bandEvents, bands, bandTicketInstances, bandTicketOrders, profiles } from "@/lib/db/schema"
 import { eq, and, gte, asc, desc, or, ilike } from "drizzle-orm"
 import { Ticket, Calendar, MapPin, ArrowRight, Music, QrCode, LogIn, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -46,13 +46,23 @@ export default async function TicketsPage() {
   }> = []
 
   if (session?.user) {
-    const viewer = await getViewerPermissions().catch(() => null)
-    const approvedRows = await db
-      .select({ id: bands.id })
-      .from(bands)
-      .where(and(eq(bands.ownerUserId, session.user.id), eq(bands.ticketingStatus, "approved")))
-      .limit(1)
-    isApprovedSeller = approvedRows.length > 0 || Boolean(viewer?.isAdmin)
+    const [viewer, [userProfile], approvedRows] = await Promise.all([
+      getViewerPermissions().catch(() => null),
+      db
+        .select({ ticketingStatus: profiles.ticketingStatus })
+        .from(profiles)
+        .where(eq(profiles.userId, session.user.id))
+        .limit(1),
+      db
+        .select({ id: bands.id })
+        .from(bands)
+        .where(and(eq(bands.ownerUserId, session.user.id), eq(bands.ticketingStatus, "approved")))
+        .limit(1),
+    ])
+    isApprovedSeller =
+      userProfile?.ticketingStatus === "approved" ||
+      approvedRows.length > 0 ||
+      Boolean(viewer?.isAdmin)
 
     const matchConditions = [eq(bandTicketOrders.buyerUserId, session.user.id)]
     if (session.user.email) {
@@ -129,7 +139,7 @@ export default async function TicketsPage() {
                   variant="outline"
                   className="border-[#20efe0]/40 bg-[#05052d]/80 text-[#f5f7ff] hover:bg-[#20205a]/70 rounded-xl h-10 px-4 text-xs font-semibold"
                 >
-                  <Link href="/dashboard">Sell Tickets on StarCast &rarr;</Link>
+                  <Link href="/tickets/seller-central">Ticket Seller Central &rarr;</Link>
                 </Button>
               )}
             </div>

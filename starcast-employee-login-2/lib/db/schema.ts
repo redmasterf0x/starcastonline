@@ -97,6 +97,12 @@ export const profiles = pgTable("profiles", {
   hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }),
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status"),
+  // User-level Ticket Seller Central approval ('none' | 'applied' | 'approved' | 'rejected')
+  ticketingStatus: text("ticketing_status").notNull().default("none"),
+  ticketingApplicationNotes: text("ticketing_application_notes"),
+  ticketingAppliedAt: timestamp("ticketing_applied_at", { withTimezone: true }),
+  ticketingApprovedAt: timestamp("ticketing_approved_at", { withTimezone: true }),
+  sellerOrganizerName: text("seller_organizer_name"),
   staffEmail: text("staff_email"),
   equippedFrame: text("equipped_frame").notNull().default("none"),
   equippedBanner: text("equipped_banner").notNull().default("cosmic-grid"),

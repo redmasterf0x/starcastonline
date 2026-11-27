@@ -17,7 +17,6 @@ import { getPaymentsForBand } from "@/app/actions/payments"
 import { ResponsiveHeader } from "@/components/responsive-header"
 import { BandPostsPanel } from "@/components/portal/band-posts-panel"
 import { BandLinksPanel } from "@/components/portal/band-links-panel"
-import { BandTicketingPanel } from "@/components/portal/band-ticketing-panel"
 import { BandMusicPanel } from "@/components/portal/band-music-panel"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -148,11 +147,15 @@ export default function PortalPage() {
   const [bookingForm, setBookingForm] = useState({ title: "", startsAt: "", endsAt: "", notes: "" })
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
-  const [portalTab, setPortalTab] = useState<"posts" | "music" | "ticketing" | "links" | "studio" | "payments">("posts")
+  const [portalTab, setPortalTab] = useState<"posts" | "music" | "links" | "studio" | "payments">("posts")
 
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get("tab")
-    if (tab === "ticketing" || tab === "music" || tab === "links" || tab === "studio" || tab === "payments" || tab === "posts") {
+    if (tab === "ticketing") {
+      window.location.href = "/tickets/seller-central"
+      return
+    }
+    if (tab === "music" || tab === "links" || tab === "studio" || tab === "payments" || tab === "posts") {
       setPortalTab(tab)
     }
   }, [])
@@ -982,17 +985,6 @@ export default function PortalPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => setPortalTab("ticketing")}
-                    className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                      portalTab === "ticketing"
-                        ? "border-[#ea6f2a] text-[#ea6f2a]"
-                        : "border-transparent text-[#9a9fc4] hover:text-[#f5f7ff]"
-                    }`}
-                  >
-                    <Ticket className="w-4 h-4" />
-                    Ticketing &amp; Shows
-                  </button>
-                  <button
                     onClick={() => setPortalTab("links")}
                     className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                       portalTab === "links"
@@ -1031,14 +1023,6 @@ export default function PortalPage() {
                 {portalTab === "music" && (
                   <BandMusicPanel
                     band={selectedBand as any}
-                    onRefreshBand={refreshBands}
-                  />
-                )}
-
-                {portalTab === "ticketing" && (
-                  <BandTicketingPanel
-                    band={selectedBand as any}
-                    isOwner={bands.some((b) => b.id === selectedBand.id)}
                     onRefreshBand={refreshBands}
                   />
                 )}

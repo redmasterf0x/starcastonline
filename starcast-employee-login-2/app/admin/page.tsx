@@ -1291,16 +1291,16 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            {/* 1. Band Ticketing Applications */}
+            {/* 1. Ticket Seller Applications */}
             <Card className="bg-[#0c0c3f]/60 border-[#20205a]/50">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-[#f5f7ff] text-lg flex items-center gap-2">
                     <Ticket className="w-5 h-5 text-[#ea6f2a]" />
-                    Band Ticketing Feature Applications
+                    Ticket Seller Applications
                   </CardTitle>
                   <CardDescription className="text-[#9a9fc4]">
-                    Review band requests to enable live event ticket sales and Stripe Connect payouts
+                    Approve members to unlock Ticket Seller Central, link Stripe Connect payouts, and post events
                   </CardDescription>
                 </div>
                 <Button
@@ -1314,14 +1314,17 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 {ticketingApps.length === 0 ? (
-                  <p className="text-sm text-[#9a9fc4] text-center py-6">No band ticketing applications yet.</p>
+                  <p className="text-sm text-[#9a9fc4] text-center py-6">No ticket seller applications yet.</p>
                 ) : (
                   <div className="divide-y divide-[#20205a]/50">
                     {ticketingApps.map((app) => (
-                      <div key={app.id} className="py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div key={`${app.applicationType || "band"}-${app.id}`} className="py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <h4 className="text-base font-bold text-[#f5f7ff]">{app.name}</h4>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#20205a] text-[#cbd0f2] font-semibold uppercase">
+                              {app.applicationType === "user" ? "Seller Account" : "Legacy Band"}
+                            </span>
                             <span
                               className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
                                 app.ticketingStatus === "approved"
@@ -1335,7 +1338,7 @@ export default function AdminPage() {
                             </span>
                             {app.stripeAccountStatus === "active" && (
                               <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#20efe0]/15 text-[#20efe0] border border-[#20efe0]/30 font-mono">
-                                Stripe Active
+                                Stripe Linked
                               </span>
                             )}
                           </div>
@@ -1356,7 +1359,7 @@ export default function AdminPage() {
                           {app.ticketingStatus !== "approved" && (
                             <Button
                               onClick={async () => {
-                                await adminReviewTicketingApplication(app.id, true)
+                                await adminReviewTicketingApplication(app.id, true, undefined, app.applicationType || "band")
                                 fetchTicketing()
                               }}
                               size="sm"
@@ -1369,7 +1372,7 @@ export default function AdminPage() {
                           {app.ticketingStatus !== "rejected" && (
                             <Button
                               onClick={async () => {
-                                await adminReviewTicketingApplication(app.id, false)
+                                await adminReviewTicketingApplication(app.id, false, undefined, app.applicationType || "band")
                                 fetchTicketing()
                               }}
                               variant="outline"

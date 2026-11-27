@@ -4,11 +4,17 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
+  applyForUserTicketing,
   createBandEvent,
   deleteBandEvent,
   adminReviewTicketEvent,
   type EventCustomLink,
 } from "@/app/actions/band-tickets"
+import {
+  startSellerStripeOnboarding,
+  openSellerStripeDashboard,
+  type SellerStripeStatus,
+} from "@/app/actions/seller-stripe-connect"
 import { SellerSalesChart } from "./sales-chart"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,24 +56,18 @@ import {
   Utensils,
   Clock,
   CheckCircle2,
+  Lock,
+  Send,
+  AlertCircle,
 } from "lucide-react"
 
 interface SellerCentralProps {
   isApprovedSeller: boolean
   isAdmin?: boolean
-  myBands: Array<{
-    id: string
-    name: string
-    slug: string | null
-    ticketingStatus: string
-  }>
-  approvedBands: Array<{
-    id: string
-    name: string
-    slug: string | null
-    ticketingStatus: string
-    stripeAccountStatus: string | null
-  }>
+  sellerApplicationStatus?: "none" | "applied" | "rejected" | "approved"
+  sellerApplicationNotes?: string
+  defaultOrganizerName?: string
+  stripeStatus: SellerStripeStatus
   events: Array<{
     id: string
     bandId: string
@@ -123,30 +123,42 @@ function csvEscape(val: string | number | null | undefined): string {
 export function SellerCentralClient({
   isApprovedSeller,
   isAdmin = false,
-  myBands,
-  approvedBands,
+  sellerApplicationStatus = "none",
+  sellerApplicationNotes = "",
+  defaultOrganizerName = "",
+  stripeStatus,
   events,
   orders,
 }: SellerCentralProps) {
   const router = useRouter()
-  const [selectedBandId, setSelectedBandId] = useState<string>("all")
   const [selectedYear, setSelectedYear] = useState<string>("all")
   const [paymentFilter, setPaymentFilter] = useState<"all" | "stripe" | "cash">("all")
   const [search, setSearch] = useState("")
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null)
 
-  // Standalone / Band Event Creation modal
+  // Unapproved Seller Application Form state
+  const [localAppStatus, setLocalAppStatus] = useState(sellerApplicationStatus)
+  const [applyOrgName, setApplyOrgName] = useState(defaultOrganizerName)
+  const [applyNotes, setApplyNotes] = useState(sellerApplicationNotes)
+  const [submittingApp, setSubmittingApp] = useState(false)
+  const [applyError, setApplyError] = useState("")
+  const [applySuccessMsg, setApplySuccessMsg] = useState("")
+
+  // Stripe Connect Express state
+  const [stripeBusy, setStripeBusy] = useState(false)
+  const [stripeError, setStripeError] = useState("")
+
+  // Event Creation modal (neutral standalone Seller Central flow — no band page needed)
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState("")
   const [uploadingFlyer, setUploadingFlyer] = useState(false)
   const [createdEventId, setCreatedEventId] = useState<string | null>(null)
   const [createdPhysicalCount, setCreatedPhysicalCount] = useState<number>(0)
-  const [eventAssociation, setEventAssociation] = useState<string>("standalone")
   const [form, setForm] = useState({
     title: "",
-    organizerName: "",
+    organizerName: defaultOrganizerName,
     description: "",
     venueName: "",
     venueAddress: "",
@@ -168,6 +180,72 @@ export function SellerCentralClient({
     recurrenceFrequency: "one_time" as "one_time" | "weekly" | "monthly" | "yearly",
     customLinks: [] as EventCustomLink[],
   })
+
+  const isStripeActive = stripeStatus.status === "active"
+  const canCreateEvents = isStripeActive || isAdmin
+
+  async function handleSubmitSellerApplication(e: React.FormEvent) {
+    e.preventDefault()
+    if (submittingApp) return
+    setSubmittingApp(true)
+    setApplyError("")
+    setApplySuccessMsg("")
+    try {
+      const res = await applyForUserTicketing({
+        organizerName: applyOrgName,
+        notes: applyNotes,
+      })
+      if (!res.success) {
+        setApplyError(res.error || "Failed to submit application.")
+      } else {
+        setLocalAppStatus("applied")
+        setApplySuccessMsg(
+          "Application submitted! Once StarCast Admin approves your seller account, come right back here to link your Stripe account and create tickets."
+        )
+        router.refresh()
+      }
+    } catch (err: any) {
+      setApplyError(err?.message || "Failed to submit application.")
+    } finally {
+      setSubmittingApp(false)
+    }
+  }
+
+  async function handleConnectStripe() {
+    if (stripeBusy) return
+    setStripeBusy(true)
+    setStripeError("")
+    try {
+      const res = await startSellerStripeOnboarding()
+      if (res.success && res.url) {
+        window.location.href = res.url
+        return
+      }
+      setStripeError(res.error || "Could not start Stripe onboarding.")
+      setStripeBusy(false)
+    } catch (err: any) {
+      setStripeError(err?.message || "Could not start Stripe onboarding.")
+      setStripeBusy(false)
+    }
+  }
+
+  async function handleOpenStripeDashboard() {
+    if (stripeBusy) return
+    setStripeBusy(true)
+    setStripeError("")
+    try {
+      const res = await openSellerStripeDashboard()
+      if (res.success && res.url) {
+        window.open(res.url, "_blank", "noopener,noreferrer")
+      } else {
+        setStripeError(res.error || "Could not open Stripe dashboard.")
+      }
+    } catch (err: any) {
+      setStripeError(err?.message || "Could not open Stripe dashboard.")
+    } finally {
+      setStripeBusy(false)
+    }
+  }
 
   async function handleUploadFlyer(file: File) {
     if (file.size > 10 * 1024 * 1024) {
@@ -197,8 +275,7 @@ export function SellerCentralClient({
     setCreating(true)
     setCreateError("")
     try {
-      const targetBandId = eventAssociation === "standalone" ? null : eventAssociation
-      const res = await createBandEvent(targetBandId, {
+      const res = await createBandEvent(null, {
         title: form.title,
         organizerName: form.organizerName,
         description: form.description,
@@ -238,7 +315,7 @@ export function SellerCentralClient({
       setCreateOpen(false)
       setForm({
         title: "",
-        organizerName: "",
+        organizerName: defaultOrganizerName,
         description: "",
         venueName: "",
         venueAddress: "",
@@ -303,7 +380,6 @@ export function SellerCentralClient({
   const filteredOrders = useMemo(() => {
     const q = search.toLowerCase().trim()
     return orders.filter((o) => {
-      if (selectedBandId !== "all" && o.bandId !== selectedBandId) return false
       if (selectedYear !== "all" && String(new Date(o.createdAt).getFullYear()) !== selectedYear) {
         return false
       }
@@ -319,12 +395,7 @@ export function SellerCentralClient({
       }
       return true
     })
-  }, [orders, selectedBandId, selectedYear, paymentFilter, search])
-
-  const filteredEvents = useMemo(() => {
-    if (selectedBandId === "all") return events
-    return events.filter((e) => e.bandId === selectedBandId)
-  }, [events, selectedBandId])
+  }, [orders, selectedYear, paymentFilter, search])
 
   const totals = useMemo(() => {
     let tickets = 0
@@ -348,7 +419,7 @@ export function SellerCentralClient({
     const headers = [
       "Order Date (ISO)",
       "Order ID",
-      "Act / Band",
+      "Organizer / Presenter",
       "Event Title",
       "Venue",
       "Event Date",
@@ -398,44 +469,161 @@ export function SellerCentralClient({
     URL.revokeObjectURL(url)
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // UNAPPROVED VIEW: Direct "Apply to Sell Tickets" Page on Seller Central
+  // ─────────────────────────────────────────────────────────────────────────
   if (!isApprovedSeller) {
-    const hasPending = myBands.some((b) => b.ticketingStatus === "applied")
+    const isPending = localAppStatus === "applied"
+    const isRejected = localAppStatus === "rejected"
+
     return (
-      <div className="public-shell min-h-[calc(100vh-5rem)] px-4 py-12 flex items-center justify-center">
-        <div className="max-w-lg w-full rounded-3xl border border-[#20205a] bg-[#0c0c3f]/90 p-8 text-center space-y-5 shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-[#ffd166]/15 border border-[#ffd166]/40 flex items-center justify-center mx-auto text-[#ffd166]">
-            <ShieldCheck className="w-7 h-7" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-black text-white">Ticket Seller Central</h1>
-            <p className="text-sm text-[#9a9fc4]">
-              {hasPending
-                ? "Your ticket seller application is currently pending admin approval. Once approved, your sales dashboard and tax exports will unlock here."
-                : "Ticket Seller Central is available to approved StarCast ticket sellers. Apply from your Dashboard or Artist Portal to start selling tickets."}
+      <div className="public-shell min-h-[calc(100vh-5rem)] px-4 py-10 sm:py-14 flex items-center justify-center">
+        <div className="max-w-xl w-full rounded-3xl border border-[#20205a] bg-[#0c0c3f]/95 p-6 sm:p-8 space-y-6 shadow-2xl">
+          <div className="space-y-3 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#ffd166]/15 border border-[#ffd166]/40 flex items-center justify-center mx-auto text-[#ffd166]">
+              <Ticket className="w-7 h-7" />
+            </div>
+            <Badge className="bg-[#ea6f2a]/15 text-[#ea6f2a] border border-[#ea6f2a]/40 text-[11px]">
+              Ticket Seller Central
+            </Badge>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              {isPending ? "Seller Application Pending Review" : "Apply to Sell Tickets"}
+            </h1>
+            <p className="text-sm text-[#9a9fc4] max-w-md mx-auto leading-relaxed">
+              {isPending
+                ? "Your Ticket Seller Central application has been sent to StarCast Admin. Once approved, you'll link your Stripe payout account right here and start creating event tickets."
+                : "Sell QR event tickets directly on StarCast Online — no band page required. Once approved, link your Stripe account for automatic 24-hour post-event payouts."}
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Button
-              asChild
-              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold rounded-xl h-10 px-5 text-sm"
-            >
-              <Link href={myBands.length > 0 ? "/portal?tab=ticketing" : "/dashboard"}>
-                {hasPending ? "Check Application Status" : "Apply to Sell Tickets"}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="border-[#20205a] bg-[#05052d] text-[#dbe0fb] rounded-xl h-10 px-4 text-sm"
-            >
-              <Link href="/tickets">Back to Tickets</Link>
-            </Button>
-          </div>
+
+          {applySuccessMsg && (
+            <div className="rounded-2xl border border-[#22b573]/40 bg-[#22b573]/15 p-4 text-xs sm:text-sm text-[#22b573] flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{applySuccessMsg}</span>
+            </div>
+          )}
+
+          {isRejected && !applySuccessMsg && (
+            <div className="rounded-2xl border border-red-500/40 bg-red-950/35 p-4 text-xs sm:text-sm text-red-200 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+              <span>
+                Your previous application was not approved. You can update your event details below and re-apply.
+              </span>
+            </div>
+          )}
+
+          {applyError && (
+            <div className="rounded-2xl border border-red-500/40 bg-red-950/35 p-3.5 text-xs text-red-200">
+              {applyError}
+            </div>
+          )}
+
+          {isPending ? (
+            <div className="rounded-2xl border border-[#ffd166]/35 bg-[#05052d]/80 p-5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#ffd166] flex items-center gap-1.5">
+                  <Clock className="w-4 h-4" />
+                  Awaiting Admin Approval
+                </span>
+                <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px]">
+                  Pending
+                </Badge>
+              </div>
+              {applyOrgName && (
+                <p className="text-xs text-[#cbd0f2]">
+                  <span className="text-[#9a9fc4]">Organizer / Presenter:</span>{" "}
+                  <strong className="text-white">{applyOrgName}</strong>
+                </p>
+              )}
+              {applyNotes && (
+                <p className="text-xs text-[#9a9fc4] italic border-t border-[#20205a] pt-2.5">
+                  &ldquo;{applyNotes}&rdquo;
+                </p>
+              )}
+              <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] text-[#9a9fc4]">
+                  Next step after approval: Link Stripe Express &rarr; Post Tickets
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="border-[#20205a] bg-[#0c0c3f] text-[#dbe0fb] rounded-xl text-xs"
+                >
+                  <Link href="/tickets">Back to Tickets</Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmitSellerApplication} className="space-y-4">
+              <div>
+                <Label htmlFor="apply-org" className="text-xs text-[#cbd0f2]">
+                  Organizer / Promoter / Presenter Name *
+                </Label>
+                <Input
+                  id="apply-org"
+                  required
+                  placeholder="e.g. Top City Live, Venue Name, or Your Name"
+                  value={applyOrgName}
+                  onChange={(e) => setApplyOrgName(e.target.value)}
+                  className="mt-1.5 bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="apply-notes" className="text-xs text-[#cbd0f2]">
+                  What events will you be selling tickets for? *
+                </Label>
+                <Textarea
+                  id="apply-notes"
+                  required
+                  rows={4}
+                  placeholder="Tell us briefly about your upcoming shows, events, or venue..."
+                  value={applyNotes}
+                  onChange={(e) => setApplyNotes(e.target.value)}
+                  className="mt-1.5 bg-[#05052d] border-[#20205a] text-[#f5f7ff]"
+                />
+              </div>
+
+              <div className="rounded-2xl border border-[#20205a] bg-[#05052d]/70 p-3.5 text-[11px] text-[#9a9fc4] space-y-1">
+                <p className="text-[#dbe0fb] font-semibold">How Ticket Seller Central works:</p>
+                <p>&bull; 10% platform fee on online ticket sales (0% fee on door cash &amp; physical print passes).</p>
+                <p>&bull; Once approved, link your Stripe account inside Seller Central to receive payouts 24h post-event.</p>
+                <p>&bull; Every posted event goes live after quick StarCast Admin verification.</p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <Button
+                  asChild
+                  type="button"
+                  variant="outline"
+                  className="border-[#20205a] bg-[#05052d] text-[#dbe0fb] rounded-xl h-10 px-4 text-xs"
+                >
+                  <Link href="/tickets">Back to Tickets</Link>
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submittingApp}
+                  className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-extrabold rounded-xl h-10 px-6 text-xs shadow-lg"
+                >
+                  {submittingApp ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  Submit Application to Sell Tickets
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     )
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // APPROVED SELLER CENTRAL DASHBOARD
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="public-shell min-h-[calc(100vh-5rem)] px-4 py-8 sm:py-12">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -453,22 +641,38 @@ export function SellerCentralClient({
               Ticket Seller Central
             </h1>
             <p className="text-sm text-[#9a9fc4]">
-              Your own approved acts, ticket sales breakdown, door scanners, and tax-ready CSV exports.
+              Create event tickets, manage live sales &amp; 24h Stripe payouts, scan QR passes, and export tax reports.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              type="button"
-              onClick={() => {
-                setCreateError("")
-                setCreateOpen(true)
-              }}
-              className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Create Event / Sell Tickets
-            </Button>
+            {canCreateEvents ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  setCreateError("")
+                  setCreateOpen(true)
+                }}
+                className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Create Event / Sell Tickets
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleConnectStripe}
+                disabled={stripeBusy}
+                className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-extrabold rounded-xl h-10 px-4 text-xs shadow-md"
+              >
+                {stripeBusy ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Lock className="w-4 h-4 mr-1.5" />
+                )}
+                Link Stripe to Sell Tickets
+              </Button>
+            )}
 
             <Button
               type="button"
@@ -481,6 +685,77 @@ export function SellerCentralClient({
             </Button>
           </div>
         </div>
+
+        {/* Mandatory Stripe Connect Payout Account Gate / Status Banner */}
+        {isStripeActive ? (
+          <div className="rounded-2xl border border-[#22b573]/40 bg-[#0c0c3f]/80 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#22b573]/15 border border-[#22b573]/40 flex items-center justify-center text-[#22b573] shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-white flex items-center gap-2">
+                  Stripe Payout Account Linked
+                  <Badge className="bg-[#22b573]/20 text-[#22b573] border border-[#22b573]/40 text-[10px]">
+                    Active
+                  </Badge>
+                </p>
+                <p className="text-xs text-[#9a9fc4]">
+                  Online ticket proceeds (90% net) automatically release from escrow to your Stripe account 24 hours after each event.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={stripeBusy}
+              onClick={handleOpenStripeDashboard}
+              className="border-[#20205a] bg-[#05052d] text-[#20efe0] hover:bg-[#20205a]/60 rounded-xl h-9 px-3.5 text-xs font-bold shrink-0"
+            >
+              {stripeBusy ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              Stripe Payout Dashboard
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-[#ffd166]/55 bg-gradient-to-r from-[#281b05]/90 via-[#0c0c3f]/95 to-[#05052d] p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-[#ffd166]/20 text-[#ffd166] border border-[#ffd166]/45 text-[10px] uppercase font-extrabold">
+                  {stripeStatus.status === "onboarding" ? "Action Needed" : "Required Step"}
+                </Badge>
+                <span className="text-xs text-[#cbd0f2] font-semibold">Stripe Connect Express</span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-black text-white">
+                {stripeStatus.status === "onboarding"
+                  ? "Finish Linking Your Stripe Payout Account"
+                  : "Link Your Stripe Account to Create & Sell Tickets"}
+              </h2>
+              <p className="text-xs sm:text-sm text-[#cbd0f2] max-w-2xl leading-relaxed">
+                You&apos;re approved for Ticket Seller Central! Connect your Stripe payout account so your event revenue can be transferred directly to you 24 hours after each event ends.
+              </p>
+              {stripeError && <p className="text-xs text-red-300 font-semibold pt-1">{stripeError}</p>}
+            </div>
+
+            <Button
+              type="button"
+              disabled={stripeBusy}
+              onClick={handleConnectStripe}
+              className="bg-[#ffd166] hover:bg-[#f5c242] text-[#05051f] font-black rounded-xl h-11 px-6 text-xs sm:text-sm shrink-0 shadow-lg"
+            >
+              {stripeBusy ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <CreditCard className="w-4 h-4 mr-2" />
+              )}
+              {stripeStatus.status === "onboarding" ? "Complete Stripe Setup →" : "Connect Stripe Account →"}
+            </Button>
+          </div>
+        )}
 
         {deleteNotice && (
           <div className="rounded-2xl border border-amber-500/40 bg-amber-950/35 p-4 flex items-center justify-between gap-3 text-xs sm:text-sm text-amber-200">
@@ -554,14 +829,22 @@ export function SellerCentralClient({
 
         {/* Your Events */}
         <section className="space-y-3">
-          <h2 className="text-lg font-extrabold text-[#f5f7ff]">Your Events ({filteredEvents.length})</h2>
-          {filteredEvents.length === 0 ? (
+          <h2 className="text-lg font-extrabold text-[#f5f7ff]">Your Events ({events.length})</h2>
+          {events.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#20205a] bg-[#0c0c3f]/40 p-8 text-center text-sm text-[#9a9fc4]">
-              You haven&apos;t posted any events yet. Click <strong>Post / Manage Events</strong> above to create your first event.
+              {canCreateEvents ? (
+                <>
+                  You haven&apos;t posted any events yet. Click <strong>Create Event / Sell Tickets</strong> above to post your first ticketed event.
+                </>
+              ) : (
+                <>
+                  Link your <strong>Stripe Payout Account</strong> above to unlock event creation and start selling tickets.
+                </>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredEvents.map((ev) => {
+              {events.map((ev) => {
                 const sold = Math.max(0, ev.totalInventory - ev.remainingInventory)
                 const releaseTimestamp = ev.escrowReleaseDate
                   ? new Date(ev.escrowReleaseDate)
@@ -762,21 +1045,6 @@ export function SellerCentralClient({
                 />
               </div>
 
-              {approvedBands.length > 1 && (
-                <select
-                  value={selectedBandId}
-                  onChange={(e) => setSelectedBandId(e.target.value)}
-                  className="h-9 rounded-xl border border-[#20205a] bg-[#05052d] px-3 text-xs text-[#f5f7ff]"
-                >
-                  <option value="all">All My Acts</option>
-                  {approvedBands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
@@ -822,7 +1090,7 @@ export function SellerCentralClient({
                 <thead className="border-b border-[#20205a] text-[#9a9fc4] uppercase tracking-wider bg-[#080936]">
                   <tr>
                     <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Event / Act</th>
+                    <th className="py-3 px-4">Event / Presenter</th>
                     <th className="py-3 px-4">Buyer</th>
                     <th className="py-3 px-4">Method</th>
                     <th className="py-3 px-4 text-right">Qty</th>
@@ -879,7 +1147,7 @@ export function SellerCentralClient({
         </section>
       </div>
 
-      {/* Create Event / Sell Tickets Modal (Standalone or Band-linked + Titled Links) */}
+      {/* Create Event / Sell Tickets Modal (Direct Seller Central — No Band Selection Needed) */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="w-[95vw] max-w-2xl sm:max-w-3xl max-h-[92vh] overflow-y-auto border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] shadow-2xl p-6 sm:p-8">
           <DialogHeader>
@@ -888,7 +1156,7 @@ export function SellerCentralClient({
               Create Event &amp; Sell Tickets
             </DialogTitle>
             <DialogDescription className="text-[#9a9fc4]">
-              Post a standalone event (creates its own ticket page) or link it to one of your approved acts.
+              Create a dedicated public ticket page with QR passes directly from Ticket Seller Central.
             </DialogDescription>
           </DialogHeader>
 
@@ -901,52 +1169,31 @@ export function SellerCentralClient({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="sc-assoc" className="text-xs text-[#9a9fc4]">
-                  Event Type / Association
+                <Label htmlFor="sc-title" className="text-xs text-[#9a9fc4]">
+                  Event Title *
                 </Label>
-                <select
-                  id="sc-assoc"
-                  value={eventAssociation}
-                  onChange={(e) => setEventAssociation(e.target.value)}
-                  className="mt-1 w-full h-9 rounded-md border border-[#20205a] bg-[#05052d] px-3 text-sm text-[#f5f7ff]"
-                >
-                  <option value="standalone">Standalone Event (Not tied to a band)</option>
-                  {approvedBands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      Band / Act: {b.name}
-                    </option>
-                  ))}
-                </select>
+                <Input
+                  id="sc-title"
+                  required
+                  placeholder="e.g. Topeka Winter Showcase"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
               </div>
 
-              {eventAssociation === "standalone" && (
-                <div>
-                  <Label htmlFor="sc-org" className="text-xs text-[#9a9fc4]">
-                    Host / Organizer Name
-                  </Label>
-                  <Input
-                    id="sc-org"
-                    placeholder="e.g. StarCast Live Events"
-                    value={form.organizerName}
-                    onChange={(e) => setForm({ ...form, organizerName: e.target.value })}
-                    className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="sc-title" className="text-xs text-[#9a9fc4]">
-                Event Title *
-              </Label>
-              <Input
-                id="sc-title"
-                required
-                placeholder="e.g. Topeka Winter Showcase"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
-              />
+              <div>
+                <Label htmlFor="sc-org" className="text-xs text-[#9a9fc4]">
+                  Host / Presenter / Artist Name
+                </Label>
+                <Input
+                  id="sc-org"
+                  placeholder="e.g. Top City Live Events"
+                  value={form.organizerName}
+                  onChange={(e) => setForm({ ...form, organizerName: e.target.value })}
+                  className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff]"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
