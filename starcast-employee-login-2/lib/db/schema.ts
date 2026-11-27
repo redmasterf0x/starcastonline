@@ -495,6 +495,14 @@ export const bandEvents = pgTable("band_events", {
   priceCents: integer("price_cents").notNull().default(0),
   totalInventory: integer("total_inventory").notNull().default(20),
   remainingInventory: integer("remaining_inventory").notNull().default(20),
+  // Admin-only VIP tier with Table Bar Service & Food Service
+  vipEnabled: boolean("vip_enabled").notNull().default(false),
+  vipPriceCents: integer("vip_price_cents").notNull().default(0),
+  vipTotalInventory: integer("vip_total_inventory").notNull().default(0),
+  vipRemainingInventory: integer("vip_remaining_inventory").notNull().default(0),
+  vipTableBarService: boolean("vip_table_bar_service").notNull().default(true),
+  vipFoodService: boolean("vip_food_service").notNull().default(true),
+  vipPerksNote: text("vip_perks_note"),
   ageRestriction: text("age_restriction").default("All Ages"), // "All Ages" | "18+" | "21+"
   flyerUrl: text("flyer_url"),
   recurrenceFrequency: text("recurrence_frequency"), // null/'one_time' | 'weekly' | 'monthly' | 'yearly'
@@ -524,6 +532,7 @@ export const bandTicketOrders = pgTable("band_ticket_orders", {
   buyerUserId: text("buyer_user_id"),
   buyerEmail: text("buyer_email").notNull(),
   buyerName: text("buyer_name").notNull(),
+  ticketTier: text("ticket_tier").notNull().default("general"), // "general" | "vip"
   quantity: integer("quantity").notNull().default(1),
   unitPriceCents: integer("unit_price_cents").notNull().default(0),
   totalCents: integer("total_cents").notNull().default(0),
@@ -546,6 +555,7 @@ export const bandTicketInstances = pgTable("band_ticket_instances", {
     .notNull(),
   bandId: uuid("band_id").references(() => bands.id, { onDelete: "cascade" }),
   ticketNumber: integer("ticket_number").notNull(), // e.g. 1 of 20
+  ticketTier: text("ticket_tier").notNull().default("general"), // "general" | "vip"
   qrToken: text("qr_token").notNull().unique(), // Secure UUID token for verification & QR code
   holderName: text("holder_name").notNull(),
   holderEmail: text("holder_email").notNull(),

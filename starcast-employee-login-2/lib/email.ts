@@ -171,6 +171,10 @@ export interface TicketEmailPayload {
   doorsOpenTime?: string | null
   startTime?: string | null
   totalCents: number
+  ticketTier?: "general" | "vip"
+  vipTableBarService?: boolean
+  vipFoodService?: boolean
+  vipPerksNote?: string | null
   tickets: Array<{
     ticketNumber: number
     qrToken: string
@@ -181,6 +185,7 @@ export interface TicketEmailPayload {
 export async function sendTicketConfirmationEmail(payload: TicketEmailPayload): Promise<void> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://starcast.online"
   const formattedDate = new Date(payload.eventDate).toLocaleDateString("en-US", {
+    timeZone: "America/Chicago",
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -235,12 +240,25 @@ export async function sendTicketConfirmationEmail(payload: TicketEmailPayload): 
 
   const priceDisplay =
     payload.totalCents > 0 ? `$${(payload.totalCents / 100).toFixed(2)}` : "Free Pass"
+  const isVip = payload.ticketTier === "vip"
+  const vipServices: string[] = []
+  if (payload.vipTableBarService !== false) vipServices.push("Table Bar Service")
+  if (payload.vipFoodService !== false) vipServices.push("Food Service")
 
   const body = `
     <p style="margin:0 0 14px 0;">Hi <strong>${payload.buyerName}</strong>,</p>
-    <p style="margin:0 0 16px 0;">Your ${payload.tickets.length === 1 ? "ticket is" : `${payload.tickets.length} tickets are`} confirmed for <strong>${payload.bandName} — ${payload.eventTitle}</strong>!</p>
+    <p style="margin:0 0 16px 0;">Your ${isVip ? "<strong>VIP</strong> " : ""}${payload.tickets.length === 1 ? "ticket is" : `${payload.tickets.length} tickets are`} confirmed for <strong>${payload.bandName} — ${payload.eventTitle}</strong>!</p>
+    ${
+      isVip
+        ? `<div style="padding:14px 16px;border-radius:8px;background:#241a05;border:1px solid #ffd166;margin-bottom:16px;">
+            <p style="margin:0 0 4px 0;color:#ffd166;font-weight:bold;font-size:13px;letter-spacing:1px;text-transform:uppercase;">★ VIP Table Pass Included</p>
+            <p style="margin:0;font-size:13px;color:${BRAND_CREAM};">Includes <strong>${vipServices.join(" &amp; ") || "VIP Hospitality"}</strong>${payload.vipPerksNote ? ` &mdash; ${payload.vipPerksNote}` : ""}.</p>
+          </div>`
+        : ""
+    }
     <div style="padding:14px 16px;border-radius:8px;background:#081421;border:1px solid rgba(255,255,255,0.08);margin-bottom:18px;">
       <p style="margin:0 0 6px 0;color:${BRAND_CREAM};font-weight:bold;">${payload.eventTitle}</p>
+      <p style="margin:0 0 4px 0;font-size:13px;"><strong>Tier:</strong> ${isVip ? "VIP Pass (Table, Bar &amp; Food Service)" : "General Admission"}</p>
       <p style="margin:0 0 4px 0;font-size:13px;"><strong>Date:</strong> ${formattedDate}</p>
       <p style="margin:0 0 4px 0;font-size:13px;"><strong>Time:</strong> Doors ${payload.doorsOpenTime || "7:00 PM"} &bull; Show ${payload.startTime || "8:00 PM"}</p>
       <p style="margin:0 0 4px 0;font-size:13px;"><strong>Venue:</strong> ${payload.venueName}${payload.venueAddress ? ` (${payload.venueAddress})` : ""}</p>

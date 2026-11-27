@@ -136,6 +136,7 @@ export function EventScannerClient({
     ticketNumber: number
     holderName: string
     eventTitle: string
+    ticketTier?: "general" | "vip"
   } | null>(null)
 
   // Door Scanners management state
@@ -287,6 +288,7 @@ export function EventScannerClient({
             ticketNumber: res.ticketNumber || 1,
             holderName: res.holderName || "Guest",
             eventTitle: res.eventTitle || event.title,
+            ticketTier: res.ticketTier || "general",
           })
           setManualInput("")
           await refreshData()
@@ -989,6 +991,11 @@ export function EventScannerClient({
                         <span className="font-bold text-sm text-[#f5f7ff] truncate">
                           {inst.holderName}
                         </span>
+                        {inst.ticketTier === "vip" && (
+                          <Badge className="bg-[#ffd166]/20 text-[#ffd166] border border-[#ffd166]/50 text-[10px] font-extrabold">
+                            ★ VIP TABLE
+                          </Badge>
+                        )}
                         <Badge
                           variant="outline"
                           className={
@@ -1043,6 +1050,11 @@ export function EventScannerClient({
                   <span className="block font-bold text-[#ffd166] text-base mt-1">
                     Ticket #{scanPopup.ticketNumber} &bull; {scanPopup.holderName}
                   </span>
+                  {scanPopup.ticketTier === "vip" && (
+                    <span className="inline-block mt-2 px-3 py-1 rounded-lg bg-[#ffd166]/20 border border-[#ffd166] text-[#ffd166] text-xs font-black uppercase tracking-wider">
+                      ★ VIP TABLE GUEST &mdash; Table Bar &amp; Food Service
+                    </span>
+                  )}
                   <span className="block text-xs text-[#9a9fc4] mt-1">
                     Checked in for {scanPopup.eventTitle}
                   </span>

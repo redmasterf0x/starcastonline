@@ -40,6 +40,9 @@ import {
   Link2,
   ExternalLink,
   Plus,
+  Crown,
+  Wine,
+  Utensils,
 } from "lucide-react"
 
 interface EventBuyClientProps {
@@ -52,6 +55,7 @@ interface EventBuyClientProps {
   }
   canScan?: boolean
   canEdit?: boolean
+  isAdmin?: boolean
 }
 
 export function EventBuyClient({
@@ -59,11 +63,19 @@ export function EventBuyClient({
   band,
   canScan = false,
   canEdit = false,
+  isAdmin = false,
 }: EventBuyClientProps) {
   const router = useRouter()
   const { data: session } = authClient.useSession()
 
   const [event, setEvent] = useState(initialEvent)
+  const [selectedTier, setSelectedTier] = useState<"general" | "vip">(() =>
+    (initialEvent.remainingInventory ?? 0) <= 0 &&
+    initialEvent.vipEnabled &&
+    (initialEvent.vipRemainingInventory ?? 0) > 0
+      ? "vip"
+      : "general"
+  )
   const [quantity, setQuantity] = useState(1)
   const [buyerName, setBuyerName] = useState("")
   const [buyerEmail, setBuyerEmail] = useState("")
@@ -86,6 +98,12 @@ export function EventBuyClient({
     startTime: initialEvent.startTime || "8:00 PM",
     priceCents: initialEvent.priceCents ?? 0,
     totalInventory: initialEvent.totalInventory ?? 20,
+    vipEnabled: Boolean(initialEvent.vipEnabled),
+    vipPriceCents: initialEvent.vipPriceCents ?? 5000,
+    vipTotalInventory: initialEvent.vipTotalInventory || 10,
+    vipTableBarService: initialEvent.vipTableBarService !== false,
+    vipFoodService: initialEvent.vipFoodService !== false,
+    vipPerksNote: initialEvent.vipPerksNote || "",
     ageRestriction: initialEvent.ageRestriction || "All Ages",
     flyerUrl: initialEvent.flyerUrl || "",
     recurrenceFrequency: (initialEvent.recurrenceFrequency || "one_time") as
@@ -108,11 +126,22 @@ export function EventBuyClient({
   }, [session, buyerName, buyerEmail])
 
   const soldCount = Math.max(0, (event.totalInventory || 0) - (event.remainingInventory ?? 0))
-  const isFree = (event.priceCents || 0) === 0
-  const isSoldOut = event.status === "sold_out" || (event.remainingInventory ?? 0) <= 0
+  const vipSoldCount = Math.max(0, (event.vipTotalInventory || 0) - (event.vipRemainingInventory ?? 0))
+  const gaAvailable = Math.max(0, event.remainingInventory ?? 0)
+  const vipAvailable = event.vipEnabled ? Math.max(0, event.vipRemainingInventory ?? 0) : 0
+  const activeTier: "general" | "vip" = event.vipEnabled && selectedTier === "vip" ? "vip" : "general"
+  const activeUnitPriceCents =
+    activeTier === "vip" ? event.vipPriceCents || 0 : event.priceCents || 0
+  const activeRemaining = activeTier === "vip" ? vipAvailable : gaAvailable
+  const activeTotalInventory =
+    activeTier === "vip" ? event.vipTotalInventory || 0 : event.totalInventory || 0
+  const isFree = activeUnitPriceCents === 0
+  const isSoldOut =
+    event.status === "sold_out" || (gaAvailable <= 0 && (!event.vipEnabled || vipAvailable <= 0))
+  const isTierSoldOut = activeRemaining <= 0
   const isInactive = event.status !== "active" && event.status !== "sold_out"
-  const maxQty = Math.min(10, Math.max(1, event.remainingInventory || 1))
-  const totalCents = (event.priceCents || 0) * quantity
+  const maxQty = Math.min(10, Math.max(1, activeRemaining || 1))
+  const totalCents = activeUnitPriceCents * quantity
 
   function openEditModal() {
     const dt = event.eventDate ? new Date(event.eventDate) : null
@@ -130,6 +159,12 @@ export function EventBuyClient({
       startTime: event.startTime || "8:00 PM",
       priceCents: event.priceCents ?? 0,
       totalInventory: event.totalInventory ?? 20,
+      vipEnabled: Boolean(event.vipEnabled),
+      vipPriceCents: event.vipPriceCents ?? 5000,
+      vipTotalInventory: event.vipTotalInventory || 10,
+      vipTableBarService: event.vipTableBarService !== false,
+      vipFoodService: event.vipFoodService !== false,
+      vipPerksNote: event.vipPerksNote || "",
       ageRestriction: event.ageRestriction || "All Ages",
       flyerUrl: event.flyerUrl || "",
       recurrenceFrequency: (event.recurrenceFrequency || "one_time") as
@@ -198,6 +233,7 @@ export function EventBuyClient({
     try {
       const res = await createTicketCheckoutSession({
         eventId: event.id,
+        ticketTier: activeTier,
         quantity,
         buyerName: buyerName.trim(),
         buyerEmail: buyerEmail.trim(),
@@ -379,6 +415,37 @@ export function EventBuyClient({
                 </div>
               </div>
 
+              {event.vipEnabled && (
+                <div className="rounded-2xl border border-[#ffd166]/45 bg-gradient-to-br from-[#241a05]/85 via-[#0c0c3f] to-[#05052d] p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#ffd166]">
+                      <Crown className="w-4 h-4 shrink-0" />
+                      VIP Table Experience Available
+                    </span>
+                    <span className="text-xs font-mono font-bold text-[#ffd166]">
+                      ${((event.vipPriceCents || 0) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {event.vipTableBarService !== false && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-[#20efe0]/15 text-[#20efe0] border border-[#20efe0]/35">
+                        <Wine className="w-3.5 h-3.5 shrink-0" />
+                        Table Bar Service
+                      </span>
+                    )}
+                    {event.vipFoodService !== false && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-[#ea6f2a]/20 text-[#ffd166] border border-[#ea6f2a]/40">
+                        <Utensils className="w-3.5 h-3.5 shrink-0" />
+                        Food Service
+                      </span>
+                    )}
+                  </div>
+                  {event.vipPerksNote && (
+                    <p className="text-xs text-[#dbe0fb] leading-relaxed">{event.vipPerksNote}</p>
+                  )}
+                </div>
+              )}
+
               {event.description && (
                 <div className="space-y-1.5">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-[#9a9fc4]">
@@ -429,18 +496,94 @@ export function EventBuyClient({
               </span>
             </div>
 
+            {event.vipEnabled && (
+              <div className="space-y-2 pb-4 border-b border-[#20205a]">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#9a9fc4]">
+                  Choose Ticket Tier
+                </p>
+                <div className="grid grid-cols-1 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTier("general")
+                      setQuantity(1)
+                    }}
+                    className={`w-full text-left rounded-2xl border p-3.5 transition-all cursor-pointer ${
+                      activeTier === "general"
+                        ? "border-[#20efe0] bg-[#05052d] shadow-[0_0_18px_rgba(32,239,224,0.18)]"
+                        : "border-[#20205a] bg-[#05052d]/50 hover:border-[#20efe0]/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-white">General Admission</span>
+                      <span className="text-sm font-black text-white font-mono">
+                        {(event.priceCents || 0) === 0
+                          ? "FREE"
+                          : `$${((event.priceCents || 0) / 100).toFixed(2)}`}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#9a9fc4] mt-0.5">
+                      {gaAvailable <= 0 ? "Sold out" : `${gaAvailable} of ${event.totalInventory} left`}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTier("vip")
+                      setQuantity(1)
+                    }}
+                    className={`w-full text-left rounded-2xl border p-3.5 transition-all cursor-pointer ${
+                      activeTier === "vip"
+                        ? "border-[#ffd166] bg-gradient-to-r from-[#241a05] to-[#080936] shadow-[0_0_22px_rgba(255,209,102,0.25)]"
+                        : "border-[#ffd166]/35 bg-[#05052d]/60 hover:border-[#ffd166]/70"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-extrabold text-[#ffd166] flex items-center gap-1.5">
+                        <Crown className="w-4 h-4 shrink-0" />
+                        VIP Table Pass
+                      </span>
+                      <span className="text-sm font-black text-[#ffd166] font-mono">
+                        {(event.vipPriceCents || 0) === 0
+                          ? "FREE"
+                          : `$${((event.vipPriceCents || 0) / 100).toFixed(2)}`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      {event.vipTableBarService !== false && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#20efe0]/15 text-[#20efe0] border border-[#20efe0]/30">
+                          ✓ Table Bar Service
+                        </span>
+                      )}
+                      {event.vipFoodService !== false && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#ea6f2a]/20 text-[#ffd166] border border-[#ea6f2a]/35">
+                          ✓ Food Service
+                        </span>
+                      )}
+                      <span className="text-[11px] text-[#cbd0f2] ml-auto font-mono">
+                        {vipAvailable <= 0 ? "Sold out" : `${vipAvailable} of ${event.vipTotalInventory} left`}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between gap-2 pb-4 border-b border-[#20205a]">
               <div>
-                <p className="text-xs font-semibold text-[#9a9fc4]">Ticket Price</p>
+                <p className="text-xs font-semibold text-[#9a9fc4]">
+                  {activeTier === "vip" ? "VIP Ticket Price" : "Ticket Price"}
+                </p>
                 <p className="text-3xl font-black text-white">
-                  {isFree ? "FREE" : `$${((event.priceCents || 0) / 100).toFixed(2)}`}
+                  {isFree ? "FREE" : `$${(activeUnitPriceCents / 100).toFixed(2)}`}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-xs font-semibold text-[#9a9fc4]">Availability</p>
                 <p className="text-sm font-mono font-bold text-[#20efe0] flex items-center gap-1 justify-end">
                   <Users className="w-3.5 h-3.5" />
-                  {isSoldOut ? "Sold Out" : `${event.remainingInventory} / ${event.totalInventory} left`}
+                  {isTierSoldOut ? "Sold Out" : `${activeRemaining} / ${activeTotalInventory} left`}
                 </p>
               </div>
             </div>
@@ -449,9 +592,11 @@ export function EventBuyClient({
               <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/40 text-red-200 text-sm text-center font-semibold">
                 This event is currently {event.status}.
               </div>
-            ) : isSoldOut ? (
+            ) : isSoldOut || isTierSoldOut ? (
               <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-sm text-center font-semibold">
-                Sorry, all tickets for this event have been claimed.
+                {isSoldOut
+                  ? "Sorry, all tickets for this event have been claimed."
+                  : `Sorry, ${activeTier === "vip" ? "VIP Table passes" : "General Admission tickets"} are sold out. Select another tier above.`}
               </div>
             ) : (
               <form onSubmit={handleCheckout} className="space-y-4">
@@ -526,7 +671,8 @@ export function EventBuyClient({
                   ) : (
                     <>
                       <Ticket className="w-4 h-4 mr-2" />
-                      Buy {quantity} Ticket{quantity > 1 ? "s" : ""} &bull; ${(totalCents / 100).toFixed(2)}
+                      Buy {quantity} {activeTier === "vip" ? "VIP " : ""}Ticket{quantity > 1 ? "s" : ""} &bull; $
+                      {(totalCents / 100).toFixed(2)}
                     </>
                   )}
                 </Button>
@@ -703,6 +849,98 @@ export function EventBuyClient({
                 </select>
               </div>
             </div>
+
+            {isAdmin && (
+              <div className="rounded-2xl border border-[#ffd166]/45 bg-[#05052d]/80 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-[#ffd166] flex items-center gap-1.5">
+                    <Crown className="w-4 h-4" />
+                    Admin Exclusive: VIP Table Tickets (Bar &amp; Food Service)
+                  </span>
+                  <label className="inline-flex items-center gap-2 text-xs font-bold text-white cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editForm.vipEnabled}
+                      disabled={vipSoldCount > 0 && editForm.vipEnabled}
+                      onChange={(e) => setEditForm({ ...editForm, vipEnabled: e.target.checked })}
+                      className="accent-[#ffd166]"
+                    />
+                    Enable VIP
+                  </label>
+                </div>
+
+                {editForm.vipEnabled && (
+                  <div className="space-y-3 pt-2 border-t border-[#ffd166]/25">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs text-[#ffd166] flex items-center gap-1">
+                          VIP Price ($ USD)
+                          {vipSoldCount > 0 && <Lock className="w-3 h-3 text-amber-400" />}
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.50"
+                          disabled={vipSoldCount > 0}
+                          value={(editForm.vipPriceCents / 100).toString()}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              vipPriceCents: Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100)),
+                            })
+                          }
+                          className="mt-1 border-[#ffd166]/40 bg-[#0c0c3f] text-[#f5f7ff]"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-[#ffd166]">VIP Inventory *</Label>
+                        <Input
+                          type="number"
+                          min={Math.max(1, vipSoldCount)}
+                          max="5000"
+                          value={String(editForm.vipTotalInventory)}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              vipTotalInventory: Math.max(1, parseInt(e.target.value || "10", 10)),
+                            })
+                          }
+                          className="mt-1 border-[#ffd166]/40 bg-[#0c0c3f] text-[#f5f7ff]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4">
+                      <label className="inline-flex items-center gap-2 text-xs text-[#f5f7ff] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editForm.vipTableBarService}
+                          onChange={(e) => setEditForm({ ...editForm, vipTableBarService: e.target.checked })}
+                          className="accent-[#ffd166]"
+                        />
+                        Table Bar Service
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-xs text-[#f5f7ff] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editForm.vipFoodService}
+                          onChange={(e) => setEditForm({ ...editForm, vipFoodService: e.target.checked })}
+                          className="accent-[#ffd166]"
+                        />
+                        Food Service
+                      </label>
+                    </div>
+
+                    <Input
+                      placeholder="VIP Hospitality Note (e.g. Reserved table, bartender & food service)"
+                      value={editForm.vipPerksNote}
+                      onChange={(e) => setEditForm({ ...editForm, vipPerksNote: e.target.value })}
+                      className="border-[#20205a] bg-[#0c0c3f] text-[#f5f7ff] text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

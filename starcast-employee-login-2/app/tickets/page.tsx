@@ -192,6 +192,11 @@ export default async function TicketsPage() {
                           {band?.name || event.organizerName || "StarCast Event"}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {instance.ticketTier === "vip" && (
+                            <Badge className="bg-[#ffd166]/20 text-[#ffd166] border border-[#ffd166]/50 text-[10px] font-extrabold">
+                              ★ VIP TABLE
+                            </Badge>
+                          )}
                           <Badge
                             variant="outline"
                             className="border-[#20205a] bg-[#05052d] text-[#cbd0f2] text-[10px] font-mono"
@@ -323,6 +328,11 @@ export default async function TicketsPage() {
                             {band?.name || event.organizerName || "StarCast Event"}
                           </span>
                           <div className="flex items-center gap-1.5 shrink-0">
+                            {event.vipEnabled && (
+                              <Badge className="bg-[#ffd166]/20 text-[#ffd166] border border-[#ffd166]/50 text-[10px] font-extrabold">
+                                ★ VIP Table + Bar &amp; Food
+                              </Badge>
+                            )}
                             {event.recurrenceFrequency && event.recurrenceFrequency !== "one_time" && (
                               <Badge variant="outline" className="border-[#20efe0]/40 text-[#20efe0] bg-[#20efe0]/10 text-[10px] capitalize">
                                 {event.recurrenceFrequency}

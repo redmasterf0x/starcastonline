@@ -30,6 +30,14 @@ export type CreateEventInput = {
   recurrenceFrequency?: "one_time" | "weekly" | "monthly" | "yearly"
   customLinks?: EventCustomLink[]
   physicalPrintQuantity?: number
+  // Admin-only VIP tier with Table Bar Service & Food Service
+  vipEnabled?: boolean
+  vipPriceCents?: number
+  vipTotalInventory?: number
+  vipTableBarService?: boolean
+  vipFoodService?: boolean
+  vipPerksNote?: string
+  vipPhysicalPrintQuantity?: number
 }
 
 function sanitizeEventLinks(links?: EventCustomLink[]): EventCustomLink[] {
@@ -246,6 +254,26 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
     )
     const initialRemaining = Math.max(0, totalInventory - physicalQty)
 
+    // Admin-only VIP tier with Table Bar Service & Food Service
+    const vipEnabled = Boolean(viewer.isAdmin && input.vipEnabled)
+    const vipTotalInventory = vipEnabled
+      ? Math.max(1, Math.min(5000, Math.floor(Number(input.vipTotalInventory || 10))))
+      : 0
+    const vipPriceCents = vipEnabled
+      ? Math.max(0, Math.round(Number(input.vipPriceCents ?? 0)))
+      : 0
+    const vipTableBarService = vipEnabled ? input.vipTableBarService !== false : false
+    const vipFoodService = vipEnabled ? input.vipFoodService !== false : false
+    const vipPerksNote = vipEnabled ? input.vipPerksNote?.trim() || null : null
+    const vipPhysicalQty = vipEnabled
+      ? Math.min(
+          vipTotalInventory,
+          Math.max(0, Math.min(200, Math.floor(Number(input.vipPhysicalPrintQuantity || 0))))
+        )
+      : 0
+    const initialVipRemaining = Math.max(0, vipTotalInventory - vipPhysicalQty)
+    const allPoolsExhausted = initialRemaining <= 0 && (!vipEnabled || initialVipRemaining <= 0)
+
     const [newEvent] = await db
       .insert(bandEvents)
       .values({
@@ -262,11 +290,18 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
         priceCents,
         totalInventory,
         remainingInventory: initialRemaining,
+        vipEnabled,
+        vipPriceCents,
+        vipTotalInventory,
+        vipRemainingInventory: initialVipRemaining,
+        vipTableBarService,
+        vipFoodService,
+        vipPerksNote,
         ageRestriction: input.ageRestriction || "All Ages",
         flyerUrl: input.flyerUrl?.trim() || null,
         recurrenceFrequency,
         customLinks: cleanLinks,
-        status: initialRemaining <= 0 ? "sold_out" : "active",
+        status: allPoolsExhausted ? "sold_out" : "active",
         escrowStatus: "held",
         escrowReleaseDate,
         stripeProductId,
@@ -275,6 +310,7 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
       .returning()
 
     // If the seller requested physical pre-sale tickets to print immediately, mint them with unique scannable QR codes
+    let nextTicketNumber = 1
     if (physicalQty > 0) {
       const [physOrder] = await db
         .insert(bandTicketOrders)
@@ -284,6 +320,7 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
           buyerUserId: viewer.userId,
           buyerEmail: "physical@print.starcast.online",
           buyerName: "Physical Pre-Sale Ticket",
+          ticketTier: "general",
           quantity: physicalQty,
           unitPriceCents: priceCents,
           totalCents: priceCents * physicalQty,
@@ -299,7 +336,8 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
           orderId: physOrder.id,
           eventId: newEvent.id,
           bandId: band?.id || null,
-          ticketNumber: i + 1,
+          ticketNumber: nextTicketNumber++,
+          ticketTier: "general" as const,
           qrToken: crypto.randomUUID(),
           holderName: "Physical Pre-Sale Ticket",
           holderEmail: "physical@print.starcast.online",
@@ -309,12 +347,52 @@ export async function createBandEvent(bandId: string | null, input: CreateEventI
       await db.insert(bandTicketInstances).values(physInstances)
     }
 
+    if (vipEnabled && vipPhysicalQty > 0) {
+      const [vipPhysOrder] = await db
+        .insert(bandTicketOrders)
+        .values({
+          eventId: newEvent.id,
+          bandId: band?.id || null,
+          buyerUserId: viewer.userId,
+          buyerEmail: "physical@print.starcast.online",
+          buyerName: "VIP Physical Pre-Sale Pass",
+          ticketTier: "vip",
+          quantity: vipPhysicalQty,
+          unitPriceCents: vipPriceCents,
+          totalCents: vipPriceCents * vipPhysicalQty,
+          platformFeeCents: 0,
+          stripeSessionId: "physical-print",
+          status: "paid",
+        })
+        .returning()
+
+      const vipPhysInstances = []
+      for (let i = 0; i < vipPhysicalQty; i++) {
+        vipPhysInstances.push({
+          orderId: vipPhysOrder.id,
+          eventId: newEvent.id,
+          bandId: band?.id || null,
+          ticketNumber: nextTicketNumber++,
+          ticketTier: "vip" as const,
+          qrToken: crypto.randomUUID(),
+          holderName: "VIP Physical Pre-Sale Pass",
+          holderEmail: "physical@print.starcast.online",
+          status: "valid" as const,
+        })
+      }
+      await db.insert(bandTicketInstances).values(vipPhysInstances)
+    }
+
     revalidatePath("/portal")
     revalidatePath("/tickets")
     revalidatePath("/tickets/seller-central")
     if (band?.slug) revalidatePath(`/bands/${band.slug}`)
 
-    return { success: true, event: newEvent, physicalTicketsCount: physicalQty }
+    return {
+      success: true,
+      event: newEvent,
+      physicalTicketsCount: physicalQty + vipPhysicalQty,
+    }
   } catch (err: any) {
     console.error("createBandEvent error:", err)
     return { success: false, error: err?.message || "Failed to post ticket event" }
@@ -371,11 +449,62 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
     }
 
     // If total inventory changed, ensure it never drops below already-sold tickets
+    const generalSoldCount = Math.max(0, event.totalInventory - event.remainingInventory)
     let remainingInventory = event.remainingInventory
     let totalInventory = event.totalInventory
     if (input.totalInventory !== undefined && input.totalInventory !== event.totalInventory) {
-      totalInventory = Math.max(Math.max(1, soldCount), input.totalInventory)
-      remainingInventory = Math.max(0, totalInventory - soldCount)
+      totalInventory = Math.max(Math.max(1, generalSoldCount), input.totalInventory)
+      remainingInventory = Math.max(0, totalInventory - generalSoldCount)
+    }
+
+    // Admin-only VIP tier updates
+    let vipEnabled = event.vipEnabled
+    let vipPriceCents = event.vipPriceCents
+    let vipTotalInventory = event.vipTotalInventory
+    let vipRemainingInventory = event.vipRemainingInventory
+    let vipTableBarService = event.vipTableBarService
+    let vipFoodService = event.vipFoodService
+    let vipPerksNote = event.vipPerksNote
+
+    if (viewer.isAdmin) {
+      const vipSoldCount = Math.max(0, event.vipTotalInventory - event.vipRemainingInventory)
+      if (input.vipEnabled !== undefined) {
+        if (!input.vipEnabled && vipSoldCount > 0) {
+          return {
+            success: false,
+            error: "Cannot disable VIP tier after VIP tickets have already been sold.",
+          }
+        }
+        vipEnabled = Boolean(input.vipEnabled)
+      }
+      if (vipEnabled) {
+        if (input.vipPriceCents !== undefined) {
+          const candidateVipPrice = Math.max(0, Math.round(input.vipPriceCents))
+          if (vipSoldCount > 0 && candidateVipPrice !== event.vipPriceCents) {
+            return {
+              success: false,
+              error: "VIP ticket price is locked after a VIP ticket has been sold.",
+            }
+          }
+          vipPriceCents = candidateVipPrice
+        }
+        if (input.vipTotalInventory !== undefined) {
+          vipTotalInventory = Math.max(Math.max(1, vipSoldCount), Math.floor(input.vipTotalInventory))
+          vipRemainingInventory = Math.max(0, vipTotalInventory - vipSoldCount)
+        } else if (vipTotalInventory === 0) {
+          vipTotalInventory = 10
+          vipRemainingInventory = 10
+        }
+        if (input.vipTableBarService !== undefined) {
+          vipTableBarService = Boolean(input.vipTableBarService)
+        }
+        if (input.vipFoodService !== undefined) {
+          vipFoodService = Boolean(input.vipFoodService)
+        }
+        if (input.vipPerksNote !== undefined) {
+          vipPerksNote = input.vipPerksNote?.trim() || null
+        }
+      }
     }
 
     const [updated] = await db
@@ -395,6 +524,13 @@ export async function updateBandEvent(eventId: string, input: UpdateEventInput) 
         priceCents: nextPriceCents,
         totalInventory,
         remainingInventory,
+        vipEnabled,
+        vipPriceCents,
+        vipTotalInventory,
+        vipRemainingInventory,
+        vipTableBarService,
+        vipFoodService,
+        vipPerksNote,
         ageRestriction: input.ageRestriction !== undefined ? input.ageRestriction : event.ageRestriction,
         flyerUrl: input.flyerUrl !== undefined ? (input.flyerUrl?.trim() || null) : event.flyerUrl,
         recurrenceFrequency:
@@ -1043,6 +1179,10 @@ export async function checkInTicket(tokenOrId: string, eventId?: string) {
       ticket: updated,
       holderName: ticket.instance.holderName,
       ticketNumber: ticket.instance.ticketNumber,
+      ticketTier: (ticket.instance.ticketTier || "general") as "general" | "vip",
+      vipTableBarService: ticket.event.vipTableBarService,
+      vipFoodService: ticket.event.vipFoodService,
+      vipPerksNote: ticket.event.vipPerksNote,
       eventTitle: ticket.event.title,
     }
   } catch (err: any) {
@@ -1401,6 +1541,7 @@ export async function getTicketSellerCentralData() {
         bandName: (o.bandId && bandNameMap.get(o.bandId)) || ev?.organizerName || "Standalone Event",
         buyerName: o.buyerName,
         buyerEmail: o.buyerEmail,
+        ticketTier: ((o.ticketTier === "vip" ? "vip" : "general") as "general" | "vip"),
         quantity: o.quantity,
         unitPriceCents: o.unitPriceCents,
         totalCents: o.totalCents,
@@ -1428,6 +1569,12 @@ export async function getTicketSellerCentralData() {
       priceCents: ev.priceCents,
       totalInventory: ev.totalInventory,
       remainingInventory: ev.remainingInventory,
+      vipEnabled: ev.vipEnabled,
+      vipPriceCents: ev.vipPriceCents,
+      vipTotalInventory: ev.vipTotalInventory,
+      vipRemainingInventory: ev.vipRemainingInventory,
+      vipTableBarService: ev.vipTableBarService,
+      vipFoodService: ev.vipFoodService,
       status: ev.status,
       escrowStatus: ev.escrowStatus,
     }))

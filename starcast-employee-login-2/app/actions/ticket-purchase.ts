@@ -18,11 +18,14 @@ export type BuyTicketInput = {
   buyerName: string
   buyerEmail: string
   buyerUserId?: string
+  ticketTier?: "general" | "vip"
 }
 
 export async function createTicketCheckoutSession(input: BuyTicketInput) {
   try {
     const quantity = Math.max(1, Math.min(10, input.quantity || 1))
+    const tier: "general" | "vip" = input.ticketTier === "vip" ? "vip" : "general"
+
     if (!input.buyerName?.trim()) {
       return { success: false, error: "Your name is required." }
     }
@@ -41,13 +44,20 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
       return { success: false, error: "This event is no longer active for ticket sales." }
     }
 
-    if (event.remainingInventory < quantity) {
+    if (tier === "vip" && !event.vipEnabled) {
+      return { success: false, error: "VIP passes are not available for this event." }
+    }
+
+    const availablePool = tier === "vip" ? event.vipRemainingInventory : event.remainingInventory
+    if (availablePool < quantity) {
       return {
         success: false,
         error:
-          event.remainingInventory <= 0
-            ? "Sorry, this event is completely sold out!"
-            : `Only ${event.remainingInventory} tickets left!`,
+          availablePool <= 0
+            ? tier === "vip"
+              ? "Sorry, all VIP Table passes are sold out!"
+              : "Sorry, General Admission tickets are sold out!"
+            : `Only ${availablePool} ${tier === "vip" ? "VIP " : ""}ticket(s) left!`,
       }
     }
 
@@ -59,34 +69,54 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
     const authSession = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const resolvedBuyerUserId = input.buyerUserId || authSession?.user?.id || null
 
-    const unitPriceCents = event.priceCents || 0
+    const unitPriceCents = tier === "vip" ? event.vipPriceCents || 0 : event.priceCents || 0
     const totalCents = unitPriceCents * quantity
     // StarCast retains a 10% platform & escrow service fee on paid online ticket sales
     const platformFeeCents = totalCents > 0 ? Math.round(totalCents * 0.1) : 0
 
+    // Count existing issued tickets for sequential ticket numbering
+    const [{ count: existingIssued }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bandTicketInstances)
+      .where(eq(bandTicketInstances.eventId, event.id))
+
     // FREE TICKET FLOW
     if (totalCents === 0) {
-      // Decrement inventory atomically
-      const [updatedEvent] = await db
-        .update(bandEvents)
-        .set({
-          remainingInventory: sql`${bandEvents.remainingInventory} - ${quantity}`,
-          status: sql`CASE WHEN ${bandEvents.remainingInventory} - ${quantity} <= 0 THEN 'sold_out' ELSE ${bandEvents.status} END`,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(bandEvents.id, event.id),
-            sql`${bandEvents.remainingInventory} >= ${quantity}`
-          )
-        )
-        .returning()
+      const [updatedEvent] =
+        tier === "vip"
+          ? await db
+              .update(bandEvents)
+              .set({
+                vipRemainingInventory: sql`${bandEvents.vipRemainingInventory} - ${quantity}`,
+                status: sql`CASE WHEN (${bandEvents.vipRemainingInventory} - ${quantity}) <= 0 AND ${bandEvents.remainingInventory} <= 0 THEN 'sold_out' ELSE ${bandEvents.status} END`,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(bandEvents.id, event.id),
+                  sql`${bandEvents.vipRemainingInventory} >= ${quantity}`
+                )
+              )
+              .returning()
+          : await db
+              .update(bandEvents)
+              .set({
+                remainingInventory: sql`${bandEvents.remainingInventory} - ${quantity}`,
+                status: sql`CASE WHEN (${bandEvents.remainingInventory} - ${quantity}) <= 0 AND (NOT ${bandEvents.vipEnabled} OR ${bandEvents.vipRemainingInventory} <= 0) THEN 'sold_out' ELSE ${bandEvents.status} END`,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(bandEvents.id, event.id),
+                  sql`${bandEvents.remainingInventory} >= ${quantity}`
+                )
+              )
+              .returning()
 
       if (!updatedEvent) {
         return { success: false, error: "Tickets sold out while processing. Please try again." }
       }
 
-      // Create Order
       const [order] = await db
         .insert(bandTicketOrders)
         .values({
@@ -95,6 +125,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
           buyerUserId: resolvedBuyerUserId,
           buyerEmail: input.buyerEmail.trim().toLowerCase(),
           buyerName: input.buyerName.trim(),
+          ticketTier: tier,
           quantity,
           unitPriceCents: 0,
           totalCents: 0,
@@ -103,15 +134,15 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         })
         .returning()
 
-      // Create Ticket Instances
       const instancesToInsert = []
-      const currentSold = event.totalInventory - event.remainingInventory
+      const baseNum = existingIssued || 0
       for (let i = 0; i < quantity; i++) {
         instancesToInsert.push({
           orderId: order.id,
           eventId: event.id,
           bandId: band?.id || null,
-          ticketNumber: currentSold + i + 1,
+          ticketNumber: baseNum + i + 1,
+          ticketTier: tier,
           qrToken: crypto.randomUUID(),
           holderName: input.buyerName.trim(),
           holderEmail: input.buyerEmail.trim().toLowerCase(),
@@ -121,7 +152,6 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
 
       const createdInstances = await db.insert(bandTicketInstances).values(instancesToInsert).returning()
 
-      // Email ticket pass(es) to the buyer
       await sendTicketConfirmationEmail({
         to: input.buyerEmail.trim().toLowerCase(),
         buyerName: input.buyerName.trim(),
@@ -133,6 +163,10 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         doorsOpenTime: event.doorsOpenTime,
         startTime: event.startTime,
         totalCents: 0,
+        ticketTier: tier,
+        vipTableBarService: event.vipTableBarService,
+        vipFoodService: event.vipFoodService,
+        vipPerksNote: event.vipPerksNote,
         tickets: createdInstances.map((t) => ({
           ticketNumber: t.ticketNumber,
           qrToken: t.qrToken,
@@ -161,6 +195,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         buyerUserId: resolvedBuyerUserId,
         buyerEmail: input.buyerEmail.trim().toLowerCase(),
         buyerName: input.buyerName.trim(),
+        ticketTier: tier,
         quantity,
         unitPriceCents,
         totalCents,
@@ -168,6 +203,16 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         status: "pending",
       })
       .returning()
+
+    const vipPerksSummary =
+      tier === "vip"
+        ? ` • Includes ${[
+            event.vipTableBarService ? "Table Bar Service" : "",
+            event.vipFoodService ? "Food Service" : "",
+          ]
+            .filter(Boolean)
+            .join(" & ")}`
+        : ""
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -179,14 +224,17 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
             currency: "usd",
             unit_amount: unitPriceCents,
             product_data: {
-              name: `Ticket: ${organizerLabel} - ${event.title}`,
+              name:
+                tier === "vip"
+                  ? `★ VIP Table Pass: ${organizerLabel} - ${event.title}`
+                  : `Ticket: ${organizerLabel} - ${event.title}`,
               description: `${event.venueName} • ${new Date(event.eventDate).toLocaleDateString("en-US", {
                 timeZone: "America/Chicago",
                 weekday: "short",
                 month: "short",
                 day: "numeric",
                 year: "numeric",
-              })} at ${event.startTime || "8:00 PM"}`,
+              })} at ${event.startTime || "8:00 PM"}${vipPerksSummary}`,
               images: event.flyerUrl ? [event.flyerUrl] : undefined,
             },
           },
@@ -197,6 +245,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
         order_id: pendingOrder.id,
         event_id: event.id,
         band_id: band?.id || "",
+        ticket_tier: tier,
         quantity: String(quantity),
         buyer_name: input.buyerName.trim(),
         buyer_email: input.buyerEmail.trim().toLowerCase(),
@@ -206,6 +255,7 @@ export async function createTicketCheckoutSession(input: BuyTicketInput) {
           order_id: pendingOrder.id,
           event_id: event.id,
           band_id: band?.id || "",
+          ticket_tier: tier,
           buyer_name: input.buyerName.trim(),
         },
       },
@@ -250,7 +300,6 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
 
     if (!order) return { success: false, error: "Order record not found" }
 
-    // If already fulfilled, return existing ticket instance
     if (order.status === "paid") {
       const instances = await db
         .select()
@@ -265,18 +314,35 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
       }
     }
 
-    // Atomically decrement inventory
-    const [event] = await db
-      .update(bandEvents)
-      .set({
-        remainingInventory: sql`GREATEST(0, ${bandEvents.remainingInventory} - ${order.quantity})`,
-        status: sql`CASE WHEN ${bandEvents.remainingInventory} - ${order.quantity} <= 0 THEN 'sold_out' ELSE ${bandEvents.status} END`,
-        updatedAt: new Date(),
-      })
-      .where(eq(bandEvents.id, order.eventId))
-      .returning()
+    const tier: "general" | "vip" = order.ticketTier === "vip" ? "vip" : "general"
 
-    // Mark order paid
+    const [{ count: existingIssued }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bandTicketInstances)
+      .where(eq(bandTicketInstances.eventId, order.eventId))
+
+    // Atomically decrement the appropriate inventory pool
+    const [event] =
+      tier === "vip"
+        ? await db
+            .update(bandEvents)
+            .set({
+              vipRemainingInventory: sql`GREATEST(0, ${bandEvents.vipRemainingInventory} - ${order.quantity})`,
+              status: sql`CASE WHEN (${bandEvents.vipRemainingInventory} - ${order.quantity}) <= 0 AND ${bandEvents.remainingInventory} <= 0 THEN 'sold_out' ELSE ${bandEvents.status} END`,
+              updatedAt: new Date(),
+            })
+            .where(eq(bandEvents.id, order.eventId))
+            .returning()
+        : await db
+            .update(bandEvents)
+            .set({
+              remainingInventory: sql`GREATEST(0, ${bandEvents.remainingInventory} - ${order.quantity})`,
+              status: sql`CASE WHEN (${bandEvents.remainingInventory} - ${order.quantity}) <= 0 AND (NOT ${bandEvents.vipEnabled} OR ${bandEvents.vipRemainingInventory} <= 0) THEN 'sold_out' ELSE ${bandEvents.status} END`,
+              updatedAt: new Date(),
+            })
+            .where(eq(bandEvents.id, order.eventId))
+            .returning()
+
     await db
       .update(bandTicketOrders)
       .set({
@@ -286,15 +352,15 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
       })
       .where(eq(bandTicketOrders.id, order.id))
 
-    // Generate ticket instances with unique QR tokens
     const instancesToInsert = []
-    const startNum = event ? (event.totalInventory - event.remainingInventory - order.quantity + 1) : 1
+    const baseNum = existingIssued || 0
     for (let i = 0; i < order.quantity; i++) {
       instancesToInsert.push({
         orderId: order.id,
         eventId: order.eventId,
         bandId: order.bandId,
-        ticketNumber: Math.max(1, startNum + i),
+        ticketNumber: baseNum + i + 1,
+        ticketTier: tier,
         qrToken: crypto.randomUUID(),
         holderName: order.buyerName,
         holderEmail: order.buyerEmail,
@@ -304,7 +370,6 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
 
     const createdInstances = await db.insert(bandTicketInstances).values(instancesToInsert).returning()
 
-    // Fetch band info (if band-associated) and email ticket pass(es) to the buyer
     if (event) {
       const band = order.bandId
         ? (await db.select().from(bands).where(eq(bands.id, order.bandId)).limit(1))[0] || null
@@ -320,6 +385,10 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
         doorsOpenTime: event.doorsOpenTime,
         startTime: event.startTime,
         totalCents: order.totalCents,
+        ticketTier: tier,
+        vipTableBarService: event.vipTableBarService,
+        vipFoodService: event.vipFoodService,
+        vipPerksNote: event.vipPerksNote,
         tickets: createdInstances.map((t) => ({
           ticketNumber: t.ticketNumber,
           qrToken: t.qrToken,
@@ -327,9 +396,6 @@ export async function verifyAndFulfillTicketOrder(sessionId: string) {
       })
     }
 
-    // Note: verifyAndFulfillTicketOrder is invoked during SSR on /tickets/success,
-    // so do not call revalidatePath() here (Next.js forbids revalidation during render).
-    // /portal, /tickets, /tickets/seller-central, and /events/[id] are all force-dynamic.
     return {
       success: true,
       tickets: createdInstances,

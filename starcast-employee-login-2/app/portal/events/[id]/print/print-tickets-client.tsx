@@ -12,6 +12,7 @@ import { ArrowLeft, Printer, Plus, Loader2, QrCode, Scissors } from "lucide-reac
 interface PrintableTicket {
   id: string
   ticketNumber: number
+  ticketTier?: string
   qrToken: string
   holderName: string
   status: string
@@ -28,6 +29,8 @@ interface PrintTicketsClientProps {
     doorsOpenTime: string | null
     startTime: string | null
     priceCents: number
+    vipEnabled?: boolean
+    vipPriceCents?: number
     totalInventory: number
     remainingInventory: number
     ageRestriction: string | null
@@ -246,10 +249,16 @@ export function PrintTicketsClient({
 
                   <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-200 text-[11px]">
                     <span className="font-black">
-                      {event.priceCents > 0 ? `$${(event.priceCents / 100).toFixed(2)}` : "FREE PASS"}
+                      {t.ticketTier === "vip"
+                        ? `★ VIP TABLE ($${((event.vipPriceCents || 0) / 100).toFixed(2)})`
+                        : event.priceCents > 0
+                        ? `$${(event.priceCents / 100).toFixed(2)}`
+                        : "FREE PASS"}
                     </span>
                     <span className="text-[10px] text-gray-600 truncate">
-                      {event.ageRestriction || "All Ages"} &bull; {t.holderName}
+                      {t.ticketTier === "vip"
+                        ? "Bar & Food Service"
+                        : `${event.ageRestriction || "All Ages"} • ${t.holderName}`}
                     </span>
                   </div>
                 </div>

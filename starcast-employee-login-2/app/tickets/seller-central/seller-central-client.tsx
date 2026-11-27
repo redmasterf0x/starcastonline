@@ -40,6 +40,9 @@ import {
   X,
   Trash2,
   Printer,
+  Crown,
+  Wine,
+  Utensils,
 } from "lucide-react"
 
 interface SellerCentralProps {
@@ -68,6 +71,12 @@ interface SellerCentralProps {
     priceCents: number
     totalInventory: number
     remainingInventory: number
+    vipEnabled?: boolean
+    vipPriceCents?: number
+    vipTotalInventory?: number
+    vipRemainingInventory?: number
+    vipTableBarService?: boolean
+    vipFoodService?: boolean
     status: string
     escrowStatus: string
   }>
@@ -81,6 +90,7 @@ interface SellerCentralProps {
     bandName: string
     buyerName: string
     buyerEmail: string
+    ticketTier?: "general" | "vip"
     quantity: number
     unitPriceCents: number
     totalCents: number
@@ -136,6 +146,13 @@ export function SellerCentralClient({
     priceCents: 1500,
     totalInventory: 50,
     physicalPrintQuantity: 0,
+    vipEnabled: false,
+    vipPriceCents: 5000,
+    vipTotalInventory: 10,
+    vipPhysicalPrintQuantity: 0,
+    vipTableBarService: true,
+    vipFoodService: true,
+    vipPerksNote: "Reserved VIP table seating with dedicated table bar service & food service",
     ageRestriction: "All Ages",
     flyerUrl: "",
     recurrenceFrequency: "one_time" as "one_time" | "weekly" | "monthly" | "yearly",
@@ -183,6 +200,17 @@ export function SellerCentralClient({
         priceCents: form.priceCents,
         totalInventory: form.totalInventory,
         physicalPrintQuantity: form.physicalPrintQuantity,
+        ...(isAdmin
+          ? {
+              vipEnabled: form.vipEnabled,
+              vipPriceCents: form.vipPriceCents,
+              vipTotalInventory: form.vipTotalInventory,
+              vipPhysicalPrintQuantity: form.vipPhysicalPrintQuantity,
+              vipTableBarService: form.vipTableBarService,
+              vipFoodService: form.vipFoodService,
+              vipPerksNote: form.vipPerksNote,
+            }
+          : {}),
         ageRestriction: form.ageRestriction,
         flyerUrl: form.flyerUrl,
         recurrenceFrequency: form.recurrenceFrequency,
@@ -210,6 +238,13 @@ export function SellerCentralClient({
         priceCents: 1500,
         totalInventory: 50,
         physicalPrintQuantity: 0,
+        vipEnabled: false,
+        vipPriceCents: 5000,
+        vipTotalInventory: 10,
+        vipPhysicalPrintQuantity: 0,
+        vipTableBarService: true,
+        vipFoodService: true,
+        vipPerksNote: "Reserved VIP table seating with dedicated table bar service & food service",
         ageRestriction: "All Ages",
         flyerUrl: "",
         recurrenceFrequency: "one_time",
@@ -307,6 +342,7 @@ export function SellerCentralClient({
       "Event Title",
       "Venue",
       "Event Date",
+      "Ticket Tier",
       "Payment Method",
       "Quantity",
       "Unit Price ($)",
@@ -325,7 +361,8 @@ export function SellerCentralClient({
       csvEscape(o.eventTitle),
       csvEscape(o.venueName),
       csvEscape(o.eventDate ? new Date(o.eventDate).toISOString().slice(0, 10) : ""),
-      csvEscape(o.paymentMethod === "cash" ? "Door Cash" : "Stripe Online"),
+      csvEscape(o.ticketTier === "vip" ? "VIP (Table Bar & Food)" : "General Admission"),
+      csvEscape(o.paymentMethod === "cash" ? "Door Cash / Physical" : "Stripe Online"),
       csvEscape(o.quantity),
       csvEscape((o.unitPriceCents / 100).toFixed(2)),
       csvEscape((o.totalCents / 100).toFixed(2)),
@@ -524,8 +561,16 @@ export function SellerCentralClient({
                           {ev.venueName}
                         </span>
                         <span className="font-mono text-[#20efe0]">
-                          {sold}/{ev.totalInventory} sold
+                          {sold}/{ev.totalInventory} GA sold
                         </span>
+                        {ev.vipEnabled && (
+                          <span className="inline-flex items-center gap-1 font-mono text-[#ffd166] bg-[#ffd166]/10 border border-[#ffd166]/35 px-2 py-0.5 rounded-md">
+                            <Crown className="w-3 h-3" />
+                            VIP ${((ev.vipPriceCents || 0) / 100).toFixed(2)} (
+                            {Math.max(0, (ev.vipTotalInventory || 0) - (ev.vipRemainingInventory || 0))}/
+                            {ev.vipTotalInventory || 0})
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -679,7 +724,14 @@ export function SellerCentralClient({
                         {new Date(o.createdAt).toLocaleDateString("en-US", { timeZone: "America/Chicago" })}
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-bold text-white">{o.eventTitle}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-white">{o.eventTitle}</p>
+                          {o.ticketTier === "vip" && (
+                            <Badge className="bg-[#ffd166]/20 text-[#ffd166] border border-[#ffd166]/40 text-[10px] px-1.5 py-0">
+                              ★ VIP
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-[11px] text-[#9a9fc4]">{o.bandName}</p>
                       </td>
                       <td className="py-3 px-4">
@@ -936,6 +988,140 @@ export function SellerCentralClient({
               </div>
             </div>
 
+            {/* Admin-Only VIP Tier: Table Bar Service & Food Service */}
+            {isAdmin && (
+              <div className="rounded-2xl border border-[#ffd166]/45 bg-gradient-to-br from-[#231a05]/80 via-[#0c0c3f] to-[#05052d] p-4 space-y-3.5 shadow-lg">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-[#ffd166] shrink-0" />
+                      <span className="text-xs sm:text-sm font-extrabold text-[#ffd166]">
+                        Admin Exclusive: Sell VIP Table Tickets (Bar &amp; Food Service)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#cbd0f2]">
+                      Offer a second VIP ticket tier alongside General Admission featuring table bar service and food service.
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={form.vipEnabled}
+                      onChange={(e) => setForm({ ...form, vipEnabled: e.target.checked })}
+                      className="w-4 h-4 accent-[#ffd166] rounded"
+                    />
+                    <span className="text-xs font-bold text-white">Enable VIP</span>
+                  </label>
+                </div>
+
+                {form.vipEnabled && (
+                  <div className="space-y-3 pt-2 border-t border-[#ffd166]/25 animate-in fade-in duration-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <Label htmlFor="sc-vip-price" className="text-xs text-[#ffd166]">
+                          VIP Price ($ USD) *
+                        </Label>
+                        <Input
+                          id="sc-vip-price"
+                          type="number"
+                          min="0"
+                          step="0.50"
+                          value={(form.vipPriceCents / 100).toString()}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              vipPriceCents: Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100)),
+                            })
+                          }
+                          className="mt-1 border-[#ffd166]/40 bg-[#05052d] text-[#f5f7ff]"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="sc-vip-inv" className="text-xs text-[#ffd166]">
+                          VIP Inventory (Seats/Passes) *
+                        </Label>
+                        <Input
+                          id="sc-vip-inv"
+                          type="number"
+                          min="1"
+                          max="5000"
+                          value={String(form.vipTotalInventory)}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              vipTotalInventory: Math.max(1, parseInt(e.target.value || "10", 10)),
+                            })
+                          }
+                          className="mt-1 border-[#ffd166]/40 bg-[#05052d] text-[#f5f7ff]"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="sc-vip-phys" className="text-xs text-[#ffd166]">
+                          Print Physical VIP (Opt.)
+                        </Label>
+                        <Input
+                          id="sc-vip-phys"
+                          type="number"
+                          min="0"
+                          max={Math.min(200, form.vipTotalInventory)}
+                          value={String(form.vipPhysicalPrintQuantity)}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              vipPhysicalPrintQuantity: Math.max(
+                                0,
+                                Math.min(200, Math.min(form.vipTotalInventory, parseInt(e.target.value || "0", 10)))
+                              ),
+                            })
+                          }
+                          className="mt-1 border-[#ffd166]/40 bg-[#05052d] text-[#f5f7ff] font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 pt-0.5">
+                      <label className="inline-flex items-center gap-2 text-xs text-[#f5f7ff] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.vipTableBarService}
+                          onChange={(e) => setForm({ ...form, vipTableBarService: e.target.checked })}
+                          className="accent-[#ffd166] rounded"
+                        />
+                        <Wine className="w-3.5 h-3.5 text-[#20efe0]" />
+                        <span>Table Bar Service Included</span>
+                      </label>
+
+                      <label className="inline-flex items-center gap-2 text-xs text-[#f5f7ff] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.vipFoodService}
+                          onChange={(e) => setForm({ ...form, vipFoodService: e.target.checked })}
+                          className="accent-[#ffd166] rounded"
+                        />
+                        <Utensils className="w-3.5 h-3.5 text-[#ea6f2a]" />
+                        <span>Food Service Included</span>
+                      </label>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="sc-vip-note" className="text-xs text-[#9a9fc4]">
+                        VIP Hospitality Details (shown on event page &amp; VIP pass)
+                      </Label>
+                      <Input
+                        id="sc-vip-note"
+                        placeholder="e.g. Reserved front-row table seating, dedicated bartender & priority food menu"
+                        value={form.vipPerksNote}
+                        onChange={(e) => setForm({ ...form, vipPerksNote: e.target.value })}
+                        className="mt-1 border-[#20205a] bg-[#05052d] text-[#f5f7ff] text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="sc-repeat" className="text-xs text-[#9a9fc4] flex items-center gap-1.5">
@@ -1102,7 +1288,7 @@ export function SellerCentralClient({
                 className="bg-[#ea6f2a] hover:bg-[#bc3f00] text-white font-bold"
               >
                 {creating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                Post {form.totalInventory} Tickets
+                Post {form.totalInventory} GA{form.vipEnabled ? ` + ${form.vipTotalInventory} VIP` : ""} Tickets
               </Button>
             </DialogFooter>
           </form>

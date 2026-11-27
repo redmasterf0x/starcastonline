@@ -28,6 +28,7 @@ interface TicketClientProps {
   ticket: {
     id: string
     ticketNumber: number
+    ticketTier?: string
     qrToken: string
     holderName: string
     holderEmail: string
@@ -46,6 +47,10 @@ interface TicketClientProps {
     startTime: string | null
     priceCents: number
     totalInventory: number
+    vipEnabled?: boolean
+    vipTableBarService?: boolean
+    vipFoodService?: boolean
+    vipPerksNote?: string | null
     ageRestriction: string | null
     flyerUrl: string | null
     status: string
@@ -219,6 +224,25 @@ export function TicketClient({
               <span className="inline-block text-[11px] px-2.5 py-0.5 rounded-full bg-[#20205a]/60 text-[#20efe0] font-medium print:bg-gray-100 print:text-black print:border print:border-gray-400">
                 {event.ageRestriction}
               </span>
+            )}
+
+            {ticket.ticketTier === "vip" && (
+              <div className="mt-4 mx-auto max-w-md rounded-xl border border-[#ffd166] bg-[#ffd166]/15 px-4 py-2 text-center print:border-2 print:border-black print:bg-gray-100">
+                <p className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#ffd166] print:text-black">
+                  ★ VIP TABLE PASS &bull;{" "}
+                  {[
+                    event.vipTableBarService !== false ? "TABLE BAR SERVICE" : "",
+                    event.vipFoodService !== false ? "FOOD SERVICE" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" & ") || "VIP HOSPITALITY"}
+                </p>
+                {event.vipPerksNote && (
+                  <p className="text-[11px] text-[#f5f7ff] print:text-black mt-0.5">
+                    {event.vipPerksNote}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

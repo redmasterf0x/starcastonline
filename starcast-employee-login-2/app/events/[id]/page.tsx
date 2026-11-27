@@ -86,6 +86,7 @@ export default async function PublicEventPage({
       }}
       canScan={canScan}
       canEdit={canEdit}
+      isAdmin={Boolean(viewer?.isAdmin)}
     />
   )
 }

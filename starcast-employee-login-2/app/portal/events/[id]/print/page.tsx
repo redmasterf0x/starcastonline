@@ -36,6 +36,7 @@ export default async function PrintEventTicketsPage({
       return {
         id: t.id,
         ticketNumber: t.ticketNumber,
+        ticketTier: t.ticketTier || "general",
         qrToken: t.qrToken,
         holderName: t.holderName,
         status: t.status,
@@ -55,6 +56,8 @@ export default async function PrintEventTicketsPage({
         doorsOpenTime: data.event.doorsOpenTime,
         startTime: data.event.startTime,
         priceCents: data.event.priceCents,
+        vipEnabled: data.event.vipEnabled,
+        vipPriceCents: data.event.vipPriceCents,
         totalInventory: data.event.totalInventory,
         remainingInventory: data.event.remainingInventory,
         ageRestriction: data.event.ageRestriction,
